@@ -1,4 +1,4 @@
-/* SHIVAM PIXSA — fx.js
+/* SHIVAM PIXA — fx.js
    Non-destructive render engine: original photo + ops list + tuning adjustments
    -> kisi bhi resolution par render (preview chhota, Save full-res). */
 (() => {
@@ -702,8 +702,9 @@
     });
   }
 
-  /* ---------- main renderer ---------- */
-  function renderStack(src, ops, adj, maxSide) {
+  /* ---------- main renderer ----------
+     stickers: optional Map(sid -> ImageBitmap/canvas) — 'sticker' ops ke liye */
+  function renderStack(src, ops, adj, maxSide, stickers) {
     const sw = src.width || src.naturalWidth, sh = src.height || src.naturalHeight;
     let sc = 1;
     if (maxSide && Math.max(sw, sh) > maxSide) sc = maxSide / Math.max(sw, sh);
@@ -781,12 +782,41 @@
           cx.globalAlpha = op.alpha == null ? 1 : Math.max(0.05, Math.min(1, op.alpha));
           cx.translate(op.x * acc.width, op.y * acc.height);
           if (op.rot) cx.rotate((op.rot * Math.PI) / 180);
-          cx.font = `600 ${Math.max(6, (op.size / 100) * acc.height)}px ${op.font || '"Segoe UI", sans-serif'}`;
+          const fs = Math.max(6, (op.size / 100) * acc.height);
+          cx.font = `${op.italic ? 'italic ' : ''}${op.bold ? '700' : '400'} ${fs}px ${op.font || '"Segoe UI", sans-serif'}`;
           cx.textBaseline = 'middle';
-          cx.shadowColor = 'rgba(0,0,0,.55)';
-          cx.shadowBlur = acc.height * 0.006;
+          cx.textAlign = op.align || 'center';
+          if (op.shadow) {
+            cx.shadowColor = 'rgba(0,0,0,.55)';
+            cx.shadowBlur = acc.height * 0.008;
+            cx.shadowOffsetY = acc.height * 0.003;
+          }
           cx.fillStyle = op.color || '#ffffff';
-          cx.fillText(op.text, 0, 0);
+          const lines = String(op.text || '').split('\n');
+          const lh = fs * 1.22;
+          const y0 = -((lines.length - 1) * lh) / 2;
+          lines.forEach((ln, li) => {
+            if (op.strokeW > 0) {
+              cx.lineWidth = Math.max(1, op.strokeW * fs * 0.09);
+              cx.strokeStyle = op.stroke || '#000000';
+              cx.lineJoin = 'round';
+              cx.strokeText(ln, 0, y0 + li * lh);
+            }
+            cx.fillText(ln, 0, y0 + li * lh);
+          });
+          cx.restore();
+          break;
+        }
+        case 'sticker': {
+          const bmp = stickers ? stickers.get(op.sid) : null;
+          if (!bmp) break;
+          const dh = Math.max(8, (op.scale || 0.3) * acc.height);
+          const dw = dh * ((bmp.width || bmp.naturalWidth) / (bmp.height || bmp.naturalHeight));
+          cx.save();
+          cx.globalAlpha = op.alpha == null ? 1 : Math.max(0.05, Math.min(1, op.alpha));
+          cx.translate(op.x * acc.width, op.y * acc.height);
+          if (op.rot) cx.rotate((op.rot * Math.PI) / 180);
+          cx.drawImage(bmp, -dw / 2, -dh / 2, dw, dh);
           cx.restore();
           break;
         }
@@ -814,5 +844,20 @@
     return out;
   }
 
-  window.PixsaFX = { EFFECTS, renderStack, computeLevels, computeWB, redeyePt, retouchPt, mkCanvas };
+  /* ---------- alpha detect (transparent PNG save ke liye) ---------- */
+  function hasAlpha(cv) {
+    try {
+      const mn = Math.min(cv.width, cv.height);
+      if (!mn) return false;
+      const sc = Math.min(1, 260 / mn);
+      const t = mkCanvas(Math.max(1, cv.width * sc), Math.max(1, cv.height * sc));
+      const tx = t.getContext('2d');
+      tx.drawImage(cv, 0, 0, t.width, t.height);
+      const d = tx.getImageData(0, 0, t.width, t.height).data;
+      for (let i = 3; i < d.length; i += 4) if (d[i] < 250) return true;
+    } catch (e) {}
+    return false;
+  }
+
+  window.PixsaFX = { EFFECTS, renderStack, computeLevels, computeWB, redeyePt, retouchPt, mkCanvas, hasAlpha };
 })();
