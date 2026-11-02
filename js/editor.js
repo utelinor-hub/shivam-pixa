@@ -1,7 +1,7 @@
 /* SHIVAM PIXA — editor.js
    Picasa-style edit view: Basic Fixes | Tuning | Effects
    Non-destructive: original + ops list; Save par full-res render.
-   v3.1.0: power-cut safe auto-save (IndexedDB 'edits' store), text panel
+   v3.2.0: power-cut safe auto-save (IndexedDB 'edits' store), text panel
    (fonts/bold/italic/outline/shadow/align), transparent PNG stickers. */
 (() => {
   'use strict';
@@ -34,7 +34,7 @@
     prevAdj: null, undo: [], redo: [], tool: null, saved: false,
     cropR: null, aspect: 0, pendPts: [], brush: 16, draft: null,
     fit: true, zoom: 100, fxPage: 1,
-    /* v3.1.0: stickers + text draft + autosave state */
+    /* v3.2.0: stickers + text draft + autosave state */
     stickers: [], stkSeq: 0, stkSel: null,
     pendText: { x: 0.5, y: 0.5 }, textDraft: { ...TEXT0 },
     dirty: false, restored: false
