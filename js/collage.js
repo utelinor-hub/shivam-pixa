@@ -219,6 +219,9 @@
     el.cCreate.addEventListener('click', create);
     el.cCancel.addEventListener('click', close);
     q('#cClose').addEventListener('click', close);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !el.root.hidden) close();
+    });
     el.cBack.addEventListener('click', () => {
       if (C.url) { URL.revokeObjectURL(C.url); C.url = null; }
       C.blob = null;
