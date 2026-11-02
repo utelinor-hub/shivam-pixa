@@ -7,7 +7,9 @@
    compare, live RGB histogram, I'm Feeling Lucky.
    v3.5.0: viewer removed — the photo grid opens the editor on double-click.
    v3.6.0: spinning tyre header logo (outer colour wheel rotates, the dark
-   shutter emblem stays fixed like a Rolls-Royce badge). */
+   shutter emblem stays fixed like a Rolls-Royce badge).
+   v3.6.1: the tyre spin is now always on — it no longer switches off when
+   Windows "Animation effects" (prefers-reduced-motion) are turned off. */
 (() => {
   'use strict';
   const P = window.Pixsa;
