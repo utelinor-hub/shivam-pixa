@@ -1,7 +1,7 @@
 /* SHIVAM PIXA — editor.js
    Picasa-style edit view: Basic Fixes | Tuning | Effects
-   Non-destructive: original + ops list; Save par full-res render.
-   v3.2.0: power-cut safe auto-save (IndexedDB 'edits' store), text panel
+   Non-destructive: original + ops list; full-res render on Save.
+   v3.3.0: power-cut safe auto-save (IndexedDB 'edits' store), text panel
    (fonts/bold/italic/outline/shadow/align), transparent PNG stickers. */
 (() => {
   'use strict';
@@ -34,7 +34,7 @@
     prevAdj: null, undo: [], redo: [], tool: null, saved: false,
     cropR: null, aspect: 0, pendPts: [], brush: 16, draft: null,
     fit: true, zoom: 100, fxPage: 1,
-    /* v3.2.0: stickers + text draft + autosave state */
+    /* v3.3.0: stickers + text draft + autosave state */
     stickers: [], stkSeq: 0, stkSel: null,
     pendText: { x: 0.5, y: 0.5 }, textDraft: { ...TEXT0 },
     dirty: false, restored: false
@@ -146,7 +146,7 @@
       await P.idbSet('edits', k, { ops: E.ops, adj: E.adj, stickers, previewBlob: blob, ts: Date.now() });
       P.invalidateThumb(E.photo);
       flashSaved();
-    } catch (e) { /* storage full etc. — chup rehna, Save button phir bhi kaam karega */ }
+    } catch (e) { /* storage full etc. — stay silent, the Save button still works */ }
   }
   function flashSaved() {
     if (!E.open) return;
@@ -197,7 +197,7 @@
     for (const f of list) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'fxtile'; b.textContent = f.name; b.dataset.fx = f.id;
-      b.addEventListener('click', () => { commit({ type: 'effect', id: f.id }); toast(f.name + ' lag gaya', 'ok', 1300); });
+      b.addEventListener('click', () => { commit({ type: 'effect', id: f.id }); toast(f.name + ' applied', 'ok', 1300); });
       ed.fxGrid.appendChild(b);
     }
     const lab = q('#fxPageLab');
@@ -212,7 +212,7 @@
     qa('.fxtile').forEach((t) => t.classList.toggle('applied', has.has(t.dataset.fx)));
   }
 
-  /* ---------- fonts (system + PC se add kiye hue) ---------- */
+  /* ---------- fonts (system + added from PC) ---------- */
   function fontOptionsHTML(selected) {
     const sys = [
       ['"Segoe UI", sans-serif', 'Segoe UI'],
@@ -238,7 +238,7 @@
     const opt = (v, l) => `<option value="${v.replace(/"/g, '&quot;')}"${v === selected ? ' selected' : ''}>${l}</option>`;
     for (const [v, l] of sys) html += opt(v, l);
     if (custom.length) {
-      html += '<optgroup label="PC se add kiye fonts">';
+      html += '<optgroup label="Fonts added from PC">';
       for (const nm of custom) html += opt(`"${nm}", sans-serif`, nm + ' \u2605');
       html += '</optgroup>';
     }
@@ -263,7 +263,7 @@
     tb.hidden = false;
     if (E.tool === 'crop') {
       tb.innerHTML = `
-        <h4>Photo pe box drag karo — corners se resize</h4>
+        <h4>Drag a box on the photo — resize from the corners</h4>
         <div class="asprow">
           <button type="button" data-ar="0">Free</button>
           <button type="button" data-ar="1">1:1</button>
@@ -296,7 +296,7 @@
       q('#tbApply').addEventListener('click', applyCrop);
       q('#tbCancel').addEventListener('click', () => setTool(null));
     } else if (E.tool === 'redeye' || E.tool === 'retouch') {
-      const label = E.tool === 'redeye' ? 'Redeye wali aankh pe click-drag karo' : 'Dagha (spot) pe click-drag karo — blur hoga';
+      const label = E.tool === 'redeye' ? 'Click-drag over the red eye' : 'Click-drag over the blemish (spot) to blur it';
       tb.innerHTML = `
         <h4>${label}</h4>
         <div class="trow"><label>Brush</label><input id="tbBrush" type="range" min="6" max="40" value="${E.brush}" /><span class="val" id="tbBrushV">${E.brush}</span></div>
@@ -317,11 +317,11 @@
     } else if (E.tool === 'text') {
       const td = E.textDraft;
       tb.innerHTML = `
-        <h4>Photo pe click karo — text wahin lagega. Ya seedha Add Text dabao (center).</h4>
-        <input id="txText" type="text" placeholder="Yahan text likho... (Enter = nayi line ke liye \\n)" maxlength="200"
+        <h4>Click on the photo — the text will be placed there. Or simply press Add Text (center).</h4>
+        <input id="txText" type="text" placeholder="Type text here... (use \\n for a new line)" maxlength="200"
                style="width:100%;padding:6px 8px;border:1px solid #bcbcbc;border-radius:4px;font-size:13px;outline:none" />
         <div class="trow" style="margin-top:8px"><label>Font</label><select id="txFont" style="flex:1;height:27px;min-width:0">${fontOptionsHTML(td.font)}</select></div>
-        <button id="txAddFont" class="fixbtn" type="button" style="margin:5px 0 4px">+ PC se Font Add Karo</button>
+        <button id="txAddFont" class="fixbtn" type="button" style="margin:5px 0 4px">+ Add Font from PC</button>
         <div class="trow"><label>Size</label><input id="txSize" type="range" min="2" max="30" value="${td.size}" /><span class="val" id="txSizeV">${td.size}%</span></div>
         <div class="trow">
           <label>Style</label>
@@ -358,7 +358,7 @@
       grab('#txAddFont').addEventListener('click', () => q('#fontFile').click());
       grab('#txAdd').addEventListener('click', () => {
         const txt = grab('#txText').value.trim();
-        if (!txt) { toast('Pehle kuch text likho', 'err', 1800); return; }
+        if (!txt) { toast('Type some text first', 'err', 1800); return; }
         commit({
           type: 'text',
           x: E.pendText.x, y: E.pendText.y,
@@ -370,7 +370,7 @@
         });
         grab('#txText').value = '';
         E.pendText = { x: 0.5, y: 0.5 };
-        toast('Text lag gaya \u2713', 'ok', 1500);
+        toast('Text applied \u2713', 'ok', 1500);
       });
       grab('#txDone').addEventListener('click', () => setTool(null));
       document.addEventListener('pixa-fonts-updated', () => { if (E.tool === 'text') renderToolbox(); }, { once: true });
@@ -380,15 +380,15 @@
       const rt = op ? op.rot : 0;
       const al = op ? Math.round((op.alpha == null ? 1 : op.alpha) * 100) : 100;
       tb.innerHTML = `
-        <h4>Sticker ko photo par <b>drag</b> karke rakho. Transparent PNG best rehta hai.</h4>
+        <h4><b>Drag</b> the sticker onto the photo. Transparent PNG works best.</h4>
         <div class="trow"><label>Size</label><input id="skScale" type="range" min="4" max="100" value="${sc}" /><span class="val" id="skScaleV">${sc}%</span></div>
         <div class="trow"><label>Rotate</label><input id="skRot" type="range" min="-180" max="180" value="${rt}" /><span class="val" id="skRotV">${rt}\u00B0</span></div>
         <div class="trow"><label>Opacity</label><input id="skAlpha" type="range" min="10" max="100" value="${al}" /><span class="val" id="skAlphaV">${al}%</span></div>
         <div class="mrow">
-          <button id="skNew" class="btn" type="button">+ Naya Sticker</button>
+          <button id="skNew" class="btn" type="button">+ New Sticker</button>
           <button id="skDone" class="btn btn-accent" type="button">Done</button>
         </div>
-        <p class="cnote">Sliders selected sticker par lagte hain. Hatana ho to Undo dabao. Sticker auto-save hota hai \u2014 band hone par bhi rahenge.</p>`;
+        <p class="cnote">Sliders apply to the selected sticker. Press Undo to remove it. Stickers auto-save \u2014 they survive even after closing.</p>`;
       const selOp = () => E.ops.filter((o) => o.type === 'sticker' && o.sid === E.stkSel).pop();
       q('#skScale').addEventListener('input', (e) => { const o = selOp(); if (o) { o.scale = +e.target.value / 100; q('#skScaleV').textContent = e.target.value + '%'; renderPreview(); } });
       q('#skRot').addEventListener('input', (e) => { const o = selOp(); if (o) { o.rot = +e.target.value; q('#skRotV').textContent = e.target.value + '\u00B0'; renderPreview(); } });
@@ -400,7 +400,7 @@
       q('#skDone').addEventListener('click', () => setTool(null));
     } else if (E.tool === 'straighten') {
       tb.innerHTML = `
-        <h4>Straighten karo (photo ghumao)</h4>
+        <h4>Straighten (rotate the photo)</h4>
         <div class="trow"><label>Angle</label><input id="tbStr" type="range" min="-15" max="15" value="${E.draft ? E.draft.deg : 0}" /><span class="val" id="tbStrV">${E.draft ? E.draft.deg : 0}&deg;</span></div>
         <div class="mrow">
           <button id="tbApply" class="btn btn-accent" type="button">Apply</button>
@@ -534,7 +534,7 @@
         img.src = url;
       }).catch(() => null);
     }
-    if (!bmp) { toast('Ye sticker file khul nahi payi (PNG/WebP/GIF try karo)', 'err'); return; }
+    if (!bmp) { toast('This sticker file could not be opened (try PNG/WebP/GIF)', 'err'); return; }
     const sid = ++E.stkSeq;
     E.stickers.push({ sid, bmp, blob });
     E.stkSel = sid;
@@ -544,7 +544,7 @@
     setTool('sticker');
     renderPreview();
     scheduleEditSave();
-    toast('Sticker lag gaya \u2014 drag karke rakho, sliders se size/rotate', 'ok', 3000);
+    toast('Sticker added \u2014 drag to place it, use the sliders for size/rotation', 'ok', 3000);
   }
   q('#stickerFile').addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
@@ -566,7 +566,7 @@
         x: clamp((e.clientX - r.left) / r.width, 0.02, 0.98),
         y: clamp((e.clientY - r.top) / r.height, 0.03, 0.97)
       };
-      toast(`Text position set: ${Math.round(E.pendText.x * 100)}%, ${Math.round(E.pendText.y * 100)}% — ab "Add Text" dabao`, 'ok', 2200);
+      toast(`Text position set: ${Math.round(E.pendText.x * 100)}%, ${Math.round(E.pendText.y * 100)}% — now press "Add Text"`, 'ok', 2200);
     } else if (E.tool === 'sticker') {
       const cv = ed.canvas;
       const r = cv.getBoundingClientRect();
@@ -601,13 +601,13 @@
     const c = FX.renderStack(E.src, E.ops, null, 900, stickerMap());
     const { lo, hi } = FX.computeLevels(c);
     commit({ type: 'autocontrast', lo, hi });
-    toast('Auto Contrast lag gaya', 'ok', 1500);
+    toast('Auto Contrast applied', 'ok', 1500);
   }
   function autoColor() {
     const c = FX.renderStack(E.src, E.ops, null, 900, stickerMap());
     const wb = FX.computeWB(c);
     commit({ type: 'autocolor', gr: wb.gr, gg: wb.gg, gb: wb.gb });
-    toast('Auto Color lag gaya', 'ok', 1500);
+    toast('Auto Color applied', 'ok', 1500);
   }
 
   /* ---------- save ---------- */
@@ -625,7 +625,7 @@
     let blob;
     try {
       const c = FX.renderStack(E.src, E.ops, E.adj, 0, stickerMap());
-      /* transparent PNG/WebP ho to PNG me save — transparency kabhi nahi khoyegi */
+      /* if transparent PNG/WebP, save as PNG — transparency is never lost */
       const wantPng = /\.png$|\.webp$/i.test(E.photo.name) || FX.hasAlpha(c);
       blob = await new Promise((r) => c.toBlob(r, wantPng ? 'image/png' : 'image/jpeg', 0.92));
     } finally {
@@ -635,7 +635,7 @@
   }
   async function doSave() {
     const blob = await renderFull();
-    if (!blob) { toast('Save fail hua — dobara try karo', 'err'); return; }
+    if (!blob) { toast('Save failed — please try again', 'err'); return; }
     const p = E.photo;
     const oldKey = P.photoKey(p);
     let ok = false;
@@ -652,7 +652,7 @@
       } catch (e) { ok = false; }
     }
     if (ok) {
-      /* ab file me pakka ho gaya — auto-save session hatao, naya base set karo */
+      /* now permanently saved in the file — clear the auto-save session and set the new base */
       await P.idbDel('edits', oldKey).catch(() => {});
       P.invalidateThumb(p);
       p.size = blob.size;
@@ -666,25 +666,25 @@
       resetAdjUI(); updFxTiles(); updUndoBtns(); setTool(null);
       await renderPreview();
       ed.dims.textContent = `${E.src.width} \u00D7 ${E.src.height} px \u2022 ${fmtBytes(blob.size)}`;
-      toast('Save ho gaya \u2713 — ab ye photo hamesha isi roop me dikhegi', 'ok', 4000);
+      toast('Saved \u2713 — this photo will now always look like this', 'ok', 4000);
     } else {
       const ext = blob.type === 'image/png' ? '.png' : '.jpg';
       download(blob, baseName(p.name) + '-edited' + ext);
-      toast('Original file direct edit nahi ho payi — edited copy download kar li. (Folder dobara import karo to direct save hoga)', 'err', 8000);
+      toast('The original file could not be edited directly — an edited copy was downloaded instead. (Re-import the folder to enable direct saving)', 'err', 8000);
     }
   }
   async function doSaveCopy() {
     const blob = await renderFull();
-    if (!blob) { toast('Save fail hua — dobara try karo', 'err'); return; }
+    if (!blob) { toast('Save failed — please try again', 'err'); return; }
     const ext = blob.type === 'image/png' ? '.png' : '.jpg';
     const nm = baseName(E.photo.name) + '-edited' + ext;
     const dir = state.dirHandle;
     if (dir && await P.saveBlobToDir(dir, nm, blob)) {
-      toast(`Copy save hui: ${nm}`, 'ok', 4000);
+      toast(`Copy saved: ${nm}`, 'ok', 4000);
       P.loadFolder(dir, true);
     } else {
       download(blob, nm);
-      toast(`${nm} download ho gayi`, 'ok', 4000);
+      toast(`${nm} downloaded`, 'ok', 4000);
     }
   }
 
@@ -708,7 +708,7 @@
       catch (e) { bmp = await createImageBitmap(file); }
     } catch (e) {
       setBusy(false);
-      toast('Ye photo open nahi ho payi (format support nahi ya file corrupt)', 'err', 6000);
+      toast('This photo could not be opened (unsupported format or corrupt file)', 'err', 6000);
       close();
       return;
     }
@@ -723,7 +723,7 @@
     E.dirty = false; E.restored = false;
     E.fit = true; E.zoom = 100; ed.zoom.value = 100;
 
-    /* power-cut safe: pichle auto-saved edits wapas load karo */
+    /* power-cut safe: reload the previous auto-saved edits */
     try {
       const ses = await P.idbGet('edits', P.photoKey(photo));
       if (ses && Array.isArray(ses.ops) && ses.ops.length) {
@@ -747,7 +747,7 @@
     ed.dims.textContent = `${bmp.width} \u00D7 ${bmp.height} px \u2022 ${fmtBytes(photo.size)}`;
     setBusy(false);
     if (E.restored) {
-      toast('Pichle edits auto-restore ho gaye \u2713 (Save dabate hi file me pakka ho jayega)', 'ok', 5000);
+      toast('Previous edits auto-restored \u2713 (press Save to write them into the file)', 'ok', 5000);
       E.dirty = true;
     }
   }
