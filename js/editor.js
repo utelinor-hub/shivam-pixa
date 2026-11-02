@@ -5,7 +5,9 @@
    (fonts/bold/italic/outline/shadow/align), transparent PNG stickers.
    v3.4.0: cached ops base (adj-only redraws), effect intensity, before/after
    compare, live RGB histogram, I'm Feeling Lucky.
-   v3.5.0: viewer removed — the photo grid opens the editor on double-click. */
+   v3.5.0: viewer removed — the photo grid opens the editor on double-click.
+   v3.6.0: spinning tyre header logo (outer colour wheel rotates, the dark
+   shutter emblem stays fixed like a Rolls-Royce badge). */
 (() => {
   'use strict';
   const P = window.Pixsa;
