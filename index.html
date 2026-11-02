@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SHIVAM PIXSA — Offline Photo Library</title>
-  <meta name="description" content="Offline photo library — bilkul Picasa jaisa. Sab kuch 100% aapke PC par." />
+  <title>SHIVAM PIXSA — Offline Photo Library + Editor</title>
+  <meta name="description" content="Offline photo library + editor — bilkul Picasa jaisa. Crop, light adjust, effects, collage. Sab kuch 100% aapke PC par." />
   <meta name="theme-color" content="#e8e8e8" />
   <meta name="color-scheme" content="light" />
   <link rel="manifest" href="./manifest.json" />
@@ -300,6 +300,168 @@
       #grid { padding: 10px 12px 40px; }
       .v-nav.prev { left: 6px; } .v-nav.next { right: 6px; }
     }
+    /* ---------- cell selection (Photo Tray) ---------- */
+    .cell { position: relative; }
+    .cell .chk {
+      position: absolute; top: 5px; left: 5px; z-index: 3;
+      width: 21px; height: 21px; border-radius: 50%;
+      background: #e3e3e3; color: transparent; border: 2px solid rgba(255,255,255,.95);
+      box-shadow: 0 1px 3px rgba(0,0,0,.45);
+      font-size: 13px; line-height: 17px; text-align: center; font-weight: 700;
+      opacity: 0; transform: scale(.6); transition: .12s;
+    }
+    .cell.sel .chk { opacity: 1; transform: scale(1); background: var(--accent); color: #fff; }
+    .cell.sel .ph { outline: 3px solid var(--accent); outline-offset: -3px; }
+
+    /* ---------- Photo Tray (Picasa) ---------- */
+    .tray {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 14px;
+      background: linear-gradient(#f3f2ef, #e4e2dd);
+      border-top: 1px solid #c2bfb8;
+      min-height: 76px;
+    }
+    .tray-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6d7076; white-space: nowrap; }
+    .tray-count { font-size: 12px; color: #6d7076; white-space: nowrap; }
+    .tray-strip { display: flex; gap: 6px; overflow-x: auto; flex: 1; padding: 2px; min-height: 62px; align-items: center; }
+    .tthumb { position: relative; flex: 0 0 auto; width: 58px; height: 58px; border-radius: 3px; background: #d9d7d2; box-shadow: 0 1px 2px rgba(0,0,0,.25); overflow: hidden; border: 2px solid #fff; }
+    .tthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .tthumb .tx { position: absolute; top: 1px; right: 1px; z-index: 2; width: 16px; height: 16px; border-radius: 50%; background: rgba(20,20,20,.72); color: #fff; font-size: 10px; line-height: 15px; text-align: center; padding: 0; }
+    .tthumb .tx:hover { background: var(--danger); }
+    .tray-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+
+    /* ---------- Editor (Picasa edit view) ---------- */
+    .editor { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; background: #d9d6d0; }
+    .e-top {
+      display: flex; align-items: center; gap: 12px; padding: 7px 12px;
+      background: linear-gradient(#f8f7f5, #dedcd6); border-bottom: 1px solid #b8b5ae;
+    }
+    .btn-green {
+      background: linear-gradient(#a4d055, #77ab2e); color: #fff; font-weight: 700;
+      border: 1px solid #5d8a20; border-radius: 4px; padding: 7px 14px; font-size: 13px;
+      text-shadow: 0 1px 1px rgba(0,0,0,.25); display: inline-flex; align-items: center; gap: 7px;
+    }
+    .btn-green:hover { background: linear-gradient(#aed95f, #83b836); }
+    .e-name { font-weight: 600; font-size: 13px; color: #33363b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .e-count { font-size: 12px; color: #71747a; white-space: nowrap; }
+    .e-nav { margin-left: auto; display: flex; gap: 4px; }
+    .e-body { flex: 1; display: flex; min-height: 0; }
+    .e-stage {
+      flex: 1; min-width: 0; position: relative; background: #4d5055;
+      display: grid; place-items: center; overflow: auto; padding: 18px;
+    }
+    #eCanvas { box-shadow: 0 3px 18px rgba(0,0,0,.5); background: #222; max-width: none; }
+    .e-panel { width: 302px; background: #eceae5; border-left: 1px solid #bcb9b2; display: flex; flex-direction: column; }
+    .e-tabs { display: flex; border-bottom: 1px solid #bdbab3; background: #dfddd7; }
+    .e-tabs button {
+      flex: 1; padding: 9px 4px; font-size: 12px; font-weight: 700; color: #55585e;
+      border-right: 1px solid #c8c5be; background: linear-gradient(#eceae5, #dedcd6);
+    }
+    .e-tabs button:last-child { border-right: 0; }
+    .e-tabs button.on { background: #f8f7f4; color: #1f6fc0; box-shadow: inset 0 -2px 0 var(--accent); }
+    .e-tabbody { flex: 1; overflow-y: auto; padding: 10px; }
+    .e-tab { display: none; } .e-tab.on { display: block; }
+    .fixbtn {
+      display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+      padding: 8px 11px; margin: 0 0 6px; border-radius: 3px;
+      border: 1px solid #c6c3bc; background: linear-gradient(#fdfdfc, #edece7);
+      font-size: 13px; font-weight: 500; color: #2c2f34; text-align: center;
+    }
+    .fixbtn:hover { border-color: #7fa8d8; background: #eaf2fc; }
+    .fixbtn.on { border-color: var(--accent); background: #dcebfb; font-weight: 700; }
+    .rotrow { display: flex; gap: 6px; margin-top: 2px; }
+    .rotrow .fixbtn { margin-bottom: 0; }
+    .toolbox { margin-top: 10px; padding: 10px; background: #f8f7f4; border: 1px solid #c9c6bf; border-radius: 4px; }
+    .toolbox h4 { font-size: 12px; color: #4c4f55; margin: 0 0 8px; line-height: 1.4; }
+    .trow { display: flex; align-items: center; gap: 8px; margin: 7px 0; font-size: 12.5px; color: #3c3f45; }
+    .trow label { flex: 0 0 52px; }
+    .trow input[type="range"] { flex: 1; accent-color: var(--accent); }
+    .trow .val { flex: 0 0 40px; text-align: right; color: #6d7076; font-variant-numeric: tabular-nums; }
+    .srow { display: flex; align-items: center; gap: 8px; margin: 7px 0; font-size: 12.5px; }
+    .srow .sname { flex: 0 0 96px; color: #3c3f45; }
+    .srow input[type="range"] { flex: 1; accent-color: var(--accent); }
+    .srow .val { flex: 0 0 34px; text-align: right; color: #6d7076; font-variant-numeric: tabular-nums; }
+    .asprow { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
+    .asprow button { padding: 5px 9px; font-size: 12px; border: 1px solid #c6c3bc; border-radius: 3px; background: linear-gradient(#fdfdfc, #edece7); }
+    .asprow button.on { border-color: var(--accent); background: #dcebfb; font-weight: 700; }
+    .mrow { display: flex; gap: 6px; margin-top: 10px; }
+    .mrow .btn { flex: 1; justify-content: center; }
+    .e-actions { border-top: 1px solid #bdbab3; padding: 9px 10px; display: flex; gap: 6px; background: #e2e0da; }
+    .e-actions button {
+      flex: 1; padding: 7px 4px; font-size: 12.5px; font-weight: 600; border-radius: 3px;
+      border: 1px solid #b9b6ae; background: linear-gradient(#fdfdfc, #e9e7e1); color: #2c2f34;
+    }
+    .e-actions button:hover { border-color: #7fa8d8; background: #eaf2fc; }
+    .e-actions button:disabled { opacity: .45; cursor: default; }
+    .e-actions button.accent { background: linear-gradient(#4d92dc, #2b6fc0); color: #fff; border-color: #1e5a9e; text-shadow: 0 1px 1px rgba(0,0,0,.2); }
+    .e-actions button.accent:hover { background: linear-gradient(#5a9de6, #2f79cf); }
+    .e-bottom {
+      display: flex; align-items: center; gap: 12px; padding: 6px 12px;
+      background: linear-gradient(#f8f7f5, #dedcd6); border-top: 1px solid #b8b5ae; font-size: 12px; color: #55585e;
+    }
+    .e-bottom input[type="range"] { width: 150px; accent-color: var(--accent); }
+    .e-zoomlab { white-space: nowrap; }
+    .e-dims { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+    /* crop overlay */
+    #eCrop { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); cursor: move; z-index: 5; }
+    #eCrop .h { position: absolute; width: 11px; height: 11px; background: #fff; border: 1px solid var(--accent); z-index: 6; }
+    #eCrop .h.nw { left: -6px; top: -6px; cursor: nwse-resize; }
+    #eCrop .h.n  { left: 50%; top: -6px; margin-left: -6px; cursor: ns-resize; }
+    #eCrop .h.ne { right: -6px; top: -6px; cursor: nesw-resize; }
+    #eCrop .h.e  { right: -6px; top: 50%; margin-top: -6px; cursor: ew-resize; }
+    #eCrop .h.se { right: -6px; bottom: -6px; cursor: nwse-resize; }
+    #eCrop .h.s  { left: 50%; bottom: -6px; margin-left: -6px; cursor: ns-resize; }
+    #eCrop .h.sw { left: -6px; bottom: -6px; cursor: nesw-resize; }
+    #eCrop .h.w  { left: -6px; top: 50%; margin-top: -6px; cursor: ew-resize; }
+    #eCrop .thirds { position: absolute; inset: 0; pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.55) 1px, transparent 1px);
+      background-size: 33.33% 33.33%, 33.33% 33.33%; }
+
+    .e-busy { position: absolute; inset: 0; z-index: 9; display: grid; place-items: center; background: rgba(30,32,36,.35); }
+    .e-textpop { position: absolute; z-index: 12; background: #fff; border: 1px solid #b5b2ab; border-radius: 5px; box-shadow: 0 6px 22px rgba(0,0,0,.3); padding: 9px; width: 232px; }
+    .e-textpop input[type="text"] { width: 100%; padding: 6px 8px; border: 1px solid #bcbcbc; border-radius: 4px; font-size: 13px; outline: none; }
+    .e-textpop input[type="text"]:focus { border-color: var(--accent); }
+    .fxgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .fxtile {
+      padding: 9px 2px; font-size: 11.5px; font-weight: 600; color: #2c2f34; border-radius: 3px;
+      border: 1px solid #c6c3bc; background: linear-gradient(#fdfdfc, #edece7);
+    }
+    .fxtile:hover { border-color: #7fa8d8; background: #eaf2fc; }
+    .fxtile.applied { border-color: var(--accent); background: #dcebfb; color: var(--accent-deep); }
+    .cnote { font-size: 11.5px; color: #6d7076; margin-top: 10px; line-height: 1.45; }
+
+    /* ---------- Collage modal ---------- */
+    .modal { position: fixed; inset: 0; z-index: 80; background: rgba(25,27,31,.5); display: grid; place-items: center; padding: 20px; }
+    .m-box { width: 880px; max-width: 96vw; max-height: 92vh; display: flex; flex-direction: column; background: #f1efeb; border: 1px solid #b0ada6; border-radius: 6px; box-shadow: 0 14px 46px rgba(0,0,0,.4); overflow: hidden; }
+    .m-head { display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: linear-gradient(#f8f7f5, #dedcd6); border-bottom: 1px solid #b8b5ae; font-weight: 700; font-size: 13.5px; }
+    .m-head .icobtn { margin-left: auto; }
+    .c-body { flex: 1; display: flex; min-height: 0; }
+    .c-side { width: 212px; padding: 12px; border-right: 1px solid #c8c5be; overflow-y: auto; }
+    .c-side h5 { margin: 10px 0 5px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: #6d7076; }
+    .c-types { display: grid; gap: 5px; }
+    .c-types button { text-align: left; padding: 7px 10px; font-size: 12.5px; border: 1px solid #c6c3bc; border-radius: 3px; background: linear-gradient(#fdfdfc, #edece7); }
+    .c-types button.on { border-color: var(--accent); background: #dcebfb; font-weight: 700; }
+    .c-prev { flex: 1; display: grid; place-items: center; background: #4d5055; padding: 14px; position: relative; overflow: auto; }
+    #cCanvas { max-width: 100%; max-height: 100%; box-shadow: 0 3px 18px rgba(0,0,0,.5); }
+    .c-busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(30,32,36,.35); }
+    .m-foot { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid #bdbab3; background: #e2e0da; justify-content: flex-end; }
+    .m-foot .btn { min-width: 120px; justify-content: center; }
+    .presets { display: flex; gap: 5px; margin-top: 6px; }
+    .presets button { width: 22px; height: 22px; border-radius: 3px; border: 1px solid #9c9992; }
+    .spin.big { width: 34px; height: 34px; border-width: 4px; }
+
+    @media (max-width: 900px) {
+      .e-panel { width: 258px; }
+      .c-side { width: 178px; }
+    }
+
+    @media (max-width: 760px) {
+      .sidebar { position: absolute; z-index: 20; top: 0; bottom: 0; left: 0; box-shadow: 4px 0 16px rgba(0,0,0,.15); }
+      .searchwrap { order: 3; max-width: none; flex-basis: 100%; }
+      #grid { padding: 10px 12px 40px; }
+      .v-nav.prev { left: 6px; } .v-nav.next { right: 6px; }
+    }
   </style>
 </head>
 <body>
@@ -326,6 +488,14 @@
         <option value="date-desc">Nayi photos pehle</option>
         <option value="date-asc">Purani photos pehle</option>
       </select>
+      <button id="btnSlide" class="btn" type="button" title="Slideshow chalao">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+        Slideshow
+      </button>
+      <button id="btnCollage" class="btn" type="button" title="Collage banao">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="12.9" y="3.5" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3.5" y="12.9" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="12.9" y="12.9" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        Collage
+      </button>
       <button id="btnImport" class="btn btn-accent" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
         Import Folder
@@ -374,7 +544,7 @@
           </button>
           <button id="btnDemo" class="btn" type="button">Demo Photos Dekho</button>
         </div>
-        <p class="tip">Supported formats: JPG, PNG, WebP, GIF, BMP, AVIF. iPhone ki <b>HEIC</b> photos Edge me preview nahi hoti &mdash; phone ki Settings me Camera &#8594; Formats &#8594; <b>&#8220;Most Compatible&#8221;</b> kar do, ya photos ko JPG me convert karo.</p>
+        <p class="tip">Photo pe <b>ek click</b> = select (neeche Photo Tray me jayegi), <b>double-click</b> = <b>Edit</b> (crop, light, effects). Supported: JPG, PNG, WebP, GIF, BMP, AVIF. iPhone ki <b>HEIC</b> photos Edge me preview nahi hoti &mdash; phone ki Settings me Camera &#8594; Formats &#8594; <b>&#8220;Most Compatible&#8221;</b> kar do, ya JPG me convert karo.</p>
       </div>
 
       <div id="noResults" class="empty small" hidden>
@@ -387,6 +557,19 @@
     </main>
   </div>
 
+  <!-- ===== Photo Tray (Picasa style) ===== -->
+  <footer id="tray" class="tray" hidden>
+    <span class="tray-label">Photo Tray</span>
+    <span id="trayCount" class="tray-count"></span>
+    <div id="trayStrip" class="tray-strip" aria-label="Selected photos"></div>
+    <div class="tray-actions">
+      <button id="btnTrayExport" class="btn" type="button" title="Selected photos kisi dusre folder me copy karo">Export</button>
+      <button id="btnTraySlide" class="btn" type="button">Slideshow</button>
+      <button id="btnTrayCollage" class="btn btn-accent" type="button">Collage</button>
+      <button id="btnTrayClear" class="linkbtn dim" type="button">Clear</button>
+    </div>
+  </footer>
+
   <!-- ===== Status bar ===== -->
   <footer class="statusbar">
     <span id="stName">Koi folder nahi chuna</span>
@@ -398,7 +581,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Library clear karo</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v1.1.0</span>
+      <span class="ver">v2.0.0</span>
     </span>
   </footer>
 
@@ -429,12 +612,159 @@
         <button id="vFit" class="icobtn" type="button" aria-label="Fit karo">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
+        <button id="vPlay" class="icobtn" type="button" hidden aria-label="Play / Pause" style="font-size:13px">&#10074;&#10074;</button>
       </div>
       <div id="vLoad" hidden><span class="spin"></span></div>
       <div id="vErr" hidden>Ye photo load nahi ho payi &mdash; shayad file move ya delete ho gayi hai.</div>
     </div>
     <div class="v-bottom" id="vMeta"></div>
   </div>
+
+  <!-- ===== Editor (Picasa edit view) ===== -->
+  <div id="editor" class="editor" hidden role="dialog" aria-label="Photo editor">
+    <header class="e-top">
+      <button id="eBack" class="btn-green" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Back to Library
+      </button>
+      <span id="eName" class="e-name"></span>
+      <span id="eCount" class="e-count"></span>
+      <div class="e-nav">
+        <button id="ePrev" class="iconbtn2" type="button" title="Pichli photo (Left arrow)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button id="eNext" class="iconbtn2" type="button" title="Agli photo (Right arrow)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5L16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="e-body">
+      <div id="eStage" class="e-stage">
+        <canvas id="eCanvas"></canvas>
+        <div id="eCrop" hidden>
+          <div class="thirds"></div>
+          <div class="h nw" data-h="nw"></div><div class="h n" data-h="n"></div><div class="h ne" data-h="ne"></div>
+          <div class="h e" data-h="e"></div><div class="h se" data-h="se"></div><div class="h s" data-h="s"></div>
+          <div class="h sw" data-h="sw"></div><div class="h w" data-h="w"></div>
+        </div>
+        <div id="eTextPop" class="e-textpop" hidden>
+          <input id="etText" type="text" placeholder="Yahan text likho..." maxlength="120" />
+          <div class="trow"><label>Size</label><input id="etSize" type="range" min="2" max="22" value="7" /><span class="val" id="etSizeVal">7%</span></div>
+          <div class="trow"><label>Color</label><input id="etColor" type="color" value="#ffffff" style="height:28px" /></div>
+          <div class="mrow">
+            <button id="etAdd" class="btn btn-accent" type="button">Add Text</button>
+            <button id="etCancel" class="btn" type="button">Cancel</button>
+          </div>
+        </div>
+        <div id="eBusy" class="e-busy" hidden><span class="spin big"></span></div>
+      </div>
+      <aside class="e-panel">
+        <div class="e-tabs">
+          <button type="button" data-tab="basic" class="on">Basic Fixes</button>
+          <button type="button" data-tab="tuning">Tuning</button>
+          <button type="button" data-tab="effects">Effects</button>
+        </div>
+        <div class="e-tabbody">
+          <div id="tab-basic" class="e-tab on">
+            <button class="fixbtn" type="button" data-fix="autocon">Auto Contrast</button>
+            <button class="fixbtn" type="button" data-fix="autocolor">Auto Color</button>
+            <button class="fixbtn" type="button" data-fix="redeye">Redeye Hatao</button>
+            <button class="fixbtn" type="button" data-fix="retouch">Retouch (Blur)</button>
+            <button class="fixbtn" type="button" data-fix="crop">Crop</button>
+            <button class="fixbtn" type="button" data-fix="straighten">Straighten</button>
+            <button class="fixbtn" type="button" data-fix="text">Text Likho</button>
+            <div class="rotrow">
+              <button class="fixbtn" type="button" data-fix="rotl">Rotate Left</button>
+              <button class="fixbtn" type="button" data-fix="rotr">Rotate Right</button>
+            </div>
+            <div id="eToolBox" class="toolbox" hidden></div>
+          </div>
+          <div id="tab-tuning" class="e-tab">
+            <div class="srow"><span class="sname">Fill Light</span><input id="adFill" type="range" min="0" max="100" value="0" /><span class="val" id="vFill">0</span></div>
+            <div class="srow"><span class="sname">Highlights</span><input id="adHigh" type="range" min="0" max="100" value="0" /><span class="val" id="vHigh">0</span></div>
+            <div class="srow"><span class="sname">Shadows</span><input id="adShad" type="range" min="0" max="100" value="0" /><span class="val" id="vShad">0</span></div>
+            <div class="srow"><span class="sname">Temperature</span><input id="adTemp" type="range" min="-100" max="100" value="0" /><span class="val" id="vTemp">0</span></div>
+            <div class="srow"><span class="sname">Tint</span><input id="adTint" type="range" min="-100" max="100" value="0" /><span class="val" id="vTint">0</span></div>
+            <div class="srow"><span class="sname">Saturation</span><input id="adSat" type="range" min="-100" max="100" value="0" /><span class="val" id="vSat">0</span></div>
+            <p class="cnote">Slider ghumao — live preview milega. Double-click kisi bhi slider pe — wo zero par reset ho jayega.</p>
+          </div>
+          <div id="tab-effects" class="e-tab">
+            <div id="fxGrid" class="fxgrid"></div>
+            <p class="cnote">Effect turant lag jata hai — hatana ho to <b>Undo</b> dabao.</p>
+          </div>
+        </div>
+        <div class="e-actions">
+          <button id="eUndo" type="button" title="Undo (Ctrl+Z)">Undo</button>
+          <button id="eRedo" type="button" title="Redo (Ctrl+Y)">Redo</button>
+          <button id="eSave" class="accent" type="button" title="Original file me save (Ctrl+S)">Save</button>
+          <button id="eSaveCopy" type="button" title="Nayi copy ke roop me save">Save a Copy</button>
+        </div>
+      </aside>
+    </div>
+    <footer class="e-bottom">
+      <span class="e-zoomlab">Zoom</span>
+      <input id="eZoom" type="range" min="15" max="300" value="100" />
+      <button id="eFit" class="linkbtn" type="button">Fit</button>
+      <span class="e-dims" id="eDims"></span>
+    </footer>
+  </div>
+
+  <!-- ===== Collage maker ===== -->
+  <div id="collage" class="modal" hidden role="dialog" aria-label="Collage maker">
+    <div class="m-box">
+      <header class="m-head">
+        Collage Banao
+        <button id="cClose" class="icobtn" type="button" aria-label="Band karo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="c-body">
+        <div class="c-side">
+          <h5>Type</h5>
+          <div class="c-types">
+            <button type="button" data-ct="pile" class="on">Picture Pile</button>
+            <button type="button" data-ct="grid">Picture Grid</button>
+            <button type="button" data-ct="sheet">Contact Sheet</button>
+            <button type="button" data-ct="mex">Multiple Exposure</button>
+          </div>
+          <h5>Page Format</h5>
+          <select id="cFormat" style="width:100%">
+            <option value="4x3">4:3 (landscape)</option>
+            <option value="16x9">16:9 (widescreen)</option>
+            <option value="sq">Square</option>
+            <option value="a4p">A4 (portrait)</option>
+          </select>
+          <h5>Background</h5>
+          <input id="cBg" type="color" value="#f5f2ec" style="height:28px;width:100%" />
+          <div class="presets">
+            <button type="button" data-bg="#ffffff" style="background:#ffffff" title="White"></button>
+            <button type="button" data-bg="#000000" style="background:#000000" title="Black"></button>
+            <button type="button" data-bg="#d8d4cc" style="background:#d8d4cc" title="Grey"></button>
+            <button type="button" data-bg="#3e4650" style="background:#3e4650" title="Dark blue"></button>
+          </div>
+          <div id="cSpacingRow" hidden>
+            <h5>Grid Spacing</h5>
+            <input id="cSpacing" type="range" min="0" max="60" value="10" style="width:100%" />
+          </div>
+          <button id="cShuffle" class="btn" type="button" hidden style="margin-top:10px;width:100%;justify-content:center">Shuffle Karo</button>
+          <p class="cnote" id="cNote"></p>
+        </div>
+        <div class="c-prev">
+          <canvas id="cCanvas" width="640" height="480"></canvas>
+          <div id="cBusy" class="c-busy" hidden><span class="spin big"></span></div>
+        </div>
+      </div>
+      <footer class="m-foot">
+        <button id="cCancel" class="btn" type="button">Cancel</button>
+        <button id="cCreate" class="btn btn-accent" type="button">Create Collage</button>
+        <button id="cSaveDir" class="btn btn-accent" type="button" hidden>Library Me Save</button>
+        <button id="cDownload" class="btn" type="button" hidden>Download</button>
+        <button id="cBack" class="btn" type="button" hidden>Wapas Edit</button>
+      </footer>
+    </div>
+  </div>
+
+  <input id="fileFallback" type="file" multiple accept="image/*,.heic,.heif,.tif,.tiff" webkitdirectory directory hidden />
 
   <div id="toasts" class="toasts" aria-live="polite"></div>
 
@@ -466,6 +796,12 @@
       viewer: $('#viewer'), vStage: $('#vStage'), vImg: $('#vImg'), vName: $('#vName'), vCount: $('#vCount'),
       vMeta: $('#vMeta'), vPrev: $('#vPrev'), vNext: $('#vNext'), vClose: $('#vClose'),
       vZoomIn: $('#vZoomIn'), vZoomOut: $('#vZoomOut'), vFit: $('#vFit'), vLoad: $('#vLoad'), vErr: $('#vErr'),
+      vPlay: $('#vPlay'),
+      btnSlide: $('#btnSlide'), btnCollage: $('#btnCollage'),
+      tray: $('#tray'), trayStrip: $('#trayStrip'), trayCount: $('#trayCount'),
+      btnTrayClear: $('#btnTrayClear'), btnTrayCollage: $('#btnTrayCollage'),
+      btnTraySlide: $('#btnTraySlide'), btnTrayExport: $('#btnTrayExport'),
+      fileInput: $('#fileFallback'),
       toasts: $('#toasts')
     };
 
@@ -476,7 +812,7 @@
     const state = {
       photos: [], filtered: [], groups: [], folder: '', folderFilter: '',
       query: '', sort: localStorage.getItem('pixsa.sort') || 'name-asc',
-      vi: -1
+      vi: -1, ss: null, selArr: [], dirHandle: null
     };
     let renderCursor = 0;
     const canPicker = typeof window.showDirectoryPicker === 'function';
@@ -532,7 +868,7 @@
 
     /* ================= folder import ================= */
     async function importFolder() {
-      if (!canPicker) return;
+      if (!canPicker) { els.fileInput.click(); return; }
       let dir;
       try {
         dir = await window.showDirectoryPicker({ id: 'pixsa-photos', mode: 'read' });
@@ -547,6 +883,34 @@
       }
       await loadFolder(dir);
     }
+
+    async function loadFiles(list) {
+      const out = []; let unsup = 0, total = 0;
+      for (const f of list) {
+        total++;
+        if (UNSUPPORTED_EXT.test(f.name)) { unsup++; continue; }
+        if (!IMG_EXT.test(f.name)) continue;
+        out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: (f.webkitRelativePath || f.name).split('/').slice(1, -1).join('/') });
+      }
+      if (!out.length) {
+        toast(total ? `${total} files mili, par koi supported photo nahi (JPG/PNG/WebP/GIF/BMP/AVIF chahiye${unsup ? `; ${unsup} HEIC/RAW thi` : ''})` : 'Koi file nahi mili', 'err', 8000);
+        return;
+      }
+      state.photos = out;
+      state.dirHandle = null;
+      state.folder = ((out[0].file && out[0].file.webkitRelativePath) ? out[0].file.webkitRelativePath.split('/')[0] : '') || 'Imported photos';
+      state.folderFilter = '';
+      state.query = ''; els.search.value = '';
+      clearSel();
+      buildTree();
+      applyFilter();
+      toast(`${out.length} photos import ho gayi${unsup ? ` (${unsup} HEIC/RAW skip — Edge me preview nahi banta)` : ''}`, 'ok', 6000);
+    }
+    els.fileInput.addEventListener('change', () => {
+      const list = [...els.fileInput.files];
+      els.fileInput.value = '';
+      if (list.length) loadFiles(list);
+    });
 
     async function loadFolder(dir, isRefresh = false) {
       const files = [];
@@ -572,8 +936,10 @@
         return;
       }
       state.photos = files;
+      state.dirHandle = dir;
       state.folder = dir.name;
       state.folderFilter = '';
+      clearSel();
       state.query = ''; els.search.value = '';
       if (canPicker) { try { await idbSet('kv', 'lastFolder', dir); } catch (e) {} }
       buildTree();
@@ -663,6 +1029,8 @@
       state.photos = out;
       state.folder = entries.length && entries[0].isDirectory ? entries[0].name : 'Dropped photos';
       state.folderFilter = '';
+      state.dirHandle = null;
+      clearSel();
       state.query = ''; els.search.value = '';
       buildTree();
       applyFilter();
@@ -716,6 +1084,8 @@
       state.photos = await makeDemoPhotos();
       state.folder = 'Demo Photos';
       state.folderFilter = '';
+      state.dirHandle = null;
+      clearSel();
       state.query = ''; els.search.value = '';
       buildTree();
       applyFilter();
@@ -738,6 +1108,7 @@
       state.filtered = arr;
       buildGroups();
       renderGrid();
+      els.btnSlide.disabled = els.btnCollage.disabled = !state.filtered.length;
       setStatus();
     }
 
@@ -813,6 +1184,59 @@
       }
     }
 
+    /* ================= selection + photo tray ================= */
+    const photoKey = (p) => `${p.name}|${p.size}|${p.lastModified}`;
+    const selSet = () => new Set(state.selArr.map(photoKey));
+    function toggleSel(p) {
+      const k = photoKey(p);
+      const i = state.selArr.findIndex((x) => photoKey(x) === k);
+      if (i >= 0) state.selArr.splice(i, 1); else state.selArr.push(p);
+      renderTray();
+    }
+    function clearSel() { state.selArr = []; renderTray(); }
+    function renderTray() {
+      const has = state.selArr.length > 0;
+      els.tray.hidden = !has;
+      els.trayCount.textContent = has ? `(${state.selArr.length} photo${state.selArr.length > 1 ? 's' : ''})` : '';
+      const set = selSet();
+      document.querySelectorAll('.cell').forEach((c) => c.classList.toggle('sel', set.has(c.dataset.key)));
+      els.trayStrip.innerHTML = '';
+      for (const p of state.selArr) {
+        const d = document.createElement('div'); d.className = 'tthumb'; d.title = p.name;
+        const x = document.createElement('button'); x.className = 'tx'; x.type = 'button'; x.textContent = '✕'; x.title = 'Tray se hatao';
+        x.onclick = () => toggleSel(p);
+        d.appendChild(x);
+        const img = document.createElement('img'); img.decoding = 'async'; img.alt = '';
+        getThumbURL(p).then((u) => { if (u && img.isConnected) img.src = u; }).catch(() => {});
+        d.appendChild(img);
+        els.trayStrip.appendChild(d);
+      }
+    }
+
+    async function exportSelected() {
+      if (!state.selArr.length) return;
+      let target = null;
+      if (canPicker) {
+        try { target = await window.showDirectoryPicker({ id: 'pixsa-export', mode: 'readwrite' }); } catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+      let ok = 0, fail = 0;
+      for (const p of state.selArr) {
+        try {
+          const file = await getFile(p);
+          if (target) {
+            const fh = await target.getFileHandle(file.name, { create: true });
+            const w = await fh.createWritable(); await w.write(file); await w.close();
+          } else {
+            const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+            await new Promise((r) => setTimeout(r, 350));
+          }
+          ok++;
+        } catch (e) { fail++; }
+      }
+      toast(`Export: ${ok} photos${fail ? `, ${fail} fail` : ''}${target ? ` — "${target.name}" folder me` : ' — Downloads me'}`, ok ? 'ok' : 'err', 6000);
+    }
+
     /* ================= grid (folder-grouped, Picasa style) ================= */
     const thumbIO = new IntersectionObserver((ents) => {
       for (const en of ents) {
@@ -862,14 +1286,24 @@
     function makeCell(entry) {
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'cell'; btn.title = entry.p.name;
+      btn.dataset.key = photoKey(entry.p);
+      if (selSet().has(btn.dataset.key)) btn.classList.add('sel');
       const ph = document.createElement('span');
       ph.className = 'ph'; ph.dataset.pi = entry.idx;
       const spin = document.createElement('span'); spin.className = 'spin';
       ph.appendChild(spin);
       const cap = document.createElement('span');
       cap.className = 'cap'; cap.textContent = entry.p.name;
-      btn.appendChild(ph); btn.appendChild(cap);
-      btn.addEventListener('click', () => openViewer(entry.idx));
+      const chk = document.createElement('span'); chk.className = 'chk'; chk.textContent = '✓';
+      btn.appendChild(ph); btn.appendChild(cap); btn.appendChild(chk);
+      btn.addEventListener('click', (e) => {
+        if (e.detail >= 2) {
+          if (window.PixsaEditor) window.PixsaEditor.open(entry.idx);
+          else if (window.Pixsa) openViewer(entry.idx);
+        } else {
+          toggleSel(entry.p);
+        }
+      });
       thumbIO.observe(ph);
       return btn;
     }
@@ -925,35 +1359,54 @@
       }
     }
 
-    /* ================= viewer ================= */
+    /* ================= viewer + slideshow ================= */
     let z = 1, zx = 0, zy = 0, curURL = null, dragging = false, moved = false, lx = 0, ly = 0;
+    let ssTimer = null;
+    function startSS() {
+      if (ssTimer) clearInterval(ssTimer);
+      els.vPlay.hidden = false; els.vPlay.textContent = '❚❚';
+      ssTimer = setInterval(() => nav(1), 3200);
+    }
+    function pauseSS() {
+      if (ssTimer) { clearInterval(ssTimer); ssTimer = null; }
+      els.vPlay.textContent = '▶';
+    }
+    function stopSS() {
+      if (ssTimer) { clearInterval(ssTimer); ssTimer = null; }
+      els.vPlay.hidden = true;
+    }
 
-    function openViewer(i) {
+    function openViewer(i, list, auto) {
+      state.ss = list || state.filtered;
       state.vi = i;
       els.viewer.hidden = false;
       document.body.classList.add('noscroll');
+      if (auto) startSS(); else stopSS();
       showPhoto();
     }
     function closeViewer() {
+      stopSS();
       els.viewer.hidden = true;
       document.body.classList.remove('noscroll');
-      state.vi = -1;
+      state.vi = -1; state.ss = null;
       if (curURL) { URL.revokeObjectURL(curURL); curURL = null; }
       els.vImg.removeAttribute('src');
       els.vImg.removeAttribute('style');
     }
     function nav(d) {
-      const n = state.filtered.length;
+      const list = state.ss || state.filtered;
+      const n = list.length;
       if (!n || els.viewer.hidden) return;
       state.vi = (state.vi + d + n) % n;
       showPhoto();
     }
     async function showPhoto() {
-      const p = state.filtered[state.vi];
+      const list = state.ss || state.filtered;
+      const p = list[state.vi];
       if (!p) return;
       resetZoom();
       els.vName.textContent = p.name;
-      els.vCount.textContent = `${state.vi + 1} / ${state.filtered.length}`;
+      els.vCount.textContent = `${state.vi + 1} / ${list.length}`;
       els.vMeta.textContent = '';
       els.vErr.hidden = true;
       els.vLoad.hidden = false;
@@ -1039,6 +1492,7 @@
     els.vZoomIn.addEventListener('click', () => zoomCenter(1.25));
     els.vZoomOut.addEventListener('click', () => zoomCenter(1 / 1.25));
     els.vFit.addEventListener('click', resetZoom);
+    els.vPlay.addEventListener('click', () => { if (ssTimer) pauseSS(); else startSS(); });
 
     document.addEventListener('keydown', (e) => {
       if (!els.viewer.hidden) {
@@ -1050,7 +1504,7 @@
         else if (e.key === '0') resetZoom();
         return;
       }
-      if (e.key === '/' && document.activeElement !== els.search && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+      if (e.key === '/' && document.activeElement !== els.search && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName) && !document.body.classList.contains('ed-open')) {
         e.preventDefault();
         els.search.focus();
       }
@@ -1084,11 +1538,47 @@
       } catch (e) { /* ignore */ }
     }
 
+    /* ================= bridge (editor / collage modules) ================= */
+    async function saveBlobToDir(dir, name, blob) {
+      try {
+        const fh = await dir.getFileHandle(name, { create: true });
+        const w = await fh.createWritable();
+        await w.write(blob);
+        await w.close();
+        return true;
+      } catch (e) { return false; }
+    }
+    function invalidateThumb(p) {
+      const k = `${p.name}|${p.size}|${p.lastModified}`;
+      thumbMem.delete(k);
+      idbDel('thumbs', k).catch(() => {});
+    }
+    window.Pixsa = {
+      state, els, toast, setStatus, applyFilter, renderGrid, buildTree, loadFolder,
+      getFile, idbGet, idbSet, idbDel, fmtBytes, photoKey, toggleSel, clearSel, renderTray,
+      canPicker, inIframe, invalidateThumb, saveBlobToDir, clamp, debounce,
+      IMG_EXT, UNSUPPORTED_EXT, openViewer
+    };
+
     /* ================= toolbar events ================= */
     els.importBtn.addEventListener('click', importFolder);
     els.importBtn2.addEventListener('click', importFolder);
     els.demoBtn.addEventListener('click', loadDemo);
     els.btnSide.addEventListener('click', () => document.body.classList.toggle('side-off'));
+    els.btnSlide.addEventListener('click', () => {
+      const list = state.selArr.length ? state.selArr : state.filtered;
+      if (!list.length) { toast('Pehle photos import karo', 'err'); return; }
+      openViewer(0, list, true);
+    });
+    els.btnCollage.addEventListener('click', () => {
+      const list = state.selArr.length ? state.selArr : state.filtered;
+      if (!list.length) { toast('Pehle photos import karo', 'err'); return; }
+      if (window.PixsaCollage) window.PixsaCollage.open(list);
+    });
+    els.btnTrayClear.addEventListener('click', clearSel);
+    els.btnTraySlide.addEventListener('click', () => { if (state.selArr.length) openViewer(0, state.selArr, true); });
+    els.btnTrayCollage.addEventListener('click', () => { if (state.selArr.length && window.PixsaCollage) window.PixsaCollage.open(state.selArr); });
+    els.btnTrayExport.addEventListener('click', exportSelected);
 
     els.search.addEventListener('input', debounce(() => {
       state.query = els.search.value;
@@ -1124,10 +1614,8 @@
     });
 
     if (!canPicker) {
-      els.noticeText.textContent = 'Folder import ke liye Windows 11 ka Edge ya Chrome use karo. Filhaal Demo mode try karo.';
+      els.noticeText.textContent = 'Is browser me folder picker nahi hai — "Import Folder" ab file-picker se folder ki saari photos le lega. Behtar experience ke liye Edge/Chrome use karo.';
       els.notice.hidden = false;
-      els.importBtn.disabled = true;
-      els.importBtn2.disabled = true;
       els.restore.hidden = true;
     } else if (inIframe) {
       els.noticeText.textContent = 'Ye preview window hai — yahan PC ke folder access nahi hota. App ko alag tab me kholo, wahan sab kaam karega.';
@@ -1170,5 +1658,8 @@
     if (new URLSearchParams(location.search).get('demo') === '1') loadDemo();
   })();
   </script>
+  <script src="./js/fx.js"></script>
+  <script src="./js/editor.js"></script>
+  <script src="./js/collage.js"></script>
 </body>
 </html>
