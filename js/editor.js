@@ -25,7 +25,7 @@
     ops: [], adj: { fill: 0, high: 0, shad: 0, temp: 0, tint: 0, sat: 0 },
     prevAdj: null, undo: [], redo: [], tool: null, saved: false,
     cropR: null, aspect: 0, pendPts: [], brush: 16, draft: null,
-    pendText: null, fit: true, zoom: 100
+    pendText: null, fit: true, zoom: 100, fxPage: 1
   };
 
   /* ---------- busy ---------- */
@@ -129,15 +129,22 @@
     }
   }
 
-  /* ---------- effects grid ---------- */
+  /* ---------- effects grid (3 pages, Picasa style) ---------- */
   function buildFx() {
     ed.fxGrid.innerHTML = '';
-    for (const f of FX.EFFECTS) {
+    const list = FX.EFFECTS.filter((f) => (f.page || 1) === E.fxPage);
+    for (const f of list) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'fxtile'; b.textContent = f.name; b.dataset.fx = f.id;
       b.addEventListener('click', () => { commit({ type: 'effect', id: f.id }); toast(f.name + ' lag gaya', 'ok', 1300); });
       ed.fxGrid.appendChild(b);
     }
+    const lab = q('#fxPageLab');
+    if (lab) lab.textContent = `${E.fxPage} / 3`;
+    const pv = q('#fxPrev'), nx = q('#fxNext');
+    if (pv) pv.disabled = E.fxPage <= 1;
+    if (nx) nx.disabled = E.fxPage >= 3;
+    updFxTiles();
   }
   function updFxTiles() {
     const has = new Set(E.ops.filter((o) => o.type === 'effect').map((o) => o.id));
@@ -171,6 +178,9 @@
           <button type="button" data-ar="${3 / 4}">3:4</button>
           <button type="button" data-ar="${16 / 9}">16:9</button>
           <button type="button" data-ar="${9 / 16}">9:16</button>
+          <button type="button" data-ar="${3 / 2}">4x6</button>
+          <button type="button" data-ar="${5 / 7}">5x7</button>
+          <button type="button" data-ar="${8 / 10}">8x10</button>
         </div>
         <div class="mrow">
           <button id="tbApply" class="btn btn-accent" type="button">Apply Crop</button>
@@ -360,12 +370,19 @@
   function wireText() {
     const ts = q('#etSize');
     ts.addEventListener('input', () => { q('#etSizeVal').textContent = ts.value + '%'; });
+    const tr = q('#etRot');
+    tr.addEventListener('input', () => { q('#etRotVal').textContent = tr.value + '\u00B0'; });
+    const ta = q('#etAlpha');
+    ta.addEventListener('input', () => { q('#etAlphaVal').textContent = ta.value + '%'; });
     q('#etAdd').addEventListener('click', () => {
       const txt = q('#etText').value.trim();
       if (!txt || !E.pendText) { hideTextPop(); return; }
       commit({
         type: 'text', x: E.pendText.x, y: E.pendText.y, text: txt,
-        size: +ts.value, color: q('#etColor').value
+        size: +ts.value, color: q('#etColor').value,
+        font: q('#etFont').value,
+        rot: +q('#etRot').value,
+        alpha: +q('#etAlpha').value / 100
       });
       q('#etText').value = '';
       hideTextPop();
@@ -533,6 +550,9 @@
   q('#eFit').addEventListener('click', () => { E.fit = true; applyDisp(); });
   ed.zoom.addEventListener('input', () => { E.fit = false; E.zoom = +ed.zoom.value; applyDisp(); });
   window.addEventListener('resize', () => { if (E.open) applyDisp(); });
+  const fxPrev = q('#fxPrev'), fxNext = q('#fxNext');
+  if (fxPrev) fxPrev.addEventListener('click', () => { if (E.fxPage > 1) { E.fxPage--; buildFx(); } });
+  if (fxNext) fxNext.addEventListener('click', () => { if (E.fxPage < 3) { E.fxPage++; buildFx(); } });
 
   document.addEventListener('keydown', (e) => {
     if (!E.open) return;
