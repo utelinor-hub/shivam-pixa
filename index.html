@@ -781,7 +781,7 @@
           </button>
           <button id="btnDemo" class="btn" type="button">View Demo Photos</button>
         </div>
-        <p class="tip"><b>One click</b> on a photo = opens it <b>and loads its entire folder into the app</b>, corner <b>+</b> = add to Photo Tray, <b>double-click</b> = <b>Edit</b> (crop, light, effects). Supported: JPG, PNG, WebP, GIF, BMP, AVIF. iPhone <b>HEIC</b> photos do not preview in Edge &mdash; on your phone go to Settings &#8594; Camera &#8594; Formats &#8594; <b>&#8220;Most Compatible&#8221;</b>, or convert them to JPG.</p>
+        <p class="tip"><b>One click</b> on a photo = opens it <b>and loads its entire folder into the app</b>, corner <b>+</b> = add to Photo Tray, then the <b>Edit Photo</b> button (or double-click) = <b>Edit</b> (crop, light, effects). Supported: JPG, PNG, WebP, GIF, BMP, AVIF. iPhone <b>HEIC</b> photos do not preview in Edge &mdash; on your phone go to Settings &#8594; Camera &#8594; Formats &#8594; <b>&#8220;Most Compatible&#8221;</b>, or convert them to JPG.</p>
       </div>
 
       <div id="noResults" class="empty small" hidden>
@@ -819,7 +819,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.4.0</span>
+      <span class="ver">v3.4.1</span>
     </span>
   </footer>
 
@@ -832,6 +832,10 @@
       </button>
       <span id="vName"></span>
       <span id="vCount"></span>
+      <button id="vEdit" class="btn btn-accent" type="button" title="Edit this photo (E)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19.5 8.5a2.12 2.12 0 0 0-3-3L5 16.5V20z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M13.2 7.3l3 3" stroke="currentColor" stroke-width="1.9"/></svg>
+        Edit Photo
+      </button>
       <button id="vClose" class="icobtn" type="button" aria-label="Close">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
       </button>
@@ -1065,7 +1069,7 @@
       viewer: $('#viewer'), vStage: $('#vStage'), vImg: $('#vImg'), vName: $('#vName'), vCount: $('#vCount'),
       vMeta: $('#vMeta'), vPrev: $('#vPrev'), vNext: $('#vNext'), vClose: $('#vClose'),
       vZoomIn: $('#vZoomIn'), vZoomOut: $('#vZoomOut'), vFit: $('#vFit'), vLoad: $('#vLoad'), vErr: $('#vErr'),
-      vPlay: $('#vPlay'),
+      vPlay: $('#vPlay'), vEdit: $('#vEdit'),
       btnSlide: $('#btnSlide'), btnCollage: $('#btnCollage'),
       tray: $('#tray'), trayStrip: $('#trayStrip'), trayCount: $('#trayCount'),
       btnTrayClear: $('#btnTrayClear'), btnTrayCollage: $('#btnTrayCollage'),
@@ -1581,6 +1585,18 @@
       toast(`📁 ${label} opened — ${state.filtered.length} photos`, 'ok', 3200);
     }
 
+    /* v3.4.1: from the viewer, "Edit Photo" (button or E key) opens the editor
+       for the photo on screen — Picasa style View & Edit flow */
+    function openEditorForPhoto(p) {
+      if (!p) return;
+      const k = photoKey(p);
+      const i = state.filtered.findIndex((x) => photoKey(x) === k);
+      if (i < 0) { toast('Could not open the editor for this photo', 'err'); return; }
+      closeViewer();
+      if (window.PixsaEditor) window.PixsaEditor.open(i);
+      else openViewer(i);
+    }
+
     function makeCell(entry) {
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'cell'; btn.title = entry.p.name;
@@ -1865,6 +1881,7 @@
 
     els.vClose.addEventListener('click', closeViewer);
     document.getElementById('vBack').addEventListener('click', closeViewer);
+    els.vEdit.addEventListener('click', () => openEditorForPhoto((state.ss || state.filtered)[state.vi]));
     els.vPrev.addEventListener('click', () => nav(-1));
     els.vNext.addEventListener('click', () => nav(1));
     els.vZoomIn.addEventListener('click', () => zoomCenter(1.25));
@@ -1880,6 +1897,7 @@
         else if (e.key === '+' || e.key === '=') zoomCenter(1.25);
         else if (e.key === '-') zoomCenter(1 / 1.25);
         else if (e.key === '0') resetZoom();
+        else if (e.key === 'e' || e.key === 'E') openEditorForPhoto((state.ss || state.filtered)[state.vi]);
         return;
       }
       if (e.key === '/' && document.activeElement !== els.search && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName) && !document.body.classList.contains('ed-open')) {
@@ -2000,7 +2018,7 @@
         case 'refresh': els.btnRefresh.click(); break;
         case 'search': els.search.focus(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.4.0 — 100% offline photo library + editor (Picasa style, 36 effects with intensity, before/after compare, live histogram, I\'m Feeling Lucky, 6 collage types, power-cut safe auto-save, transparent PNG stickers, custom fonts). The official SHIVAM app. Everything stays on your PC, nothing is ever uploaded.', 'ok', 9000);
+          toast('S H I V A M PIXA v3.4.1 — 100% offline photo library + editor (Picasa style, 36 effects with intensity, before/after compare, live histogram, I\'m Feeling Lucky, 6 collage types, power-cut safe auto-save, transparent PNG stickers, custom fonts). The official SHIVAM app. Everything stays on your PC, nothing is ever uploaded.', 'ok', 9000);
           break;
       }
     }
@@ -2065,7 +2083,12 @@
       els.btnPop.addEventListener('click', () => window.open(location.href, '_blank'));
     }
 
-    /* ================= service worker (auto-update) ================= */
+    /* ================= service worker (auto-update) =================
+       v3.4.1 fixes:
+       1) The update is applied only when the editor and viewer are closed —
+          the app never reloads itself in the middle of an edit.
+       2) The reload after an update is remembered, and on that reload the
+          splash is skipped — so the loading screen never shows twice. */
     if ('serviceWorker' in navigator) {
       const hadController = !!navigator.serviceWorker.controller;
       window.addEventListener('load', () => {
@@ -2080,14 +2103,19 @@
                   label: 'Refresh',
                   fn: () => location.reload()
                 });
-                setTimeout(() => { try { nw.postMessage('SKIP_WAITING'); } catch (e) {} }, 1500);
+                const applyWhenIdle = () => {
+                  const busy = (window.PixsaEditor && window.PixsaEditor.isOpen()) || !els.viewer.hidden;
+                  if (busy) { setTimeout(applyWhenIdle, 4000); return; }
+                  try { nw.postMessage('SKIP_WAITING'); } catch (e) {}
+                };
+                setTimeout(applyWhenIdle, 1500);
               }
             });
           });
         }).catch(() => {});
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (!hadController || sessionStorage.getItem('pixsa.up')) return;
-          sessionStorage.setItem('pixsa.up', '1');
+          sessionStorage.setItem('pixsa.up', String(Date.now()));
           location.reload();
         });
       });
@@ -2169,8 +2197,12 @@
       sp.classList.add('gone');
       setTimeout(() => sp.remove(), 850);
     }
-    /* slow splash — click or any key skips it instantly */
-    setTimeout(hideSplash, prefersReducedMotion() ? 400 : 3400);
+    /* slow splash — click or any key skips it instantly.
+       v3.4.1: right after an auto-update reload the splash is skipped,
+       so the launch screen never appears twice in a row. */
+    const upAt = Number(sessionStorage.getItem('pixsa.up') || 0);
+    const justUpdated = upAt && (Date.now() - upAt < 20000);
+    setTimeout(hideSplash, justUpdated ? 120 : (prefersReducedMotion() ? 400 : 3400));
     document.getElementById('splash')?.addEventListener('click', hideSplash);
     window.addEventListener('keydown', hideSplash, { once: true });
 
