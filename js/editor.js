@@ -4,7 +4,8 @@
    v3.3.0: power-cut safe auto-save (IndexedDB 'edits' store), text panel
    (fonts/bold/italic/outline/shadow/align), transparent PNG stickers.
    v3.4.0: cached ops base (adj-only redraws), effect intensity, before/after
-   compare, live RGB histogram, I'm Feeling Lucky. */
+   compare, live RGB histogram, I'm Feeling Lucky.
+   v3.5.0: viewer removed — the photo grid opens the editor on double-click. */
 (() => {
   'use strict';
   const P = window.Pixsa;
