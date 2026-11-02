@@ -1,7 +1,7 @@
 {
   "name": "S H I V A M PIXA",
   "short_name": "SHIVAM PIXA",
-  "description": "Offline photo library + editor — bilkul Picasa jaisa. Editing, collage, crop, light adjust, text, effects. Sab kuch 100% aapke PC par, kuch bhi upload nahi hota.",
+  "description": "Offline photo library + editor — just like Picasa. Editing, collage, crop, light adjust, text, effects. Everything stays 100% on your PC, nothing is ever uploaded.",
   "start_url": "./",
   "scope": "./",
   "id": "./",
