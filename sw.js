@@ -1,7 +1,7 @@
 /* SHIVAM PIXA — Service Worker
    Update rule: naya version aate hi purana cache delete, app khud refresh. */
 
-const VERSION = 'v3.0.0';
+const VERSION = 'v3.1.0';
 const CACHE = `shivam-pixa-${VERSION}`;
 const ASSETS = [
   './',
