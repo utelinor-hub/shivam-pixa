@@ -1,8 +1,8 @@
-/* SHIVAM PIXSA — Service Worker
+/* SHIVAM PIXA — Service Worker
    Update rule: naya version aate hi purana cache delete, app khud refresh. */
 
-const VERSION = 'v2.2.0';
-const CACHE = `pixsa-${VERSION}`;
+const VERSION = 'v3.0.0';
+const CACHE = `shivam-pixa-${VERSION}`;
 const ASSETS = [
   './',
   './index.html',
@@ -13,6 +13,7 @@ const ASSETS = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
+  './icons/logo-round.png',
   './icons/favicon.png'
 ];
 
