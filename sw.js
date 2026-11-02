@@ -1,7 +1,7 @@
 /* SHIVAM PIXSA — Service Worker
    Update rule: naya version aate hi purana cache delete, app khud refresh. */
 
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.1.0';
 const CACHE = `pixsa-${VERSION}`;
 const ASSETS = [
   './',
