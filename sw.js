@@ -1,7 +1,7 @@
 /* SHIVAM PIXA — Service Worker
-   Update rule: naya version aate hi purana cache delete, app khud refresh. */
+   Update rule: when a new version arrives, the old cache is deleted and the app refreshes itself. */
 
-const VERSION = 'v3.2.0';
+const VERSION = 'v3.3.0';
 const CACHE = `shivam-pixa-${VERSION}`;
 const ASSETS = [
   './',
@@ -39,7 +39,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
 
-  // App pages: network-first (taaki update turant mile), offline pe cache
+  // App pages: network-first (so updates arrive instantly), cache for offline
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request)
