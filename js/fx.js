@@ -1,6 +1,8 @@
 /* SHIVAM PIXA — fx.js
    Non-destructive render engine: original photo + ops list + tuning adjustments
-   -> renders at any resolution (small preview, full-res on Save). */
+   -> renders at any resolution (small preview, full-res on Save).
+   v3.4.0: renderOps/applyAdjTo split (slider drags redraw only 1 pass),
+   per-effect strength blending. */
 (() => {
   'use strict';
 
@@ -703,8 +705,9 @@
   }
 
   /* ---------- main renderer ----------
-     stickers: optional Map(sid -> ImageBitmap/canvas) — for 'sticker' ops */
-  function renderStack(src, ops, adj, maxSide, stickers) {
+     stickers: optional Map(sid -> ImageBitmap/canvas) — for 'sticker' ops
+     renderOps: src + ops only (no tuning adj) — the cacheable base for previews */
+  function renderOps(src, ops, maxSide, stickers) {
     const sw = src.width || src.naturalWidth, sh = src.height || src.naturalHeight;
     let sc = 1;
     if (maxSide && Math.max(sw, sh) > maxSide) sc = maxSide / Math.max(sw, sh);
@@ -748,9 +751,21 @@
           acc = nc; cx = acc.getContext('2d');
           break;
         }
-        case 'effect':
-          effectPass(cx, acc.width, acc.height, op.id);
+        case 'effect': {
+          /* v3.4.0: per-effect strength (1 = full). Blend: strength*effect + (1-strength)*original */
+          const st = op.strength == null ? 1 : Math.max(0.03, Math.min(1, op.strength));
+          if (st >= 0.995) {
+            effectPass(cx, acc.width, acc.height, op.id);
+          } else {
+            const snap = mkCanvas(acc.width, acc.height);
+            snap.getContext('2d').drawImage(acc, 0, 0);
+            effectPass(cx, acc.width, acc.height, op.id);
+            cx.globalAlpha = 1 - st;
+            cx.drawImage(snap, 0, 0);
+            cx.globalAlpha = 1;
+          }
           break;
+        }
         case 'autocontrast': {
           const lo = op.lo, hi2 = op.hi, f = 255 / Math.max(1, hi2 - lo);
           px(cx, acc.width, acc.height, (d) => {
@@ -823,28 +838,39 @@
       }
     }
 
-    let out = acc;
-    if (adj && (adjHas(adj) || (adj.fill | 0) || (adj.sat | 0))) {
-      out = mkCanvas(acc.width, acc.height);
-      const ox = out.getContext('2d');
-      ox.filter = filterStr(adj);
-      ox.drawImage(acc, 0, 0);
-      ox.filter = 'none';
-      adjPass(ox, out.width, out.height, adj);
-    }
-
-    if (maxSide && Math.max(out.width, out.height) > maxSide) {
-      const s2 = maxSide / Math.max(out.width, out.height);
-      const nc = mkCanvas(out.width * s2, out.height * s2);
+    if (maxSide && Math.max(acc.width, acc.height) > maxSide) {
+      const s2 = maxSide / Math.max(acc.width, acc.height);
+      const nc = mkCanvas(acc.width * s2, acc.height * s2);
       const nx = nc.getContext('2d');
       nx.imageSmoothingQuality = 'high';
-      nx.drawImage(out, 0, 0, nc.width, nc.height);
+      nx.drawImage(acc, 0, 0, nc.width, nc.height);
       return nc;
     }
+    return acc;
+  }
+
+  /* apply tuning adjustments in place on a canvas — fast path for slider drags
+     (draws a filtered copy + one pixel pass; base canvas stays untouched) */
+  function applyAdjTo(cv, adj) {
+    if (!adj || !(adjHas(adj) || (adj.fill | 0) || (adj.sat | 0))) return;
+    const t = mkCanvas(cv.width, cv.height);
+    const tx = t.getContext('2d');
+    tx.filter = filterStr(adj);
+    tx.drawImage(cv, 0, 0);
+    tx.filter = 'none';
+    adjPass(tx, t.width, t.height, adj);
+    const cx = cv.getContext('2d');
+    cx.clearRect(0, 0, cv.width, cv.height);
+    cx.drawImage(t, 0, 0);
+  }
+
+  function renderStack(src, ops, adj, maxSide, stickers) {
+    const out = renderOps(src, ops, maxSide, stickers);
+    applyAdjTo(out, adj);
     return out;
   }
 
-  /* ---------- alpha detect (transparent PNG save ke liye) ---------- */
+  /* ---------- alpha detect (for saving transparent PNGs) ---------- */
   function hasAlpha(cv) {
     try {
       const mn = Math.min(cv.width, cv.height);
@@ -859,5 +885,5 @@
     return false;
   }
 
-  window.PixsaFX = { EFFECTS, renderStack, computeLevels, computeWB, redeyePt, retouchPt, mkCanvas, hasAlpha };
+  window.PixsaFX = { EFFECTS, renderStack, renderOps, applyAdjTo, computeLevels, computeWB, redeyePt, retouchPt, mkCanvas, hasAlpha };
 })();
