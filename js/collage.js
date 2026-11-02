@@ -1,4 +1,4 @@
-/* SHIVAM PIXSA — collage.js
+/* SHIVAM PIXA — collage.js
    Picasa-style collage maker: Picture Pile | Mosaic | Frame Mosaic |
    Picture Grid | Contact Sheet | Multiple Exposure */
 (() => {
@@ -17,7 +17,77 @@
   };
 
   const C = { open: false, list: [], imgs: [], type: 'pile', bg: '#f5f2ec', spacing: 10, seed: 7, blob: null, url: null,
-              border: 'white', landscape: true, bgPhoto: false };
+              border: 'white', landscape: true, bgPhoto: false, alphaAny: false, restored: false };
+
+  /* ---------- power-cut safe project auto-save ---------- */
+  let colSaveT = null;
+  function scheduleColSave() {
+    if (!C.open) return;
+    clearTimeout(colSaveT);
+    colSaveT = setTimeout(saveCollageProject, 1200);
+  }
+  async function imgToBlob(im) {
+    const c = document.createElement('canvas');
+    c.width = im.width || im.naturalWidth; c.height = im.height || im.naturalHeight;
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    const alpha = window.PixsaFX ? window.PixsaFX.hasAlpha(c) : false;
+    return await new Promise((r) => c.toBlob(r, alpha ? 'image/png' : 'image/jpeg', 0.88));
+  }
+  async function saveCollageProject() {
+    if (!C.open || !C.imgs.length) return;
+    try {
+      const photos = [];
+      for (let i = 0; i < C.imgs.length && i < 40; i++) {
+        const b = await imgToBlob(C.imgs[i]);
+        if (b) photos.push({ name: (C.list[i] && C.list[i].name) || ('photo-' + (i + 1)), blob: b });
+      }
+      if (!photos.length) return;
+      const previewBlob = await new Promise((r) => el.canvas.toBlob(r, C.alphaAny ? 'image/png' : 'image/jpeg', 0.9));
+      const proj = {
+        type: C.type, bg: C.bg, spacing: C.spacing, border: C.border,
+        landscape: C.landscape, bgPhoto: C.bgPhoto, seed: C.seed, fmt: el.fmt.value,
+        photos, previewBlob, ts: Date.now()
+      };
+      await P.idbSet('collage', 'current', proj);
+      C.savedProj = true;
+    } catch (e) { /* storage full — Create/Download phir bhi kaam karega */ }
+  }
+  async function openRestored(proj) {
+    if (!proj || !proj.photos || !proj.photos.length) { toast('Collage project adhoora hai', 'err'); return; }
+    C.open = true; C.blob = null; C.restored = true;
+    C.list = proj.photos.map((ph) => ({ name: ph.name || 'photo', size: 0, lastModified: 0, handle: null, file: null }));
+    C.type = proj.type || 'pile';
+    C.bg = proj.bg || '#f5f2ec';
+    C.spacing = proj.spacing == null ? 10 : proj.spacing;
+    C.border = proj.border || 'white';
+    C.landscape = proj.landscape !== false;
+    C.bgPhoto = !!proj.bgPhoto;
+    C.seed = proj.seed || 7;
+    C.alphaAny = proj.photos.some((ph) => /\.(png|webp|gif)$/i.test(ph.name || '')) ||
+                 proj.photos.some((ph) => ph.blob && ph.blob.type === 'image/png');
+    el.root.hidden = false;
+    el.fmt.value = proj.fmt || '4x3';
+    el.bg.value = C.bg; el.spacing.value = C.spacing; el.border.value = C.border;
+    el.bgPhoto.checked = C.bgPhoto;
+    el.cCreate.hidden = false; el.cCancel.hidden = false;
+    el.cSaveDir.hidden = true; el.cDownload.hidden = !proj.previewBlob; el.cBack.hidden = true;
+    el.note.textContent = `Auto-saved collage wapas khul gaya (${proj.photos.length} photos) — Create karke save karo ya Download karo.`;
+    updateUI();
+    el.busy.hidden = false;
+    const out = [];
+    for (const ph of proj.photos) {
+      try { out.push(await createImageBitmap(ph.blob)); } catch (e) { /* skip */ }
+    }
+    C.imgs = out;
+    el.busy.hidden = true;
+    renderPreview();
+    if (proj.previewBlob) {
+      C.blob = proj.previewBlob;
+      if (C.url) URL.revokeObjectURL(C.url);
+      C.url = URL.createObjectURL(C.blob);
+    }
+    toast('Pichla collage wapas aa gaya \u2713 \u2014 kuch bhi kho nahi payega, sab auto-save hai', 'ok', 4500);
+  }
 
   function dims() {
     let W, H;
@@ -203,6 +273,7 @@
   async function loadImgs() {
     el.busy.hidden = false;
     const out = [];
+    C.alphaAny = C.list.some((p) => /\.(png|webp|gif)$/i.test(p.name || ''));
     for (const p of C.list) {
       try {
         const file = await getFile(p);
@@ -248,6 +319,7 @@
     updateUI();
     await loadImgs();
     renderPreview();
+    scheduleColSave();
   }
   function close() {
     C.open = false;
@@ -261,7 +333,8 @@
     await new Promise((r) => setTimeout(r, 40));
     const [W, H] = dims();
     const c = renderCollage(W, H);
-    C.blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
+    /* transparent PNG use hua ho to PNG me save — alpha kabhi nahi khoyega */
+    C.blob = await new Promise((r) => c.toBlob(r, C.alphaAny ? 'image/png' : 'image/jpeg', 0.9));
     el.busy.hidden = true;
     if (!C.blob) { toast('Collage ban nahi paya — dobara try karo', 'err'); return; }
     if (C.url) URL.revokeObjectURL(C.url);
@@ -270,7 +343,8 @@
     el.canvas.getContext('2d').drawImage(c, 0, 0);
     el.cCreate.hidden = true; el.cCancel.hidden = true;
     el.cSaveDir.hidden = false; el.cDownload.hidden = false; el.cBack.hidden = false;
-    el.note.textContent = `Collage ready hai (${W} \u00D7 ${H}px). Save karo ya download karo.`;
+    el.note.textContent = `Collage ready hai (${W} \u00D7 ${H}px). Save karo ya download karo. \u2713 Auto-save bhi ho gaya \u2014 PC band bhi ho jaye to wapas milega.`;
+    saveCollageProject();
   }
 
   function wire() {
@@ -280,24 +354,27 @@
       C.type = b.dataset.ct;
       updateUI();
       renderPreview();
+      scheduleColSave();
     });
-    el.fmt.addEventListener('change', renderPreview);
-    el.bg.addEventListener('input', () => { C.bg = el.bg.value; renderPreview(); });
+    el.fmt.addEventListener('change', () => { renderPreview(); scheduleColSave(); });
+    el.bg.addEventListener('input', () => { C.bg = el.bg.value; renderPreview(); scheduleColSave(); });
     q('.presets').addEventListener('click', (e) => {
       const b = e.target.closest('button[data-bg]');
       if (!b) return;
       C.bg = b.dataset.bg;
       el.bg.value = C.bg;
       renderPreview();
+      scheduleColSave();
     });
-    el.spacing.addEventListener('input', () => { C.spacing = +el.spacing.value; renderPreview(); });
-    el.shuffle.addEventListener('click', () => { C.seed = (Math.random() * 2147483646) | 0; renderPreview(); });
-    el.border.addEventListener('change', () => { C.border = el.border.value; renderPreview(); });
-    el.orient.addEventListener('click', () => { C.landscape = !C.landscape; updateUI(); renderPreview(); });
-    el.bgPhoto.addEventListener('change', () => { C.bgPhoto = el.bgPhoto.checked; renderPreview(); });
+    el.spacing.addEventListener('input', () => { C.spacing = +el.spacing.value; renderPreview(); scheduleColSave(); });
+    el.shuffle.addEventListener('click', () => { C.seed = (Math.random() * 2147483646) | 0; renderPreview(); scheduleColSave(); });
+    el.border.addEventListener('change', () => { C.border = el.border.value; renderPreview(); scheduleColSave(); });
+    el.orient.addEventListener('click', () => { C.landscape = !C.landscape; updateUI(); renderPreview(); scheduleColSave(); });
+    el.bgPhoto.addEventListener('change', () => { C.bgPhoto = el.bgPhoto.checked; renderPreview(); scheduleColSave(); });
     el.cCreate.addEventListener('click', create);
     el.cCancel.addEventListener('click', close);
     q('#cClose').addEventListener('click', close);
+    q('#cBackTop').addEventListener('click', close);
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !el.root.hidden) close();
     });
@@ -319,7 +396,7 @@
     el.cSaveDir.addEventListener('click', async () => {
       if (!C.blob) return;
       const dir = state.dirHandle;
-      const nm = `collage-${Date.now().toString(36)}.jpg`;
+      const nm = `collage-${Date.now().toString(36)}.${C.alphaAny ? 'png' : 'jpg'}`;
       if (dir && await P.saveBlobToDir(dir, nm, C.blob)) {
         toast(`Collage folder me save hua: ${nm}`, 'ok', 4000);
         close();
@@ -336,5 +413,5 @@
   }
   wire();
 
-  window.PixsaCollage = { open, close, isOpen: () => C.open };
+  window.PixsaCollage = { open, close, openRestored, isOpen: () => C.open };
 })();
