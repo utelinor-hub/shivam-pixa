@@ -81,6 +81,31 @@
        Windows "Animation effects" are turned off. */
     .brand-logo .ring { animation: tyreSpin 12s linear infinite; }
     @keyframes tyreSpin { to { transform: rotate(360deg); } }
+
+    /* ---------- cloud sync chip (top right) ---------- */
+    .cloud-chip {
+      display: inline-flex; align-items: center; gap: 7px;
+      border: 1px solid var(--border); background: #fff; border-radius: 20px;
+      padding: 4px 12px 4px 9px; font-size: 12.5px; color: #3a4048; cursor: pointer;
+      font-family: inherit; flex: none; line-height: 1;
+    }
+    .cloud-chip:hover { border-color: #9fb6d8; }
+    .cdot { width: 10px; height: 10px; border-radius: 50%; background: #c94a44; flex: none; display: inline-block; }
+    .cloud-chip.st-ok .cdot { background: #2e9e4f; box-shadow: 0 0 0 3px rgba(46,158,79,.15); }
+    .cloud-chip.st-err .cdot { background: #c94a44; box-shadow: 0 0 0 3px rgba(201,74,68,.12); }
+    .cloud-chip.st-run .cdot {
+      background: transparent; border: 2.5px solid #d0d7e2; border-top-color: #3b76c4;
+      width: 11px; height: 11px; animation: cloudSpin .9s linear infinite;
+    }
+    @keyframes cloudSpin { to { transform: rotate(360deg); } }
+
+    /* ---------- cloud modal ---------- */
+    .cl-box { width: min(580px, 94vw); }
+    .cl-sec { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; background: #fbfbfb; }
+    .cl-sec h5 { margin: 0 0 6px; font-size: 12.5px; color: #444; letter-spacing: .02em; }
+    .cl-row { display: flex; gap: 8px; align-items: center; }
+    .cl-row input[type="text"] { flex: 1; }
+    .cl-note { font-size: 12px; color: #666; line-height: 1.55; margin: 7px 0 0; }
     .brand-name {
       font-family: 'Aboreto', 'Segoe UI', sans-serif;
       font-weight: 400;
@@ -643,6 +668,9 @@
     </div>
 
     <div class="tools">
+      <button id="cloudChip" class="cloud-chip" type="button" title="Cloud sync (Google Drive)">
+        <span class="cdot" aria-hidden="true"></span><span id="cloudLabel">Cloud</span>
+      </button>
       <select id="sort" aria-label="Sort order">
         <option value="name-asc">Name (A&#8594;Z)</option>
         <option value="name-desc">Name (Z&#8594;A)</option>
@@ -672,6 +700,7 @@
         <button type="button" data-act="import">Import Folder&hellip;</button>
         <button type="button" data-act="export">Export Selected&hellip;</button>
         <button type="button" data-act="collage">Create Collage&hellip;</button>
+        <button type="button" data-act="cloud">Cloud Sync (Google Drive)&hellip;</button>
         <div class="sep"></div>
         <button type="button" data-act="clear">Clear Library&hellip;</button>
       </div>
@@ -784,6 +813,7 @@
     <div class="tray-actions">
       <button id="btnTrayExport" class="btn" type="button" title="Copy selected photos to another folder">Export</button>
       <button id="btnTraySizer" class="btn" type="button" title="Make the selected photos smaller (Sizer)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="6" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M20 4L8.6 15.4M14.6 14.4L20 20M8.4 8.6l3.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Sizer</button>
+      <button id="btnTrayRemove" class="btn" type="button" title="Remove the selected photos from the library (synced photos are also deleted from Google Drive)">Remove</button>
       <button id="btnTrayCollage" class="btn btn-accent" type="button">Collage</button>
       <button id="btnTrayClear" class="linkbtn dim" type="button">Clear</button>
     </div>
@@ -801,7 +831,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.6.1</span>
+      <span class="ver">v3.7.0</span>
     </span>
   </footer>
 
@@ -862,6 +892,40 @@
         <button id="szCancel" class="btn" type="button">Close</button>
         <button id="szStart" class="btn btn-accent" type="button">Resize Photos</button>
       </footer>
+    </div>
+  </div>
+
+  <!-- ===== Cloud Sync (Google Drive) ===== -->
+  <div id="cloud" class="modal" hidden role="dialog" aria-label="Cloud sync with Google Drive">
+    <div class="m-box cl-box">
+      <header class="m-head">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;flex:none"><path d="M7 18a4.5 4.5 0 0 1-.4-8.98A6 6 0 0 1 18.3 8.6 4 4 0 0 1 17.5 18H7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        Cloud Sync &mdash; Google Drive
+        <button id="cloudClose" class="icobtn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div style="padding:12px 14px">
+        <div class="cl-sec">
+          <h5>Sync status</h5>
+          <div id="cloudLine" style="font-size:13px;color:#333">Cloud sync is off</div>
+          <div id="cloudEmail" style="font-size:12px;color:#667;margin-top:3px">Not signed in</div>
+        </div>
+        <div class="cl-sec">
+          <h5>One-time setup &mdash; your free Google Client ID</h5>
+          <div class="cl-row">
+            <input id="cloudClientId" type="text" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false" />
+            <button id="cloudSaveId" class="btn" type="button">Save</button>
+          </div>
+          <p class="cl-note">Free, takes 3 minutes: open <b>console.cloud.google.com</b> &rarr; create a project &rarr; <b>APIs &amp; Services</b> &rarr; OAuth consent screen (choose <b>External</b>, add your email as a test user) &rarr; <b>Credentials</b> &rarr; <b>Create Credentials &rarr; OAuth client ID &rarr; Web application</b> &rarr; under <b>Authorized JavaScript origins</b> add <b>https://utelinor-hub.github.io</b> &rarr; copy the Client ID and paste it here. Photos go to <b>your own Google Drive</b> (15 GB free) and nowhere else.</p>
+        </div>
+        <div class="cl-row" style="justify-content:flex-end">
+          <button id="cloudSyncNow" class="btn" type="button">Sync Now</button>
+          <button id="cloudSignOut" class="btn" type="button">Sign Out</button>
+          <button id="cloudSignIn" class="btn btn-accent" type="button">Sign in with Google</button>
+        </div>
+        <p class="cl-note">How it works: every PC signed in with the same Google account sees the same photos, collages and settings. An <b>edit overwrites the same photo</b> (never a duplicate), <b>deleting in PIXA also deletes it in Drive</b>, new photos appear on your other PCs automatically, and everything syncs <b>in the background</b> &mdash; editing always stays fast. No internet? The app keeps working and syncs when you are back online.</p>
+      </div>
     </div>
   </div>
 
@@ -1069,6 +1133,7 @@
       tray: $('#tray'), trayStrip: $('#trayStrip'), trayCount: $('#trayCount'),
       btnTrayClear: $('#btnTrayClear'), btnTrayCollage: $('#btnTrayCollage'),
       btnTraySizer: $('#btnTraySizer'), btnTrayExport: $('#btnTrayExport'),
+      btnTrayRemove: $('#btnTrayRemove'),
       fileInput: $('#fileFallback'),
       toasts: $('#toasts')
     };
@@ -1109,7 +1174,7 @@
     let dbP = null;
     function db() {
       if (!dbP) dbP = new Promise((resolve, reject) => {
-        const rq = indexedDB.open('pixsa', 2);
+        const rq = indexedDB.open('pixsa', 3);
         rq.onupgradeneeded = () => {
           const d = rq.result;
           if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
@@ -1117,6 +1182,7 @@
           if (!d.objectStoreNames.contains('edits')) d.createObjectStore('edits');
           if (!d.objectStoreNames.contains('collage')) d.createObjectStore('collage');
           if (!d.objectStoreNames.contains('fonts')) d.createObjectStore('fonts');
+          if (!d.objectStoreNames.contains('cloudblobs')) d.createObjectStore('cloudblobs');
         };
         rq.onsuccess = () => resolve(rq.result);
         rq.onerror = () => reject(rq.error);
@@ -1135,8 +1201,17 @@
     const idbSet = (store, key, val) => idbReq(store, 'readwrite', (s) => s.put(val, key));
     const idbDel = (store, key) => idbReq(store, 'readwrite', (s) => s.delete(key));
 
-    /* ================= file access ================= */
-    const getFile = (p) => (p.handle ? p.handle.getFile() : Promise.resolve(p.file));
+    /* ================= file access =================
+       cloud photos: the File is fetched from Google Drive on demand
+       (thumb first for grid previews, full size only when really needed) */
+    const getFile = (p, thumbOk) => {
+      if (p.handle) return p.handle.getFile();
+      if (p.cloud && window.PixsaCloud) {
+        return window.PixsaCloud.getBlob(p.cloud.pid, thumbOk)
+          .then((b) => new File([b], p.name, { type: b.type || 'image/jpeg' }));
+      }
+      return Promise.resolve(p.file);
+    };
 
     /* ================= folder import ================= */
     async function importFolder() {
@@ -1177,6 +1252,7 @@
       applyFilter();
       const nfolders = new Set(out.map((q) => q.folder || '')).size;
       toast(`${out.length} photos imported • in ${nfolders} folders${unsup ? ` • ${unsup} HEIC/RAW skipped (no preview in Edge)` : ''}`, 'ok', 6500);
+      if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged();
     }
     els.fileInput.addEventListener('change', () => {
       const list = [...els.fileInput.files];
@@ -1226,6 +1302,7 @@
       } else {
         toast(`Refreshed — ${files.length} photos`, 'ok', 3000);
       }
+      if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged();
     }
 
     async function scanDir(dir, depth, out, stats, prefix) {
@@ -1629,7 +1706,7 @@
       try {
         /* show the edited (auto-saved) version first — thumbnails/viewer match what the user made */
         const ses = await idbGet('edits', key);
-        const file = ses && ses.previewBlob ? ses.previewBlob : await getFile(p);
+        const file = ses && ses.previewBlob ? ses.previewBlob : await getFile(p, true);
         alphaSrc = ses && ses.previewBlob ? ses.previewBlob.type === 'image/png' : /\.(png|gif|webp)$/i.test(p.name);
         try {
           src = await createImageBitmap(file);
@@ -1984,6 +2061,22 @@
     els.btnTraySizer.addEventListener('click', openSizer);
     els.btnTrayCollage.addEventListener('click', () => { if (state.selArr.length && window.PixsaCollage) window.PixsaCollage.open(state.selArr); });
     els.btnTrayExport.addEventListener('click', exportSelected);
+    els.btnTrayRemove.addEventListener('click', async () => {
+      if (!state.selArr.length) return;
+      const gone = state.selArr.slice();
+      const n = gone.length;
+      const cloudN = gone.filter((p) => p.cloud).length;
+      const msg = cloudN
+        ? `Remove ${n} photo${n > 1 ? 's' : ''} from the library? ${cloudN} of ${n > 1 ? 'them' : 'it'} ${cloudN > 1 ? 'are' : 'is'} synced — ${cloudN > 1 ? 'they will' : 'it will'} also be deleted from Google Drive and on your other PCs. Files that live in a folder on this PC stay safe on disk.`
+        : `Remove ${n} photo${n > 1 ? 's' : ''} from the library? (The files stay safe in their folder on your PC.)`;
+      if (!confirm(msg)) return;
+      state.photos = state.photos.filter((p) => !gone.includes(p));
+      clearSel();
+      gone.forEach(invalidateThumb);
+      buildTree(); applyFilter(); renderTray();
+      if (cloudN && window.PixsaCloud) window.PixsaCloud.removePhotos(gone.filter((p) => p.cloud));
+      toast(`${n} photo${n > 1 ? 's' : ''} removed${cloudN ? ` — ${cloudN} also deleted from Google Drive` : ''}`, 'ok', 5000);
+    });
 
     /* ================= menu bar (Picasa style) ================= */
     function runMenu(act) {
@@ -2014,6 +2107,7 @@
         case 'selnone': clearSel(); break;
         case 'side': els.btnSide.click(); break;
         case 'sizer': openSizer(); break;
+        case 'cloud': if (window.PixsaCloud) window.PixsaCloud.openSetup(); break;
         case 'all':
           state.folderFilter = '';
           buildTree(); applyFilter();
@@ -2021,7 +2115,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.6.1 — 100% offline photo editor + collage (Picasa style): 36 effects with intensity, live histogram, I\'m Feeling Lucky, crop, straighten, text, stickers, Sizer photo resizer, 6 collage types, power-cut safe auto-save. The official SHIVAM app. Everything stays on your PC, nothing is ever uploaded.', 'ok', 9000);
+          toast('S H I V A M PIXA v3.7.0 — 100% offline photo editor + collage (Picasa style): 36 effects with intensity, live histogram, I\'m Feeling Lucky, crop, straighten, text, stickers, Sizer photo resizer, 6 collage types, power-cut safe auto-save, and optional background sync with your own Google Drive. The official SHIVAM app. Everything stays on your PC unless you sign in.', 'ok', 9000);
           break;
       }
     }
@@ -2047,6 +2141,7 @@
       state.sort = els.sort.value;
       localStorage.setItem('pixsa.sort', state.sort);
       applyFilter();
+      if (window.PixsaCloud) window.PixsaCloud.settingsChanged();
     });
 
     function applyZoom() {
@@ -2057,6 +2152,7 @@
     els.zoom.addEventListener('input', () => {
       localStorage.setItem('pixsa.zoom', els.zoom.value);
       applyZoom();
+      if (window.PixsaCloud) window.PixsaCloud.settingsChanged();
     });
 
     els.clearBtn.addEventListener('click', async () => {
@@ -2213,5 +2309,6 @@
   <script src="./js/fx.js"></script>
   <script src="./js/editor.js"></script>
   <script src="./js/collage.js"></script>
+  <script src="./js/cloud.js"></script>
 </body>
 </html>
