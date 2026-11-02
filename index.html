@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>S H I V A M PIXA — Offline Photo Library + Editor</title>
-  <meta name="description" content="S H I V A M PIXA — offline photo library + editor, just like Picasa. Editing, collage, crop, light adjust, text, effects. Everything stays 100% on your PC." />
+  <title>S H I V A M PIXA — Offline Photo Editor & Collage</title>
+  <meta name="description" content="S H I V A M PIXA — offline photo editor + collage maker, just like Picasa. Editing, collage, crop, light adjust, text, effects, Sizer photo resizer. Everything stays 100% on your PC." />
   <meta name="theme-color" content="#e8e8e8" />
   <meta name="color-scheme" content="light" />
   <link rel="manifest" href="./manifest.json" />
@@ -110,18 +110,7 @@
     .menu .dd button:hover { background: var(--accent-soft); color: var(--accent-deep); }
     .menu .sep { height: 1px; background: #e4e7eb; margin: 4px 6px; }
 
-    .searchwrap { position: relative; flex: 1; max-width: 400px; min-width: 160px; margin-inline: auto; }
-    .searchwrap svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--muted); pointer-events: none; }
-    .searchwrap input {
-      width: 100%; padding: 7px 11px 7px 30px;
-      background: #fff; border: 1px solid #bcbcbc; border-radius: 4px;
-      color: var(--text); outline: none; font-size: 13px;
-      box-shadow: inset 0 1px 2px rgba(0,0,0,.06);
-    }
-    .searchwrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(43,124,211,.18); }
-    .searchwrap input::placeholder { color: #9aa1ab; }
-
-    .tools { display: flex; align-items: center; gap: 8px; }
+    .tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
     select {
       background: #fff; color: var(--text);
       border: 1px solid #bcbcbc; border-radius: 4px;
@@ -304,47 +293,37 @@
     #stName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 38vw; }
     #stName b { color: #2c3138; font-weight: 600; }
 
-    /* ---------- viewer (dark, like the Picasa photo view) ---------- */
-    .viewer {
-      position: fixed; inset: 0; z-index: 65;
-      background: rgba(8, 10, 14, .97);
-      display: flex; flex-direction: column;
-      animation: fadein .18s ease;
-    }
-    .v-top { display: flex; align-items: center; gap: 14px; padding: 12px 16px; color: #e7edf5; }
-    #vName { flex: 1; font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    #vCount { color: #8b98ab; font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    /* round icon buttons (collage / sizer modal headers) */
     .icobtn {
-      width: 40px; height: 40px; border-radius: 50%; flex: none;
+      width: 34px; height: 34px; border-radius: 50%; flex: none;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(23, 28, 37, .85); border: 1px solid #2a3547; color: #e7edf5;
+      background: linear-gradient(#ffffff, #e4e4e4); border: 1px solid #b3b3b3; color: #444;
       transition: border-color .15s, background .15s;
     }
-    .icobtn:hover { border-color: var(--accent); background: #1c2330; }
-    .icobtn svg { width: 17px; height: 17px; }
-    .v-stage {
-      flex: 1; position: relative; overflow: hidden;
-      display: flex; align-items: center; justify-content: center;
-      touch-action: none;
-    }
-    .v-stage.clickclose { cursor: pointer; }
-    #vImg {
-      max-width: 94%; max-height: 100%;
-      user-select: none; -webkit-user-drag: none;
-      transform-origin: center center;
-      will-change: transform;
-      box-shadow: 0 12px 48px rgba(0,0,0,.55);
-    }
-    #vImg.zoomed { cursor: grab; }
-    .v-stage.grabbing #vImg { cursor: grabbing; }
-    .v-nav { position: absolute; top: 50%; transform: translateY(-50%); }
-    .v-nav.prev { left: 14px; } .v-nav.next { right: 14px; }
-    .v-zoom { position: absolute; right: 16px; bottom: 18px; display: flex; flex-direction: column; gap: 8px; }
-    .v-zoom .icobtn { width: 38px; height: 38px; }
-    #vLoad { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-    #vLoad .spin { width: 34px; height: 34px; border-width: 3px; border-color: #2a3547; border-top-color: var(--accent); }
-    #vErr { position: absolute; color: #b9c4d4; font-size: 13.5px; background: #171c25; border: 1px solid #2a3547; padding: 14px 20px; border-radius: 8px; }
-    .v-bottom { text-align: center; padding: 10px 16px 14px; color: #8b98ab; font-size: 12.5px; min-height: 38px; }
+    .icobtn:hover { border-color: #8f8f8f; background: linear-gradient(#ffffff, #dadada); }
+    .icobtn svg { width: 15px; height: 15px; }
+
+    /* ---------- Sizer (Fotosizer-style photo resizer) ---------- */
+    .sz-box { width: 780px; }
+    .sz-body { display: flex; gap: 18px; padding: 14px 16px; overflow: auto; }
+    .sz-col { flex: 1; min-width: 0; }
+    .sz-col h5 { margin: 10px 0 5px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: #6d7076; }
+    .sz-pcts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+    .sz-pcts button { padding: 7px 4px; font-size: 12.5px; border: 1px solid #c6c3bc; border-radius: 3px; background: linear-gradient(#fdfdfc, #edece7); color: #2c2f34; }
+    .sz-pcts button:hover { border-color: #7fa8d8; background: #eaf2fc; }
+    .sz-pcts button.on { border-color: var(--accent); background: #dcebfb; font-weight: 700; }
+    .sz-custom { display: flex; align-items: center; gap: 7px; margin-top: 8px; font-size: 12.5px; color: #2b3138; flex-wrap: wrap; }
+    .sz-custom input[type="number"] { width: 82px; padding: 5px 7px; border: 1px solid #bcbcbc; border-radius: 4px; font-size: 13px; outline: none; }
+    .sz-custom input[type="number"]:focus { border-color: var(--accent); }
+    .sz-summary { font-size: 12.5px; line-height: 1.55; padding: 10px 12px; background: #fff; border: 1px solid #d5d2cb; border-radius: 4px; color: #2b3138; }
+    .sz-prog { margin-top: 12px; }
+    .sz-bar { height: 9px; border-radius: 99px; background: #e2e0da; overflow: hidden; border: 1px solid #c9c6bf; }
+    .sz-bar i { display: block; height: 100%; width: 0%; border-radius: 99px; background: linear-gradient(90deg, #2f7ad0, #8cc0ff); transition: width .2s; }
+    .sz-prog span { display: block; margin-top: 6px; font-size: 12px; color: #555b64; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sz-log { margin-top: 12px; max-height: 220px; overflow: auto; background: #fff; border: 1px solid #d5d2cb; border-radius: 4px; padding: 8px 10px; font-size: 11.5px; line-height: 1.7; }
+    .sz-log .ok { color: #2e6b2e; }
+    .sz-log .skip { color: #8a5a1f; }
+    .sz-log .err { color: var(--danger); }
 
     /* ---------- toasts ---------- */
     .toasts { position: fixed; right: 18px; bottom: 52px; z-index: 70; display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
@@ -437,9 +416,7 @@
 
     @media (max-width: 760px) {
       .sidebar { position: absolute; z-index: 20; top: 0; bottom: 0; left: 0; box-shadow: 4px 0 16px rgba(0,0,0,.15); }
-      .searchwrap { order: 3; max-width: none; flex-basis: 100%; }
       #grid { padding: 10px 12px 40px; }
-      .v-nav.prev { left: 6px; } .v-nav.next { right: 6px; }
     }
     /* ---------- cell selection (Photo Tray) ---------- */
     .cell { position: relative; }
@@ -619,9 +596,7 @@
 
     @media (max-width: 760px) {
       .sidebar { position: absolute; z-index: 20; top: 0; bottom: 0; left: 0; box-shadow: 4px 0 16px rgba(0,0,0,.15); }
-      .searchwrap { order: 3; max-width: none; flex-basis: 100%; }
       #grid { padding: 10px 12px 40px; }
-      .v-nav.prev { left: 6px; } .v-nav.next { right: 6px; }
     }
   </style>
 </head>
@@ -633,7 +608,7 @@
       <img id="spLogo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAMAAABrrFhUAAADAFBMVEXn4+DdoKggXpbZ2vBZnt2fp5mfUGbc2qvp4OCcaZRmjnCn0rS04e2w1NrnoiDcs1T/trZXjay4bDPILDXXYVTde4TfuMQajnelOjKVJEbITi4jlZCYrWaqqqq33MYAf/8A/wBqDjB7HkJJZZKbqdC4/7j/f3/P6ds8XsE1gz9aPIV/f39yrOV//3+0tP+l1LgAfwAYcj81gtR/AAB/f/9cX8P/qv///wD//3/LxXsAAAD+/v4OgvT7uCwnmFPKKjowiFBGU2GuKEIZg0tRkk1wmkoTfOgsdNa3KT3+/v8YdkZEUl7LmSdPZ8uQJEN1OYYpZrKOJDwWbEE5R1VDi1JvV7bYoylIaFcWddZHg2EUZTwmeuO1iiWOSKVPeWLmqioua8c0eFFGdVtLVqz+//4sWpsuXab+/v5oRJBVSZT7/Pt9oEp8IjsWbMb+/v4bZrb7/ftyGDm4kil8IUHEGypuNXrp6eobkknQ19R5gorFxsuMlJs7aU//wjD9/f1BTlsRXDdWZG1ye4X6xk+NRZyUnKNAcNTT5/L89dJwkzuvtbmOHDn6sh0ylfKQizGuM028w8aDi5Nxt/RjXsBRpvGNljhMqXFvRXSNyPj32Y2KQ2uBUK0li+qaoqelqrBodHqHoUqw2PfQR1Pt69MShM9uuIuVx6r6565LVJBjbHaWN1cymGdIY7dvjDmu0rLUWmblqa5sVo2VQzGpVjHMN0TS5NDsx8oahpRgYMCKqWmHwZu/v7+3u8SuxZKryLS418XmmTH903AWha5VTaFSlnCNPWKtHDPTijTR2efktLjr09gvPUtZSnyQOTLZaXLYqLA5Z21XsXp0p4ysV220pTfIeDLXiJLr264ld3Y6omNOiT2FPJGuRTG2ZzLELEHbcnjb8fv0vET79dYvoFtyLIN7wZaDnEKMtoytibLX7fPhh43ux2vxyMz+4ZIWfbhrVXlhYL1wmYORtNi84v3NaTHTnB3Mts//AAA5apAzdLAviGRWd6x0Tql0pG2Tyqmc0PvctWDIAAABAHRSTlOr9f8H/v7//9X//+EH8f3+A/7//v7+/f7///7+/gOoAgH/////AwJ///z/AgQCA7AC//8CAv8DAQL/AP7+/v7+/v/+/v7+/v/+BP////////7////+//7//v////////7+////T///b/7/rP7//iz/yf////z+/f3+//////+Q//////7////8/vz///z+//////7//v7+/////v/+/////v3//P79+/7+///+//76//f//////fn+//38BP///fX+/v7////+//76+f///////////////v3///z//////v/+ov///////6j//s7//v///////v//Af////7//tf/qF0COQAAIndJREFUeNrVnQlgFNX9xycoAiqo9arW3vf5v69sdtnNZjfZXYQkuyQhIEkgZGGBkARMAoGEgDQmoID8AUEFCiZyHwqooIBUlENRrNJircdfrVZtba3/Vv2r/b9jjjcz7828mXkb7U8kgSDm+3nf3/HezM5Kuf0QsVjsUvWz+tp0OiMNfuednBMnnkJx4kTOO+8MlqR0urYe/AH8Jy9VP8tuSNkXf1D+CJRLUs7unCtP77pi4969w3HMwh/27t24cdfpl87m5AAQkAP6jw5mH4LUL+Jr0+3vAOW7Nu4dPgvGcGrgr+zduOuls7vfARj6BYKUTd+jn2vbpd1nX7oCSh/OF5DD5RtPn90ttdeiv+Q7l8b+3gDEYn9FK98+ePfZXQ606zAM37vrypx32pET/potH2QDQOxSqL4+ndmfc3rvcBfaCQoAwtkTUroeMjgY+7sAgJYKqL/qrStcrTwFwsYrd2MGWbCBJHrxkfMz+9/aOFyEeILBCQnlguhyIIlefKD+ZM4ukepVBm/tz0AGYm0gCZafbjjx0uXC1SsMdu0enBaMQBgAlPntJ3M2Ds+SfNwZ9r61v71e/t99ngBg7++/8vIsqldscPoEzoTPEQDwvfx7bcNVp4dnXb6SCQ3CEEhCcv9SIH/XY/0iHzPYiBD8NfY5AAALUm3D/l2z+k++ikBEOZSEyD/dz/IxghMiEEhek78+c/Kl4f0vHyHYdSJT77UUSN6WP9be/BYhf+nSpVuPrUWxFXyedQKPnT7ZHvNmAsnT8tc27N6L5edfs3bPxOLq6ukVOKZPn15cXLd5MgCR3Y6QM7jWkwkkD8sP3I9Kf/6xydsLK6IgKnQxHcaM4s2rt76Y1VIA8sB9P5BcL/+/pH1nQe3LXzuxOhrNi0bNADABDGFt9oww66XB6e+4NoHkevkb9m+8fPjaiYWKeC1oEGYU7zmWNQKX726od1sJJJfZn/a9NSt/T2FenizfioLCYNLqbNlg1umTaZeVQHKZ/fs3Fsny5Z+iKguaEaB+EHXZQjBr+O6MOxNIroq/Lyd/8tg8RtAhZBvBYy81u2oHknP9F7dv2nVjIU25nkKeHoJMYEbx5OwgmLV3P5wJsg0AVb+1xXq17DAQwAiy5YJZObAWZhUASDJg/81RnPp5ThloCNa+mJ1aCNLAYSGQnFb/5oHTeZefRGDIgxmbj2VnKtrvtBtIztI/0/x/zsTTEgEj2JOdPNidcVYIJGfpf7zahX4FggFB3dqsFYJvZwMA1D/UvXyCQIViginZMMGstxyVQolff63vNrf6DaVATYNJx7KyN/DV8hOQuPWnff/tST+ZBjKB4hkznsjPAoErfGluAhK//vO96tcjQASKZ0za+tkSkLj13yJAv4kAMEHd6mwQuJmXgMSp/+U7hehHCPQEimdMFj8VzRrGS0Dqb/0qAVwHikHM2JyFbnAJJwGJT3+eOP16DxQjAlkoBJdX8RGQuPL/TpH6IQIiCxCCLAxF1/q5CEifgf4o4YFiDKC4WHwpfH8hDwGp3+q/7qhA80BxcbYIFB1ZyNENJfv573zB/of1RJsKq6tlAOLb4bVVC+1nQslu/vc+/zE2BjKBQoVA3YAnigRb4P0lC312+wLJWn+s4bYs6NedGGoE6gQTKCo6suTtBpvdsWR5/nNew+3C9aspIBMoLFSTYJJoAtf6h/2+wfqua0sAuZk/Z0E/ASCKAJAExDqg6Ih/2D2ZXJcA0ACUndAlAQEAZIFYANf6/TbjgGTZAG6JZp9AIWEBgGC1SP3QAoCAVSuQ+rcBUOpgIUmgTiABBABawLIVSP1cAE0Xj2QLEATWCtRfVFTl9y9ZY1EImQBy27uypl9ngcJCQxIIOifD+h97bh4gcE97rkMAsADk5fUDgAoFAElgqUACL/j9lmVA6v8CgHdDuj5o9MBSgTkAy6BFGZDoBeAnmduj/eQAFYA2DdRNeVFcDrw/DxL4fYZRBiTGBNCVVf00ACSBSavFOQDnAHMakBgJcMtnCAASOCYMAOwDFkkg0RLg4ixsgVgINABEGZg0yeshWZGqv+hxlAP+NQ3n0ZJA+iwSgDIJGergpEleD0pV/UW4CLCSQPosEoAJgKgCHsuApl8pAowkkMwJ8NUsdwD6JGQmcEyM/qIv4iIABkJaJ5D6ewRiTULmJPAwDRTp4oicA9RxSDIZICb+EJCfgM4CrqeBfD0AuQr6l7ztM1tA6t89AHM3ZAJQ53YaUOq/SgFtB1AMG2TeE0ifQQVkV0HdxthNEhSp9s9XAZQobcDvf8VcB00AMj/rDwMwCeg2RW5G4iJTlNyn6Pcv+X3GGgCsgHfm9QsAZhEgCUxa61E8AvCCXwvThQIDgGyegjDupjX2AR0AZ0nAAQCejbAB9FMLtKqCRgs84VU+APBFAoCpFeoBeLsOEh0Lv/26uoly1H0P/LJwLP2u0ih9FCIt4GwcKuID8IjBApLeAC+70R+tALInTpkyatSNphgFYvKUn0+cCFAQJKKsWRBEcTFpgc357vRrTUAPwGgBSV8BnBogWl1cN+UHP7iRohxp1wcAoWKI2jZCuQqsdtL8zABKjAAeAbtCOgCnBiisnvjzKaNIwTb6FQwTv1ddoe8DBgvok2CpU+vngxkgX5kDAIAX/BYWkNwZIFqNLK8G9vqNMoRR9oG8oN09ybAAAvCEU/lQvQUAfRWQXLSAwuIpQP1kHKNcx+SPAQQ4dUQLDWGog1uZvjdMvfnwhwJA1b/4Pr+FBQgAfNvgimKw9igme0Tw2muvISdMr6iYXlFBPReQN0WGOvgibfnzi7B6NRT9AMA8PYA1me9QAMRi9fZDIHL+FAOAyS6kj7ppyJA3v3XVX2A8NPRbt51//j8XTp8+vcJcBycxWqHZ+EWkfBLA+wYAfl+9lgQSsQ38m40BquumkDHZFYHXRk0e8uZfBjf7jNE19L3zCxUGxZYW0OTnq2VPp10BUIIAPGcAoLtQJGk3g1hvA3WLbyTABQH9kSFvzjFr1+I4gmBqhTfSe14++kcDUGR0AAJQ8rjRAQt92m0jGoC01c0QWuZr8vUA7Aj8GqofeNxnG11DAQNDFdBNQ7RpL98Umv6SKr8xBqXNAGIN7GthFXWbp0wBs+3PQdDX3w4AkH/Tm3N8nNH1XuEMfRVYbZH9uPEXMQE8adJPdkJJ7YFdTPOD1Z+oBQvATTBuAIE+oF/d9GsQOPMnv9nscxLvfTjAbAHV/fnGlS+iOQDrN3VBfSeUAXw5l9UDo9V1E42BfQBVf/zx6NGj7wBxAysQh1FvDvY5jfeKBxAE1uLmp3Z7Uj4tA4ga+Jt5Jv3wYOTLJABmCaTJxwxGq3HHaEv5N/x61JDjPhfRfH5xnX5PZDjrKmKtvi4DFj9OcYBWBiU1A6LU5K+roxEYrQuL9QcIVm/p8bmM45cNILbFevX51qGVQEoNJHNAAZChbAPA8tP0jzYHm8DqUFuzz328h0wgWwA3vXy18FkCyFcM8CRN/5I1GRIAPAu+k1L86igAHlixggLgDp3t1c/2JNa3+jxF12V18ixwbLjJ/BZRUpJfwiwB5PmwxBwCwPIXwx+E+OtBrKABoFrgpj2diTaf5/iWTOCJfK328QAYaVECiEulEiMDgP3lGrx9OxK//XoU/3b9AzQABgKwD77bWV7e4xMQy0AaoE0hsfhFtvoVAE9SS4CWAxI9A6LqJLYdxvVEUPXrACD55eXl41t9QuL4dnw0xGN9AgAisPiFeXQHKDkgUW8IqKhW43pTUHPgYx2BdxPl5Yn1zT5B0fx/A+A4uJTL/ChGAvkjqTshYw5gAIYpqKK42oLAAw/8cbRVHUTyyxOzfQIDEbixKJ+TwMiRIy2bIJEDEmUKItaf5gBAwCoJ9oTKhev3+S4bAHfFRfwZIJfAe/2skGchyTwF2elnJMFoQn554kJOcz+0bNmc1mZOD2wt4jSACqDxC/OYBPAsJJmOQkj9hYU/dUDgjhtGv1uO9a+3kdPa07Ye/ZnQqWSyI9S5fnlPqz2BJzgNoAGYdoQNAB+LSMadcAWhvrC6kKr/+j9S9Y/eUy5Hp+WazmnrTADZp+6CnycTiVAo0ZFMJjqXL7M0ywegDHJWQNUAT/rZgffEEioB2gsDo9WFqnx0Oke3gHkY+Hj0nk5Ff7nFara2hYDYEIiOEMS0IBmSA0AILbL4L49PqlvtrAKUNP6GbQC5CEAAtdotAaYT6sKfMggYAcjJD9u/xfzTOhvKlCO5HP5OIqQG9MVyNoKHBmx2CuCIhQNwEYAA2tUmaLxGwyZg7AShhKb/T0wXt3WAxU+okpNQbJsMJAEDMOhg754uG7DVWQm810o/LgISsEFGLQEU/aw6qBsG9qjyyzvLx7ME9ISQ/IRKILkAUiH0oy8lQ0wHfXO1E/0ljc/NswLwCHzgjESWAPky5dixegI2hXAFsfzQAIcYy78cpj5cZNXxoSQ8JlyXJAmgTJjNYNg6xVELYE5BRBGQiCkgWhEF2seisLeA2gqJ4gf1MzaArZ1JRaaW9B1b4Jc6E/gr2heTnYxKsGimvX61CTTeZ2kAv39TLQKQlmtgFD4Vc6wStgRwDqwYvblcF4wEeEheeD2AUHIdTI0kqgtkciQ6GGnwbpE9AAVB4whr/UvuSSMASg3El6r5CQDx4EenXj6jA6zr0Eo9CSCEWuGWpLz+JJpFdJAl9vr5SiA8GgVVEHQBeQxSLtbTAFAJPDB6xQrD8neW00fAu5JEr0NK1TrYhqYhg3r45SQ9l37xGOcQZFcC8SgE26DvFs0AeQwA1EK44o8hQvyECRNYFVCvX1cIQwmY7bONBOCv6B64ajFnCyh50m8XsApKufVdRALkMS1A8cD2ECl/PIhy6h4I5nhIv74JrRHAVtia1P8BXCpQgXBmAWIfbDkFKlWwHgCQ50AkP88CgInAdqL5Ifnj6QaA474h8UmlqBXCaSihzxJIgLY5uKrIUr8KYFqV3x5ALQCQ/psMQPUBnwW+WW7WTzNAcygZMlY4cqWTnegPkRMxbgmgDFAryi+KePTb9kC5DUi57bdFVf349rWxPHXwm3NN+uktYAGlxOud3qNNQ1qZgH++g3o59anHOABM4zEAbAMSMQirtYAjCTp11U8GQJsB1iV1Dd6gH1kAt8JESD8TJ/BmiRIXWOiXAUzjMQAahqVYwy3mezhtAXTONZQ/GBMGUi5sEMtqXn653OODAfU3VQKMgfjsY2z9mMC0adOOcOj3L2wAALpot7DSskA7GtjeSS6/RoAyv87uCHGEdjAg7wk1LpQycNJOPzSAnytujkn1htcHyI94oWYBVf94NSglcFmSI+SDgQ7V/+gDKo6+BaeWcXTCkfAf5waAfVCqNb9AQgdgrAnA9qepyz9+wl2UybVtEYq2tjbw7yI57gKhfN62fEEn3hUuT5I7QtwDe5KJLea/NWcxdfE1AHwVAB4J1EppyitEWBbAVeBp+vqPd38hqHUdHHubEx0JrV7KZwXAHg+Z/vz+kTr1+Ub9XC1A7oNS+nY6gCjFAqgK6Naf1D/G69n/oiSxTUgcR/MRSAVKFbhgMel+vQGAfJ4hUAVAvTGA2BMYtwRPz2Xop/UAhxHStgRoI9CahJ5Imp01ZLE5+bX1b+Q1ALxVhgGAngTV1T/V6dcDMI/BPesXgJiNY4ESsxewDnx6NACdygxF3RY+tdiU+woAaIAvzOMFsAYAoN0dpyNAFoEP5hLydfppJaDzFLXqdzDvl9uSVAzQI++SO5R2oG+EIPHN8mUAjU/6eWPJIwwAeYxtoZV+cwloTdKGv44OdrGUpyFcAX2dHbgtJM3All5DRYAN8Pg8bgJsAFQCxXPnMvVP+BNrCjbM/kmruyZmJ9GAjNJ+XTJETESGSWAxff2hAe7j1+9fCADcwgBgJvDhXAzAqH/MGPBTzUD6NkhHwGLAl02TUK+YNGsnI+Y+cHZxPks/dwW0BKDfEyACYwufRgAmTNABGINi/JiaQ5SinkjoTn9gAoSsLwXjg4Fm2QzyhjlEqYIjWRXwuXliAJj3BB/MhQA0/WNk8fhjjSmzwWybMO2B6Kc8xAVAWPaJzRHOGtPfPWcxywD3+p3Ewv+RJJYDDJ1g7IfG9VfE408m7DONwUlly0du9e3uBViQxFV/S5JImx5KG6Dod7AJ0AD8zuJVAjoL6PWPMQWtBoa0E9CEdj3UMnqSaBOwLkleQzRVweat1PV3MAJwASCPBp7W+d8kn9IF8VXPhO48ILnMdl9wSt4EEN6hYNsqIgHsAJCd4AND/hsjdSG1pcnKE7qdv/VNMwn5krHcQBLqWKDfDVxD8b+zDsDjAJUALABza2T9KbP/x1DGAOXWB8IDiU77DUEPPiZPkDvDLZTtkOcOwJUC8s4YJUBNDVM+aAJmAOsNh0EJ6lJSY33ScK3UbhKC8h0XAJsuQB4NDED6EYAUA8Az5sHefBrGCUC5Wqr0kA4uAI0lThMAAchYv1YMRSGSb6WfCsC8FUjO5t4WK8ejPABKps10uAfgmgS1Z108rQKQ9ad4AKx3C2CRnADqpWQbANNQcJ+CGAHYPDgR7Ao+xPohAZMBUvKPoDgAx/VX0RO2RRDrv9fvzwqAvLwKVX8qlcKCx2AQMg34u8E/sdogWQW5AKj/HR6hEgmbNjgT6Z9W5QbAIzwABsj6a1IYgCI6JQNAvx28kDEIOQYwh7hlSNkOzrYYhGZiAC4KgHwgYvfMgApFf42mn0gEpB78eJQxCjtOgc4keSMB5mY6FGsmSuBMsPwuOiA3gF8pAIJEAUgZIhgcQ7ko4gbAXcrNBAm5ElJvFNi/WOcAR4cghjPBtM1DA/6g6g/qJRPiUewzH24oo6x8xZsHQDO5fVTvEzCdieU0kiXAXQFEANLUCyM6AyjySQDgc/xL9An6WvAw08zaVsAegP5mGTwOdySa2QBmTpvpZgLSrgvUWgP4g6ZfjVTQHKlgn1U55wUgnyEYbiAwjwFDGtUEmPkNq3vibeKXtaaLo1QDBG2jgDIIqLeActeALvLsQDsTNF8YWNsItUP7z5zprgHIAOpNl8ftDUCNAKUNtCaM9wXaAehM0i6em68ONo9shGsP6h/Q/5x7/f5N6AaJqHcDBAOBYDNtO6Q/FbYBsD7ZkexIGKIjaT5EmIMMgMLVBKzEJfAGCatJ6G5e/cHgtppl1JZGHAyrEw39KRrNC0x3kXR2wp2A+TxooGoAtw1QBpCJKTdJMYZABwDi5gsDrR2GCwMygOUh6sUhxmkR5bcvaFTW/z6/l/ivdnibHHsQcGCAYCA+hnGHmDkF2k4lFnl5VWXz1muAAxobZ7oeALRniUi5Fn1wAI/+AAzwoaayizYMUgEkwY6/zf0La3NQBnjXXzYI3ihZf9yyBNprh/JhzB9Iv9xLvEhGAwA+7+icfVfPsjmmWAYDf4Q/Uy4lD4EAvOv3P9taj26WvtOqB1qqh+0P/osQzB9DHWzIU2ESAPgVR+AX1xkz4Bso/5/0qN9/XRe6W7yB9SDlAQz9ATXQ6gdkC1RW7vMxT0USJgDM24d1kxDtHqmncAZ41u9/sAG9aIrVBu6mGSCgrLwpgqXz3/DR7hEgXyWlA8C+hVq9XZCyD0I94Bsi9JcNbNe9ZIaWAZpu3bozANTQD/hoRVDe7loCYFxMn9OI13+eVwArd+KXzLDawK/I9Q/YR2lp5TKb8ZYAYJUB6g2THbQLKXAI8Fz/YOxorTW8bM6UAfTMZ0RNaeWjzHsejAAU+ye0wwIzgA7KDWK+kwL6P86AiPyyOcYwfLQmWOPEAGAQiFe2sra4usO9tmQoYVv9WC8ZGfJ1Mfr9Kx/MxHL/Q//SWX0GOEoAWATilReyXzJkDYAG5BTtZVMnG6eJ0e/f8XC7+cXTRBAVMMAJoDRe2sq870UPgCPo9xJc0Ohx/lenoOcHKS+ejnVR3lf5qDP/4yoYp1YBfB+0eRDSv3SCT/+cxsbfCNHv745swi+fZzxK8P4asvFzRRwSOMS498kaAGX96S+cXPv1L8wTY4Du6+QHKDCKwK8cLr8CoIZ12p10AiDBuJnqza8/Lka/f0P3znbtISrHo+Ym6Fj/q+FSEPOfYTwPCmwAlWtctgCSIfrdtHOmidJfFons0x6iQnmYoAwg4ARAsBISqDzM2MQvSCb0DmCNQh3JBfTTguYLRgjS798QeVB9jA71YXpHHRsABAZQw7zvIXSKaIOUV1HhWsh+gMLAI6L0PxvpfjhDPkrL9DC5+90AKEVRyX6ExnJiFKaPQYlkgvkIjUFVovT7N0zt3kc+Ssv8OMGPXOgPxCsxgT72YZbSExLUASiZTLAfonKPX1g8G5m6gXiYGi0H3OhXAJSW2px2LT+VIF46SDxDpnNRF/M/ulmU+ipQAadGHs7oH6hoGAbvdgUAV0EwD9ZYH3n2wGcGkXdCJuDZT+dyqwcP3/yKIPkgVkamdrfqH6hozIG73eiXq2BpPF5q9wKq1nXLtyAK6NgrEdqyfJ2NaxYuEab/2UgksqGZfKSmOQeOugNQWon0x1kjsb4etM55qAcE19PUFvqFGQCMAGoPIB6r+zMTAOf65SLAS8BBLBTn/7KVEECr8bG6hlnofncAlCIgmMDNC4XJhwUAZoDhwcqmR2u7BCBPAnFEYIwo/ZteEagfFgCUAT8xPVzdAMCNfrgf0gh81CVE/z1+0foj3fuMD1c37oldA1AmAdAJwM5QxGNl1wiUX1X2W6T/OtPj9eVRIOoVQFABgFxQWdr3+Uh/WX1Z2QZkgB20N1jQHw67BRAoJQGAeOZzsPxVmv6pU/UlUP8mK7eTANzpV4qACiC+rdXL8i8RKR+sP9LffRHlTVbg2+x0ea8Br4YrSytJAOFwuNf98i/xPPZr6tH6IwCRTbS32cmN/SsxDR51mwKBShB6APGPDrkq/q8IWnusfwTSDwhsAD3whzH6W21pnfBowG2UKgTiKoFw/NHDjuUvFCt/xIjfTsUApkY20d9qS/d2i0fdGiAQn2+yACDgEMEacfKrsPym30ZUAzDebE1ngbtdAwhW6i0QDssIxvC2xJvXvCJ69aF+EBQDsN5w0T2AQKXZAvBn8G/wGQ4b3PO2X7j8EU0RJaZ2D2S+4aLuzYY+CgjMAc0GHz1j1RU3rXnbL1Y+1r8yogEwGID5pqtXuwYQNABQ1CsMIpes+eUms+/vWfP2K2XDhlWJVC8vP6kfGCD2nzxvu3t/QGQO6BA83wS+tUsueXvQml+iWDPo7UsuKSsbVlaGv++qKjHqsXw5/dXwWb3trvbGy1H3fTAQnq+fBcKm2PFs2f+iGDZiBOzQpnDBwLD0snq4/Mr4g/fBlm+8jN96G71W8O6ABwtUWloAmKBmZZltOICgrnmZbu3l5ScBRGzeehseDv4NA3DfBnAZrLQAACpBcGVZVZkACmztcvbj7q8YYGfG9t3n6/HZWPRqzxaoZOcAZJBqKuONKgqHKpN0nXYoXxl+NALK1RA2ALgpRJfJoh6qIGEBCwLh8PNN6neu/CQnsFEZ/OIIg1j1N0ZQo0ku/iSBHYPajfrNAGIxHzoa8lIEUCcksoABIByELhjBijLiZ0fR1NQ0Tut9GoHu63yxmB0A3AohgW0Bj53QFkAwaIPAVQD148aRrV+zgPGd5+kAYl/FdfBLAa+dsNImB+DFF4BgpUjxRvkqATADPZwxG8AMANVBePu0lxyQLWBXBNAFSPChu0mA+MfHyaGXrxF40FwBqQDg+ajPaw6E58/ntABGsKPJw6KPaxqnhUm+DGBDZF+aop8KIPYjNA9+KfsWUBCgTHDAoAlmehOpG8etEWrIxwDnxfgAoCQAncBTDmgWsAQQ1r361JbBuHFNFNmK+pWRCAsAKwHoAFAS5PWvBRQGtzY1KdUM/ywHtDlTuqV62QKbqAnAAhD7UeZnHi2gzQJxJwQAgx0YAtY9rslKtqK+OxIpsAKwofsQrQMwASidwMs4HChVW6F9GaRA4FIOtN8K8r6gwFI+CFYCsADI28Kj3iygqwJxJwDwi/V33HqrjfYdULutetom0A4A3BN0RT11QuOm0CkAmUJqB+AAQ5MNhO/YcWGBGhE7At372ln62QDQ2YgnC3DVwWCY52Wp5KMrCihhox+egjgFIPfCbQEhA7HzKmASX2AZlvrZBcAKAC4DIiygEYi7MwAHApcFwBIAnAZevvtqMXWw1FsOeALAmgBsAcDzsT9XCKiDlZ7qoPK8loKClBsA3fsyVvqtAcBC+AcxdZDdCjmLYEHKTRGY2r3TogDaAYC3jTTcdr+AedCbBYLwoUUFKRcEpsIGYGkAawB4IrxayDDAtEAwKKIIMCzwhlUD4ACAWsH5YXFJ4AWAC/0PWjYAHgBoY3iZNwJ2eyIxFqDrT9vptwWACbR4HYdKRVjAkoBL/fYAEIEvtXgsA6Veq0DKeRWYyqOfAwAisK3Faxnw6AEVQIoXAJ9+HgACCOg6QdwdgQJEIMUL4BM+/VwAPBMI2hEQXwYe5NTPBwARWOWBQJhy75y7MsCZA9z6OQF4JqAvhNkGUMCvnxcAItDrYR74J5s7BrgAFPDNAqk3+PVzA0Az4ethb4XQwgNCOiHW//zD9vOfCwBwX9Cw0zuBuEIg7u5kzBIARJDa2VDPr98BAERgaKBFFAGjC8RsiQoK9jnS7wQA+Gsvzry8zROBUpKA6w0BE0IkFdmUOc+JfkcA4F8MmkHYwzhQyiQQFrAlijwPxx9H+p0ByI3BUtjnlUDcmwfYAJ4/AMufI/0OAeBCsM99ITB4QPDBwCBn6e8KACwE7R7SwJgFcYcAgkwAqU82tZ/nWL9zAPB/4SUN4rosCDslwKwCKWh/5/pdAIBJVp/Zty3snkAlaYG4cwuYCaQKWjP1TtPfLQC5G/SGW9wS0I8DKoKgAwJ6CM+/4bj6ewKATNAw1K0JwoZeoCIIOrlQSsgvQMOfK/0uAUDa/5gGe4MWD+0w7s4ERgCp1BvN6R+6W34PAORK4LYdxL1kgW79v3+h2+z3CAC3g4aLXM4EcWMauDsjTxUcaqjNdb383gBA7LH2rtfdIQjGKw1ZEHd8RAzc39Ue87D8HgEg8vWZ1jPuSoGZQNzRrjAY/AS638vyewaA4Nc2HF7lCkEw7tYD6N1NPjmM3O9Nv1cACoKdIhHwXC7+/qM7RcgXAAB8E1/LjYFq6A5BOF7q1ANw9R8FtS+W+7WY9+9eAACUhQDBIbcIzIXAxgCrkPzcmIjvXQgAGUFmZ29AEAIr+b2HM8LkCwOAv5/69sOvn2txwSAYNgBgPtX/0b597fW5wuQLBIALUiw9uO9MIOyRAQNAOLiqryEdE1H6sgJARlCbOXxgVdhdU1AhmN/cJBw+97rs/ZjI71koAPDNHcyVq8G5sNudkrzaxGOdW8Lhbb07kfrcgzGx37FgALINcuvTv9v5+qpA2MtFdTlawoFVvTt/l67PFb34WQIAbfA1xCBzuO/Mqy0tLV7EtwTOHDicQeqFL37WAKhLFattH3zo9TOvAic4ptACxa/q7RvcXhvLzc7iZxMA/I6//WP0fde2SzsP9K6CicyHAUgPhwPnzvT2SUA81P3ji2NZ+zazBwCpP4g/1qaloX0Hes+cA+pamEkhf+3VVWd6D1wkpfHK5x7MovpsA9BBiNUDDF/59EBv75lV587JGd6iAXn13KpVq3p7P/2Hr3y3VnnU1cFYLNvfX9YBYPGxb6ufAQ7flb4y9KKLPu3rO3DgwBsHDvT1ffrpRRcB4WmoXJb85YuzLx7G/wMN0fRmRu3JvAAAAABJRU5ErkJggg==" alt="S H I V A M PIXA logo" draggable="false" />
       <div class="sp-word"><span class="sp-l">S</span><span class="sp-l">H</span><span class="sp-l">I</span><span class="sp-l">V</span><span class="sp-l">A</span><span class="sp-l">M</span></div>
       <div class="sp-pixa">PIXA</div>
-      <div class="sp-tag">Photo Library &bull; 100% Offline</div>
+      <div class="sp-tag">Photo Editor &amp; Collage &bull; 100% Offline</div>
       <div class="sp-bar"><i></i></div>
     </div>
   </div>
@@ -648,11 +623,6 @@
       <span class="brand-name"><span class="shine">SHIVAM</span><b>PIXA</b></span>
     </div>
 
-    <div class="searchwrap">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M20 20l-3.8-3.8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-      <input id="search" type="search" placeholder="Search photos..." aria-label="Photo search" autocomplete="off" />
-    </div>
-
     <div class="tools">
       <select id="sort" aria-label="Sort order">
         <option value="name-asc">Name (A&#8594;Z)</option>
@@ -660,9 +630,9 @@
         <option value="date-desc">Newest photos first</option>
         <option value="date-asc">Oldest photos first</option>
       </select>
-      <button id="btnSlide" class="btn" type="button" title="Play slideshow">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
-        Slideshow
+      <button id="btnSizer" class="btn" type="button" title="Sizer — make photos smaller (Fotosizer style)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="6" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M20 4L8.6 15.4M14.6 14.4L20 20M8.4 8.6l3.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        Sizer
       </button>
       <button id="btnCollage" class="btn" type="button" title="Create collage">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="12.9" y="3.5" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3.5" y="12.9" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="12.9" y="12.9" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
@@ -692,7 +662,7 @@
       <div class="dd">
         <button type="button" data-act="edit">Edit Photo</button>
         <div class="sep"></div>
-        <button type="button" data-act="selall">Add All Photos to Tray</button>
+        <button type="button" data-act="selall">Select All Photos (Alt+A)</button>
         <button type="button" data-act="selnone">Clear Selection</button>
       </div>
     </div>
@@ -702,25 +672,23 @@
         <button type="button" data-act="side">Folders Panel On/Off</button>
         <button type="button" data-act="zin">Bigger Thumbnails</button>
         <button type="button" data-act="zout">Smaller Thumbnails</button>
-        <div class="sep"></div>
-        <button type="button" data-act="slide">Play Slideshow</button>
       </div>
     </div>
     <div class="menu" data-m="photo">
       <button type="button">Photo</button>
       <div class="dd">
         <button type="button" data-act="all">Show Whole Library (clear filter)</button>
-        <button type="button" data-act="slide">Slideshow</button>
+        <button type="button" data-act="sizer">Sizer (Make Photos Smaller)&hellip;</button>
         <button type="button" data-act="collage">Collage</button>
       </div>
     </div>
     <div class="menu" data-m="tools">
       <button type="button">Tools</button>
       <div class="dd">
+        <button type="button" data-act="sizer">Resize Photos (Sizer)&hellip;</button>
         <button type="button" data-act="fonts">Add Fonts (from PC)&hellip;</button>
         <div class="sep"></div>
         <button type="button" data-act="refresh">Refresh Folders</button>
-        <button type="button" data-act="search">Search Photos ( / )</button>
       </div>
     </div>
     <div class="menu" data-m="help">
@@ -781,12 +749,7 @@
           </button>
           <button id="btnDemo" class="btn" type="button">View Demo Photos</button>
         </div>
-        <p class="tip"><b>One click</b> on a photo = opens it <b>and loads its entire folder into the app</b>, corner <b>+</b> = add to Photo Tray, then the <b>Edit Photo</b> button (or double-click) = <b>Edit</b> (crop, light, effects). Supported: JPG, PNG, WebP, GIF, BMP, AVIF. iPhone <b>HEIC</b> photos do not preview in Edge &mdash; on your phone go to Settings &#8594; Camera &#8594; Formats &#8594; <b>&#8220;Most Compatible&#8221;</b>, or convert them to JPG.</p>
-      </div>
-
-      <div id="noResults" class="empty small" hidden>
-        <h2>Nothing found</h2>
-        <p>Try a different search &mdash; or click the "All photos" folder on the left.</p>
+        <p class="tip"><b>Single-click</b> a photo to <b>select</b> it, <b>double-click</b> to open it in the <b>editor</b> (crop, light, effects, text). Corner <b>+</b> adds it to the Photo Tray, and <b>Alt+A</b> selects the whole album at once. Supported: JPG, PNG, WebP, GIF, BMP, AVIF. iPhone <b>HEIC</b> photos do not preview in Edge &mdash; on your phone go to Settings &#8594; Camera &#8594; Formats &#8594; <b>&#8220;Most Compatible&#8221;</b>, or convert them to JPG.</p>
       </div>
 
       <div id="grid" hidden></div>
@@ -801,7 +764,7 @@
     <div id="trayStrip" class="tray-strip" aria-label="Selected photos"></div>
     <div class="tray-actions">
       <button id="btnTrayExport" class="btn" type="button" title="Copy selected photos to another folder">Export</button>
-      <button id="btnTraySlide" class="btn" type="button">Slideshow</button>
+      <button id="btnTraySizer" class="btn" type="button" title="Make the selected photos smaller (Sizer)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="6" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M20 4L8.6 15.4M14.6 14.4L20 20M8.4 8.6l3.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Sizer</button>
       <button id="btnTrayCollage" class="btn btn-accent" type="button">Collage</button>
       <button id="btnTrayClear" class="linkbtn dim" type="button">Clear</button>
     </div>
@@ -819,51 +782,68 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.4.1</span>
+      <span class="ver">v3.5.0</span>
     </span>
   </footer>
 
-  <!-- ===== Viewer ===== -->
-  <div id="viewer" class="viewer" hidden role="dialog" aria-label="Photo viewer">
-    <div class="v-top">
-      <button id="vBack" class="btn-green" type="button" title="Back to the library">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Back to Library
-      </button>
-      <span id="vName"></span>
-      <span id="vCount"></span>
-      <button id="vEdit" class="btn btn-accent" type="button" title="Edit this photo (E)">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19.5 8.5a2.12 2.12 0 0 0-3-3L5 16.5V20z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M13.2 7.3l3 3" stroke="currentColor" stroke-width="1.9"/></svg>
-        Edit Photo
-      </button>
-      <button id="vClose" class="icobtn" type="button" aria-label="Close">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-      </button>
-    </div>
-    <div id="vStage" class="v-stage">
-      <img id="vImg" alt="" />
-      <button id="vPrev" class="icobtn v-nav prev" type="button" aria-label="Previous photo">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <button id="vNext" class="icobtn v-nav next" type="button" aria-label="Next photo">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5L16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <div class="v-zoom">
-        <button id="vZoomIn" class="icobtn" type="button" aria-label="Zoom in">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+  <!-- ===== Sizer (Fotosizer-style photo resizer) ===== -->
+  <div id="sizer" class="modal" hidden role="dialog" aria-label="Sizer — resize photos">
+    <div class="m-box sz-box">
+      <header class="m-head">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;flex:none"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="6" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M20 4L8.6 15.4M14.6 14.4L20 20M8.4 8.6l3.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        Sizer &mdash; Make Photos Smaller
+        <button id="szClose" class="icobtn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </button>
-        <button id="vZoomOut" class="icobtn" type="button" aria-label="Zoom out">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12h13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-        </button>
-        <button id="vFit" class="icobtn" type="button" aria-label="Fit to screen">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        </button>
-        <button id="vPlay" class="icobtn" type="button" hidden aria-label="Play / Pause" style="font-size:13px">&#10074;&#10074;</button>
+      </header>
+      <div class="sz-body">
+        <div class="sz-col">
+          <h5>Resize by percent of original</h5>
+          <div class="sz-pcts" id="szPcts">
+            <button type="button" data-pct="100">100%</button>
+            <button type="button" data-pct="90">90%</button>
+            <button type="button" data-pct="80">80%</button>
+            <button type="button" data-pct="70">70%</button>
+            <button type="button" data-pct="60">60%</button>
+            <button type="button" data-pct="50" class="on">50%</button>
+            <button type="button" data-pct="40">40%</button>
+            <button type="button" data-pct="30">30%</button>
+            <button type="button" data-pct="25">25%</button>
+            <button type="button" data-pct="20">20%</button>
+            <button type="button" data-pct="15">15%</button>
+            <button type="button" data-pct="10">10%</button>
+          </div>
+          <div class="sz-custom"><span>Custom:</span><input id="szPct" type="number" min="1" max="100" value="50" /><span>%</span></div>
+          <h5>Or resize by pixels (if filled &mdash; keeps aspect ratio)</h5>
+          <div class="sz-custom">
+            <span>Max width</span><input id="szW" type="number" min="16" placeholder="&mdash;" /><span>px</span>
+            <span>Max height</span><input id="szH" type="number" min="16" placeholder="&mdash;" /><span>px</span>
+          </div>
+          <h5>JPEG quality</h5>
+          <div class="sz-custom">
+            <select id="szQ" style="flex:1">
+              <option value="0.92" selected>High &mdash; 92% (recommended, looks the same)</option>
+              <option value="0.96">Maximum &mdash; 96%</option>
+              <option value="0.85">Smallest file &mdash; 85%</option>
+            </select>
+          </div>
+          <label class="chkrow" style="margin-top:10px"><input type="checkbox" id="szInPlace" checked /> Overwrite the original files (same folder)</label>
+          <p class="cnote">High-quality multi-step scaling keeps photos sharp: a 1&nbsp;MB photo at 40% becomes about 150&ndash;300&nbsp;KB with no visible quality loss. Uncheck the box to save resized copies into a folder you choose instead. Photos with unsaved auto-saved edits lose those edits when resized, and animated GIFs become still photos.</p>
+        </div>
+        <div class="sz-col">
+          <div id="szSummary" class="sz-summary"></div>
+          <div id="szProg" class="sz-prog" hidden>
+            <div class="sz-bar"><i id="szBarFill"></i></div>
+            <span id="szProgTxt"></span>
+          </div>
+          <div id="szLog" class="sz-log" hidden></div>
+        </div>
       </div>
-      <div id="vLoad" hidden><span class="spin"></span></div>
-      <div id="vErr" hidden>This photo could not be loaded &mdash; the file may have been moved or deleted.</div>
+      <footer class="m-foot">
+        <button id="szCancel" class="btn" type="button">Close</button>
+        <button id="szStart" class="btn btn-accent" type="button">Resize Photos</button>
+      </footer>
     </div>
-    <div class="v-bottom" id="vMeta"></div>
   </div>
 
   <!-- ===== Editor (Picasa edit view) ===== -->
@@ -1057,8 +1037,8 @@
 
     /* ================= elements ================= */
     const els = {
-      grid: $('#grid'), empty: $('#emptyState'), noRes: $('#noResults'), sentinel: $('#sentinel'),
-      search: $('#search'), sort: $('#sort'),
+      grid: $('#grid'), empty: $('#emptyState'), sentinel: $('#sentinel'),
+      sort: $('#sort'),
       importBtn: $('#btnImport'), importBtn2: $('#btnImport2'), demoBtn: $('#btnDemo'),
       btnSide: $('#btnSide'), btnRefresh: $('#btnRefresh'), tree: $('#tree'),
       zoom: $('#zoom'),
@@ -1066,14 +1046,10 @@
       menubar: $('#menubar'),
       restore: $('#restoreBar'), restoreName: $('#restoreName'), restoreOpen: $('#btnRestoreOpen'), restoreDel: $('#btnRestoreDel'),
       notice: $('#noticeBar'), noticeText: $('#noticeText'), btnPop: $('#btnPop'),
-      viewer: $('#viewer'), vStage: $('#vStage'), vImg: $('#vImg'), vName: $('#vName'), vCount: $('#vCount'),
-      vMeta: $('#vMeta'), vPrev: $('#vPrev'), vNext: $('#vNext'), vClose: $('#vClose'),
-      vZoomIn: $('#vZoomIn'), vZoomOut: $('#vZoomOut'), vFit: $('#vFit'), vLoad: $('#vLoad'), vErr: $('#vErr'),
-      vPlay: $('#vPlay'), vEdit: $('#vEdit'),
-      btnSlide: $('#btnSlide'), btnCollage: $('#btnCollage'),
+      btnSizer: $('#btnSizer'), btnCollage: $('#btnCollage'),
       tray: $('#tray'), trayStrip: $('#trayStrip'), trayCount: $('#trayCount'),
       btnTrayClear: $('#btnTrayClear'), btnTrayCollage: $('#btnTrayCollage'),
-      btnTraySlide: $('#btnTraySlide'), btnTrayExport: $('#btnTrayExport'),
+      btnTraySizer: $('#btnTraySizer'), btnTrayExport: $('#btnTrayExport'),
       fileInput: $('#fileFallback'),
       toasts: $('#toasts')
     };
@@ -1084,8 +1060,8 @@
     const UNSUPPORTED_EXT = /\.(heic|heif|tiff?|dng|raw|cr2|cr3|nef|arw|orf|rw2)$/i;
     const state = {
       photos: [], filtered: [], groups: [], folder: '', folderFilter: '',
-      query: '', sort: localStorage.getItem('pixsa.sort') || 'name-asc',
-      vi: -1, ss: null, selArr: [], dirHandle: null
+      sort: localStorage.getItem('pixsa.sort') || 'name-asc',
+      selArr: [], dirHandle: null
     };
     let renderCursor = 0;
     const canPicker = typeof window.showDirectoryPicker === 'function';
@@ -1177,7 +1153,6 @@
       state.dirHandle = null;
       state.folder = ((out[0].file && out[0].file.webkitRelativePath) ? out[0].file.webkitRelativePath.split('/')[0] : '') || 'Imported photos';
       state.folderFilter = '';
-      state.query = ''; els.search.value = '';
       clearSel();
       buildTree();
       applyFilter();
@@ -1223,7 +1198,6 @@
       state.folder = dir.name;
       state.folderFilter = '';
       clearSel();
-      state.query = ''; els.search.value = '';
       if (canPicker) { try { await idbSet('kv', 'lastFolder', dir); } catch (e) {} }
       buildTree();
       applyFilter();
@@ -1315,7 +1289,6 @@
       state.folderFilter = '';
       state.dirHandle = null;
       clearSel();
-      state.query = ''; els.search.value = '';
       buildTree();
       applyFilter();
       toast(`${out.length} photos added from the drop`);
@@ -1370,7 +1343,6 @@
       state.folderFilter = '';
       state.dirHandle = null;
       clearSel();
-      state.query = ''; els.search.value = '';
       buildTree();
       applyFilter();
       toast('Demo photos loaded — press "Import Folder" for your real photos');
@@ -1378,10 +1350,8 @@
 
     /* ================= filter / groups / status ================= */
     function applyFilter() {
-      const q = state.query.trim().toLowerCase();
       let arr = state.photos;
       if (state.folderFilter !== '') arr = arr.filter((p) => (p.folder || '') === state.folderFilter);
-      if (q) arr = arr.filter((p) => p.name.toLowerCase().includes(q));
       const s = state.sort;
       arr = arr.slice().sort((a, b) => {
         if (s === 'name-asc') return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
@@ -1392,7 +1362,7 @@
       state.filtered = arr;
       buildGroups();
       renderGrid();
-      els.btnSlide.disabled = els.btnCollage.disabled = !state.filtered.length;
+      els.btnSizer.disabled = els.btnCollage.disabled = !state.filtered.length;
       setStatus();
     }
 
@@ -1425,7 +1395,7 @@
       }
       const n = state.photos.length;
       els.stCount.textContent = n
-        ? `${n} photos${state.query || state.folderFilter !== '' ? ` • ${state.filtered.length} shown` : ''}`
+        ? `${n} photos${state.folderFilter !== '' ? ` • ${state.filtered.length} in this album` : ''}`
         : '';
       els.clearBtn.hidden = !n;
       els.btnAllF.hidden = state.folderFilter === '';
@@ -1540,7 +1510,6 @@
       const total = state.photos.length;
       const has = state.filtered.length > 0;
       els.empty.hidden = has || total > 0;
-      els.noRes.hidden = !(total > 0 && !has);
       els.grid.hidden = !has;
       els.grid.innerHTML = '';
       renderCursor = 0;
@@ -1568,8 +1537,9 @@
       els.grid.appendChild(frag);
     }
 
-    /* click a photo -> its ENTIRE folder loads into the app + viewer opens */
-    function openPhotoFolder(idx) {
+    /* double-click a photo -> its album loads (folder filter) + the editor opens
+       on that photo — Picasa style. Editor arrows then move inside the album. */
+    function openEditorAt(idx) {
       const p = state.filtered[idx];
       if (!p) return;
       const f = p.folder || '';
@@ -1577,24 +1547,11 @@
         state.folderFilter = f;
         buildTree();
         applyFilter();
+        const k = photoKey(p);
+        const j = state.filtered.findIndex((x) => photoKey(x) === k);
+        idx = j >= 0 ? j : 0;
       }
-      const k = photoKey(p);
-      const j = state.filtered.findIndex((x) => photoKey(x) === k);
-      openViewer(j >= 0 ? j : 0);
-      const label = f ? `${state.folder}/${f}` : (state.folder || 'Library');
-      toast(`📁 ${label} opened — ${state.filtered.length} photos`, 'ok', 3200);
-    }
-
-    /* v3.4.1: from the viewer, "Edit Photo" (button or E key) opens the editor
-       for the photo on screen — Picasa style View & Edit flow */
-    function openEditorForPhoto(p) {
-      if (!p) return;
-      const k = photoKey(p);
-      const i = state.filtered.findIndex((x) => photoKey(x) === k);
-      if (i < 0) { toast('Could not open the editor for this photo', 'err'); return; }
-      closeViewer();
-      if (window.PixsaEditor) window.PixsaEditor.open(i);
-      else openViewer(i);
+      if (window.PixsaEditor) window.PixsaEditor.open(idx);
     }
 
     function makeCell(entry) {
@@ -1614,12 +1571,13 @@
       add.title = 'Add to Photo Tray';
       add.addEventListener('click', (e) => { e.stopPropagation(); toggleSel(entry.p); });
       btn.appendChild(ph); btn.appendChild(cap); btn.appendChild(chk); btn.appendChild(add);
+      /* single click = select (Photo Tray), double click = open the editor */
       btn.addEventListener('click', (e) => {
         if (e.detail >= 2) {
-          if (window.PixsaEditor) window.PixsaEditor.open(entry.idx);
-          else if (window.Pixsa) openViewer(entry.idx);
+          if (e.detail === 2) toggleSel(entry.p); /* undo the first click's toggle so the selection stays as it was */
+          openEditorAt(entry.idx);
         } else {
-          openPhotoFolder(entry.idx);
+          toggleSel(entry.p);
         }
       });
       thumbIO.observe(ph);
@@ -1721,188 +1679,224 @@
       }
     }
 
-    /* ================= viewer + slideshow =================
-       v3.4.0 speed: neighboring photos are prefetched in the background, so
-       Next/Previous (and slideshow) feel instant — faster than Picasa. */
-    const vPre = new Map();
-    function vKeyOf(p) { return `${p.name}|${p.size}|${p.lastModified}`; }
-    function fetchViewerFile(p) {
-      const k = vKeyOf(p);
-      if (vPre.has(k)) return vPre.get(k);
-      const pr = (async () => {
-        const ses = await idbGet('edits', k);
-        return { file: ses && ses.previewBlob ? ses.previewBlob : await getFile(p) };
-      })();
-      vPre.set(k, pr);
-      pr.catch(() => vPre.delete(k));
-      if (vPre.size > 6) {
-        const oldest = vPre.keys().next().value;
-        if (oldest !== k) vPre.delete(oldest);
-      }
-      return pr;
-    }
-    function prefetchNeighbors() {
-      const list = state.ss || state.filtered;
-      const n = list.length;
-      if (!n) return;
-      for (const d of [1, -1]) {
-        const p2 = list[(state.vi + d + n) % n];
-        if (p2) fetchViewerFile(p2).catch(() => {});
-      }
-    }
-    let z = 1, zx = 0, zy = 0, curURL = null, dragging = false, moved = false, lx = 0, ly = 0;
-    let ssTimer = null;
-    function startSS() {
-      if (ssTimer) clearInterval(ssTimer);
-      els.vPlay.hidden = false; els.vPlay.textContent = '❚❚';
-      ssTimer = setInterval(() => nav(1), 3200);
-    }
-    function pauseSS() {
-      if (ssTimer) { clearInterval(ssTimer); ssTimer = null; }
-      els.vPlay.textContent = '▶';
-    }
-    function stopSS() {
-      if (ssTimer) { clearInterval(ssTimer); ssTimer = null; }
-      els.vPlay.hidden = true;
-    }
+    /* ================= Sizer — Fotosizer-style photo resizer =================
+       Makes photos smaller by percent or max pixels with high-quality
+       multi-step scaling, so a 1 MB photo can become ~200-300 KB at 40%
+       with no visible quality loss. */
 
-    function openViewer(i, list, auto) {
-      state.ss = list || state.filtered;
-      state.vi = i;
-      els.viewer.hidden = false;
-      document.body.classList.add('noscroll');
-      if (auto) startSS(); else stopSS();
-      showPhoto();
-    }
-    function closeViewer() {
-      stopSS();
-      els.viewer.hidden = true;
-      document.body.classList.remove('noscroll');
-      state.vi = -1; state.ss = null;
-      vPre.clear();
-      if (curURL) { URL.revokeObjectURL(curURL); curURL = null; }
-      els.vImg.removeAttribute('src');
-      els.vImg.removeAttribute('style');
-    }
-    function nav(d) {
-      const list = state.ss || state.filtered;
-      const n = list.length;
-      if (!n || els.viewer.hidden) return;
-      state.vi = (state.vi + d + n) % n;
-      showPhoto();
-    }
-    async function showPhoto() {
-      const list = state.ss || state.filtered;
-      const p = list[state.vi];
-      if (!p) return;
-      resetZoom();
-      els.vName.textContent = p.name;
-      els.vCount.textContent = `${state.vi + 1} / ${list.length}`;
-      els.vMeta.textContent = '';
-      els.vErr.hidden = true;
-      els.vLoad.hidden = false;
-      try {
-        /* prefer the auto-saved-edits version — edits survive even a power cut */
-        const file = (await fetchViewerFile(p)).file;
-        const url = URL.createObjectURL(file);
-        els.vImg.onload = () => {
-          els.vLoad.hidden = true;
-          if (curURL && curURL !== url) URL.revokeObjectURL(curURL);
-          curURL = url;
-          els.vMeta.textContent = `${els.vImg.naturalWidth} × ${els.vImg.naturalHeight} px  •  ${fmtBytes(file.size)}  •  ${new Date(p.lastModified || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
-          prefetchNeighbors();
-        };
-        els.vImg.onerror = () => {
-          els.vLoad.hidden = true;
-          els.vErr.hidden = false;
-          URL.revokeObjectURL(url);
-        };
-        els.vImg.src = url;
-      } catch (e) {
-        els.vLoad.hidden = true;
-        els.vErr.hidden = false;
-      }
-    }
-
-    function applyZ() {
-      els.vImg.style.transform = `translate(${zx}px, ${zy}px) scale(${z})`;
-      els.vImg.classList.toggle('zoomed', z > 1.01);
-      els.vStage.classList.toggle('clickclose', z <= 1.01);
-    }
-    function resetZoom() { z = 1; zx = 0; zy = 0; applyZ(); }
-    function zoomAt(clientX, clientY, factor) {
-      const r = els.vStage.getBoundingClientRect();
-      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-      const ax = clientX - cx, ay = clientY - cy;
-      const nz = clamp(z * factor, 1, 10);
-      const k = nz / z;
-      zx = ax - k * (ax - zx);
-      zy = ay - k * (ay - zy);
-      z = nz;
-      if (z <= 1.001) { z = 1; zx = 0; zy = 0; }
-      applyZ();
-    }
-    const zoomCenter = (f) => {
-      const r = els.vStage.getBoundingClientRect();
-      zoomAt(r.left + r.width / 2, r.top + r.height / 2, f);
+    const sz = {
+      modal: document.getElementById('sizer'),
+      pcts: document.getElementById('szPcts'),
+      pct: document.getElementById('szPct'),
+      w: document.getElementById('szW'),
+      h: document.getElementById('szH'),
+      q: document.getElementById('szQ'),
+      inPlace: document.getElementById('szInPlace'),
+      summary: document.getElementById('szSummary'),
+      prog: document.getElementById('szProg'),
+      barFill: document.getElementById('szBarFill'),
+      progTxt: document.getElementById('szProgTxt'),
+      log: document.getElementById('szLog'),
+      start: document.getElementById('szStart'),
+      cancel: document.getElementById('szCancel'),
+      closeBtn: document.getElementById('szClose')
     };
+    let szBusy = false, szAbort = false;
 
-    els.vStage.addEventListener('wheel', (e) => {
-      if (!els.vImg.src || els.viewer.hidden) return;
-      e.preventDefault();
-      zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.16 : 1 / 1.16);
-    }, { passive: false });
+    function szTargets() {
+      return state.selArr.length ? state.selArr.slice() : state.filtered.slice();
+    }
+    function szUpdateSummary() {
+      const list = szTargets();
+      const n = list.length;
+      const noHandle = list.some((p) => !p.handle);
+      const src = state.selArr.length ? `${n} selected photo${n !== 1 ? 's' : ''}` : `all ${n} photos in this album`;
+      sz.summary.textContent = noHandle
+        ? `Ready: ${src}. These photos were not imported from a PC folder, so the resized copies will be saved into a folder you choose.`
+        : `Ready: ${src}. The photos will be resized in place — the original files become smaller.`;
+    }
+    function openSizer() {
+      const list = state.selArr.length ? state.selArr : state.filtered;
+      if (!list.length) { toast('Import photos first', 'err'); return; }
+      sz.prog.hidden = true;
+      sz.log.hidden = true;
+      sz.log.innerHTML = '';
+      sz.barFill.style.width = '0%';
+      sz.start.disabled = false;
+      szUpdateSummary();
+      sz.modal.hidden = false;
+    }
+    function szCloseModal() { if (!szBusy) sz.modal.hidden = true; }
+    sz.closeBtn.addEventListener('click', szCloseModal);
+    sz.cancel.addEventListener('click', szCloseModal);
+    sz.modal.addEventListener('click', (e) => { if (e.target === sz.modal) szCloseModal(); });
+    sz.pcts.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-pct]');
+      if (!b) return;
+      sz.pct.value = b.dataset.pct;
+      sz.pcts.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    });
+    sz.pct.addEventListener('input', () => {
+      sz.pcts.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.pct === sz.pct.value));
+    });
 
-    els.vStage.addEventListener('pointerdown', (e) => {
-      moved = false;
-      if (z <= 1.01 || e.button !== 0) return;
-      dragging = true; lx = e.clientX; ly = e.clientY;
-      els.vStage.setPointerCapture(e.pointerId);
-      els.vStage.classList.add('grabbing');
-    });
-    els.vStage.addEventListener('pointermove', (e) => {
-      if (Math.abs(e.clientX - lx) + Math.abs(e.clientY - ly) > 6) moved = true;
-      if (!dragging) return;
-      zx += e.clientX - lx; zy += e.clientY - ly;
-      lx = e.clientX; ly = e.clientY;
-      applyZ();
-    });
-    ['pointerup', 'pointercancel'].forEach((ev) => els.vStage.addEventListener(ev, () => {
-      dragging = false;
-      els.vStage.classList.remove('grabbing');
-    }));
-    els.vStage.addEventListener('click', (e) => {
-      if (e.target === els.vStage && !moved) closeViewer();
-    });
-    els.vImg.addEventListener('dblclick', (e) => {
-      if (z > 1.01) { resetZoom(); return; }
-      zoomAt(e.clientX, e.clientY, 2.5);
-    });
-
-    els.vClose.addEventListener('click', closeViewer);
-    document.getElementById('vBack').addEventListener('click', closeViewer);
-    els.vEdit.addEventListener('click', () => openEditorForPhoto((state.ss || state.filtered)[state.vi]));
-    els.vPrev.addEventListener('click', () => nav(-1));
-    els.vNext.addEventListener('click', () => nav(1));
-    els.vZoomIn.addEventListener('click', () => zoomCenter(1.25));
-    els.vZoomOut.addEventListener('click', () => zoomCenter(1 / 1.25));
-    els.vFit.addEventListener('click', resetZoom);
-    els.vPlay.addEventListener('click', () => { if (ssTimer) pauseSS(); else startSS(); });
-
-    document.addEventListener('keydown', (e) => {
-      if (!els.viewer.hidden) {
-        if (e.key === 'Escape') closeViewer();
-        else if (e.key === 'ArrowRight') nav(1);
-        else if (e.key === 'ArrowLeft') nav(-1);
-        else if (e.key === '+' || e.key === '=') zoomCenter(1.25);
-        else if (e.key === '-') zoomCenter(1 / 1.25);
-        else if (e.key === '0') resetZoom();
-        else if (e.key === 'e' || e.key === 'E') openEditorForPhoto((state.ss || state.filtered)[state.vi]);
+    /* high-quality multi-step downscale: halve repeatedly, then a final
+       high-smoothing pass — much sharper than a single big jump */
+    function szDraw(bmp, tw, th) {
+      let cw = bmp.width, ch = bmp.height;
+      let c = document.createElement('canvas');
+      c.width = cw; c.height = ch;
+      c.getContext('2d').drawImage(bmp, 0, 0);
+      while (cw * 0.5 > tw && ch * 0.5 > th) {
+        const nw = Math.max(tw, Math.round(cw * 0.5));
+        const nh = Math.max(th, Math.round(ch * 0.5));
+        const n = document.createElement('canvas');
+        n.width = nw; n.height = nh;
+        const nx = n.getContext('2d');
+        nx.imageSmoothingEnabled = true;
+        nx.imageSmoothingQuality = 'high';
+        nx.drawImage(c, 0, 0, nw, nh);
+        c = n; cw = nw; ch = nh;
+      }
+      const out = document.createElement('canvas');
+      out.width = tw; out.height = th;
+      const ox = out.getContext('2d');
+      ox.imageSmoothingEnabled = true;
+      ox.imageSmoothingQuality = 'high';
+      ox.drawImage(c, 0, 0, tw, th);
+      return out;
+    }
+    function szEncode(canvas, name, quality) {
+      const type = /\.png$/i.test(name) ? 'image/png' : (/\.webp$/i.test(name) ? 'image/webp' : 'image/jpeg');
+      return new Promise((r) => canvas.toBlob(r, type, quality));
+    }
+    function szLogLine(cls, text) {
+      const d = document.createElement('div');
+      d.className = cls;
+      d.textContent = text;
+      sz.log.appendChild(d);
+      sz.log.scrollTop = sz.log.scrollHeight;
+    }
+    async function ensureReadWrite() {
+      if (!state.dirHandle) return false;
+      try {
+        let perm = await state.dirHandle.queryPermission({ mode: 'readwrite' });
+        if (perm !== 'granted') perm = await state.dirHandle.requestPermission({ mode: 'readwrite' });
+        return perm === 'granted';
+      } catch (e) { return false; }
+    }
+    async function runSizer() {
+      if (szBusy) return;
+      const pct = clamp(Math.round(+sz.pct.value || 0), 1, 100);
+      const maxW = Math.round(+sz.w.value || 0);
+      const maxH = Math.round(+sz.h.value || 0);
+      const quality = clamp(+sz.q.value || 0.92, 0.5, 1);
+      if (!maxW && !maxH && pct >= 100) {
+        toast('Choose a size smaller than 100% — otherwise there is nothing to resize', 'err');
         return;
       }
-      if (e.key === '/' && document.activeElement !== els.search && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName) && !document.body.classList.contains('ed-open')) {
+      const list = szTargets();
+      if (!list.length) { toast('Import photos first', 'err'); return; }
+      const wantInPlace = sz.inPlace.checked && (await ensureReadWrite());
+      let outDir = null;
+      if (!wantInPlace && canPicker) {
+        try { outDir = await window.showDirectoryPicker({ id: 'pixsa-sizer', mode: 'readwrite' }); }
+        catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+      szBusy = true; szAbort = false;
+      sz.start.disabled = true;
+      sz.prog.hidden = false;
+      sz.log.hidden = false;
+      sz.log.innerHTML = '';
+      let done = 0, okCount = 0, skipCount = 0, errCount = 0, savedBytes = 0;
+      for (const p of list) {
+        if (szAbort) break;
+        sz.progTxt.textContent = `Resizing ${done + 1} / ${list.length} — ${p.name}`;
+        sz.barFill.style.width = `${Math.round((done / list.length) * 100)}%`;
+        const oldKey = photoKey(p);
+        try {
+          const file = await getFile(p);
+          let bmp = null;
+          try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+          catch (e1) { bmp = await createImageBitmap(file); }
+          let s;
+          if (maxW || maxH) s = Math.min(maxW ? maxW / bmp.width : 1, maxH ? maxH / bmp.height : 1, 1);
+          else s = pct / 100;
+          const tw = Math.max(1, Math.round(bmp.width * s));
+          const th = Math.max(1, Math.round(bmp.height * s));
+          if (tw >= bmp.width && th >= bmp.height) {
+            skipCount++;
+            szLogLine('skip', `${p.name} — already smaller than the target, kept as is`);
+            if (bmp.close) bmp.close();
+            done++; continue;
+          }
+          const cv = szDraw(bmp, tw, th);
+          if (bmp.close) bmp.close();
+          const blob = await szEncode(cv, p.name, quality);
+          if (!blob) { errCount++; szLogLine('err', `${p.name} — could not be processed`); done++; continue; }
+          if (blob.size >= file.size) {
+            skipCount++;
+            szLogLine('skip', `${p.name} — the resize did not make it smaller, kept the original`);
+            done++; continue;
+          }
+          let written = false;
+          try {
+            if (wantInPlace && p.handle) {
+              let perm = await p.handle.queryPermission({ mode: 'readwrite' });
+              if (perm !== 'granted') perm = await p.handle.requestPermission({ mode: 'readwrite' });
+              if (perm === 'granted') {
+                const w = await p.handle.createWritable();
+                await w.write(blob);
+                await w.close();
+                written = true;
+              }
+            } else if (outDir) {
+              written = await saveBlobToDir(outDir, p.name, blob);
+            }
+          } catch (e2) { written = false; }
+          if (!written) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = p.name;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+          }
+          invalidateThumb(p);           /* clears the thumbnail cache for the OLD key */
+          await idbDel('edits', oldKey).catch(() => {});
+          p.size = blob.size;           /* from here the photo has a new key */
+          p.lastModified = Date.now();
+          savedBytes += file.size - blob.size;
+          okCount++;
+          szLogLine('ok', `${p.name} — ${fmtBytes(file.size)} → ${fmtBytes(blob.size)} (${Math.max(1, Math.round((1 - blob.size / file.size) * 100))}% smaller)`);
+        } catch (e) {
+          errCount++;
+          szLogLine('err', `${p.name} — ${(e && e.message) || 'failed'}`);
+        }
+        done++;
+      }
+      sz.barFill.style.width = '100%';
+      sz.progTxt.textContent = szAbort ? 'Cancelled' : 'Done';
+      szBusy = false;
+      sz.start.disabled = false;
+      buildTree(); applyFilter(); renderTray();
+      const msg = `Sizer: ${okCount} photo${okCount !== 1 ? 's' : ''} resized${skipCount ? `, ${skipCount} kept as is` : ''}${errCount ? `, ${errCount} failed` : ''} — ${fmtBytes(savedBytes)} saved`;
+      szLogLine(okCount ? 'ok' : 'err', msg);
+      toast(msg, okCount ? 'ok' : 'err', 7000);
+    }
+    sz.start.addEventListener('click', runSizer);
+
+    /* ================= keyboard: Alt+A selects the whole album ================= */
+    document.addEventListener('keydown', (e) => {
+      if (window.PixsaEditor && window.PixsaEditor.isOpen()) return;
+      if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'a' || e.key === 'A')) {
+        const modalOpen = [...document.querySelectorAll('.modal')].some((m) => !m.hidden);
+        if (modalOpen) return;
         e.preventDefault();
-        els.search.focus();
+        if (!state.filtered.length) { toast('Import photos first', 'err'); return; }
+        const have = selSet();
+        state.filtered.forEach((p) => { const k2 = photoKey(p); if (!have.has(k2)) state.selArr.push(p); });
+        renderTray();
+        toast(`${state.filtered.length} photo${state.filtered.length !== 1 ? 's' : ''} selected (Alt+A)`);
       }
     });
 
@@ -1953,7 +1947,7 @@
       state, els, toast, setStatus, applyFilter, renderGrid, buildTree, loadFolder,
       getFile, idbGet, idbSet, idbDel, fmtBytes, photoKey, toggleSel, clearSel, renderTray,
       canPicker, inIframe, invalidateThumb, saveBlobToDir, clamp, debounce,
-      IMG_EXT, UNSUPPORTED_EXT, openViewer, idbGetAll
+      IMG_EXT, UNSUPPORTED_EXT, idbGetAll
     };
 
     /* ================= toolbar events ================= */
@@ -1961,18 +1955,14 @@
     els.importBtn2.addEventListener('click', importFolder);
     els.demoBtn.addEventListener('click', loadDemo);
     els.btnSide.addEventListener('click', () => document.body.classList.toggle('side-off'));
-    els.btnSlide.addEventListener('click', () => {
-      const list = state.selArr.length ? state.selArr : state.filtered;
-      if (!list.length) { toast('Import photos first', 'err'); return; }
-      openViewer(0, list, true);
-    });
+    els.btnSizer.addEventListener('click', openSizer);
     els.btnCollage.addEventListener('click', () => {
       const list = state.selArr.length ? state.selArr : state.filtered;
       if (!list.length) { toast('Import photos first', 'err'); return; }
       if (window.PixsaCollage) window.PixsaCollage.open(list);
     });
     els.btnTrayClear.addEventListener('click', clearSel);
-    els.btnTraySlide.addEventListener('click', () => { if (state.selArr.length) openViewer(0, state.selArr, true); });
+    els.btnTraySizer.addEventListener('click', openSizer);
     els.btnTrayCollage.addEventListener('click', () => { if (state.selArr.length && window.PixsaCollage) window.PixsaCollage.open(state.selArr); });
     els.btnTrayExport.addEventListener('click', exportSelected);
 
@@ -1992,7 +1982,7 @@
           const p = state.selArr[0] || state.filtered[0];
           const k = photoKey(p);
           const i = state.filtered.findIndex((x) => photoKey(x) === k);
-          if (window.PixsaEditor) window.PixsaEditor.open(i); else openViewer(i);
+          if (window.PixsaEditor) window.PixsaEditor.open(i);
           break;
         }
         case 'selall':
@@ -2000,25 +1990,19 @@
           const have = selSet();
           state.filtered.forEach((p) => { const k2 = photoKey(p); if (!have.has(k2)) state.selArr.push(p); });
           renderTray();
-          toast(`${state.filtered.length} photos added to the Tray`);
+          toast(`${state.filtered.length} photo${state.filtered.length !== 1 ? 's' : ''} selected (Alt+A)`);
           break;
         case 'selnone': clearSel(); break;
         case 'side': els.btnSide.click(); break;
-        case 'zin': case 'zout': {
-          const v = clamp((+els.zoom.value || 170) + (act === 'zin' ? 40 : -40), 120, 300);
-          els.zoom.value = v; localStorage.setItem('pixsa.zoom', String(v)); applyZoom();
-          break;
-        }
-        case 'slide': els.btnSlide.click(); break;
+        case 'sizer': openSizer(); break;
         case 'all':
-          state.folderFilter = ''; state.query = ''; els.search.value = '';
+          state.folderFilter = '';
           buildTree(); applyFilter();
           break;
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
-        case 'search': els.search.focus(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.4.1 — 100% offline photo library + editor (Picasa style, 36 effects with intensity, before/after compare, live histogram, I\'m Feeling Lucky, 6 collage types, power-cut safe auto-save, transparent PNG stickers, custom fonts). The official SHIVAM app. Everything stays on your PC, nothing is ever uploaded.', 'ok', 9000);
+          toast('S H I V A M PIXA v3.5.0 — 100% offline photo editor + collage (Picasa style): 36 effects with intensity, live histogram, I\'m Feeling Lucky, crop, straighten, text, stickers, Sizer photo resizer, 6 collage types, power-cut safe auto-save. The official SHIVAM app. Everything stays on your PC, nothing is ever uploaded.', 'ok', 9000);
           break;
       }
     }
@@ -2035,14 +2019,9 @@
       if (!e.target.closest('#menubar')) els.menubar.querySelectorAll('.menu.open').forEach((x) => x.classList.remove('open'));
     });
     els.btnAllF.addEventListener('click', () => {
-      state.folderFilter = ''; state.query = ''; els.search.value = '';
+      state.folderFilter = '';
       buildTree(); applyFilter();
     });
-
-    els.search.addEventListener('input', debounce(() => {
-      state.query = els.search.value;
-      applyFilter();
-    }, 150));
 
     els.sort.value = state.sort;
     els.sort.addEventListener('change', () => {
@@ -2064,7 +2043,6 @@
     els.clearBtn.addEventListener('click', async () => {
       if (!confirm('Clear the library? (Your photos stay safe on your PC — only the app list is removed)')) return;
       state.photos = []; state.filtered = []; state.groups = []; state.folder = ''; state.folderFilter = '';
-      state.query = ''; els.search.value = '';
       await idbDel('kv', 'lastFolder').catch(() => {});
       els.restore.hidden = true;
       buildTree();
@@ -2084,8 +2062,7 @@
     }
 
     /* ================= service worker (auto-update) =================
-       v3.4.1 fixes:
-       1) The update is applied only when the editor and viewer are closed —
+       1) The update is applied only when the editor is closed —
           the app never reloads itself in the middle of an edit.
        2) The reload after an update is remembered, and on that reload the
           splash is skipped — so the loading screen never shows twice. */
@@ -2104,7 +2081,7 @@
                   fn: () => location.reload()
                 });
                 const applyWhenIdle = () => {
-                  const busy = (window.PixsaEditor && window.PixsaEditor.isOpen()) || !els.viewer.hidden;
+                  const busy = window.PixsaEditor && window.PixsaEditor.isOpen();
                   if (busy) { setTimeout(applyWhenIdle, 4000); return; }
                   try { nw.postMessage('SKIP_WAITING'); } catch (e) {}
                 };
