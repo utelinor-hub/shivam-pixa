@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>S H I V A M PIXA — Offline Photo Library + Editor</title>
-  <meta name="description" content="S H I V A M PIXA — offline photo library + editor, bilkul Picasa jaisa. Editing, collage, crop, light adjust, text, effects. Sab kuch 100% aapke PC par." />
+  <meta name="description" content="S H I V A M PIXA — offline photo library + editor, just like Picasa. Editing, collage, crop, light adjust, text, effects. Everything stays 100% on your PC." />
   <meta name="theme-color" content="#e8e8e8" />
   <meta name="color-scheme" content="light" />
   <link rel="manifest" href="./manifest.json" />
@@ -236,7 +236,7 @@
     .cell .ph.ready { background: #fff; }
     .cell .ph.ready img { opacity: 1; }
     .cell .ph.bad { background: repeating-linear-gradient(45deg, #e6e6e6, #e6e6e6 8px, #dcdcdc 8px, #dcdcdc 16px); }
-    .cell .ph.bad::after { content: "Load nahi hui"; font-size: 11px; color: #98a0aa; }
+    .cell .ph.bad::after { content: "Failed to load"; font-size: 11px; color: #98a0aa; }
     .spin {
       width: 20px; height: 20px; border-radius: 50%;
       border: 2px solid #c5ccd6; border-top-color: var(--accent);
@@ -301,7 +301,7 @@
     #stName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 38vw; }
     #stName b { color: #2c3138; font-weight: 600; }
 
-    /* ---------- viewer (dark, Picasa photo view jaisa) ---------- */
+    /* ---------- viewer (dark, like the Picasa photo view) ---------- */
     .viewer {
       position: fixed; inset: 0; z-index: 65;
       background: rgba(8, 10, 14, .97);
@@ -374,7 +374,7 @@
       width: 118px; height: 118px; display: block; margin: 0 auto 30px;
       filter: drop-shadow(0 14px 34px rgba(0,0,0,.65));
     }
-    /* SHIVAM aksharon ke ANDAR dheema shine (background-clip: text) — upar se nahi */
+    /* slow shine INSIDE the SHIVAM letters (background-clip: text) — not a glow from above */
     .sp-word {
       position: relative; display: flex; justify-content: center; gap: .40em; margin-bottom: 8px;
       filter: drop-shadow(0 3px 18px rgba(90,150,255,.38));
@@ -390,7 +390,7 @@
       background-clip: text;
       animation: spUp .6s ease both, spShine 6.5s linear infinite both;
     }
-    /* har akshar ka shine thoda aage — ek dheemi lehar left→right chalti hai */
+    /* each letter's shine is slightly offset — a slow wave travels left→right */
     .sp-l:nth-child(1) { animation-delay: .25s,  -.60s; }
     .sp-l:nth-child(2) { animation-delay: .37s,  -.27s; }
     .sp-l:nth-child(3) { animation-delay: .49s,   .06s; }
@@ -630,7 +630,7 @@
 
   <!-- ===== Top bar ===== -->
   <header class="topbar">
-    <button id="btnSide" class="iconbtn2" type="button" aria-label="Folders panel dikhao/chhupao" title="Folders">
+    <button id="btnSide" class="iconbtn2" type="button" aria-label="Show or hide the folders panel" title="Folders">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16M4 12h16M4 17.5h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
     <div class="brand" title="S H I V A M PIXA">
@@ -640,21 +640,21 @@
 
     <div class="searchwrap">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M20 20l-3.8-3.8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-      <input id="search" type="search" placeholder="Photos search karo..." aria-label="Photo search" autocomplete="off" />
+      <input id="search" type="search" placeholder="Search photos..." aria-label="Photo search" autocomplete="off" />
     </div>
 
     <div class="tools">
       <select id="sort" aria-label="Sort order">
-        <option value="name-asc">Naam (A&#8594;Z)</option>
-        <option value="name-desc">Naam (Z&#8594;A)</option>
-        <option value="date-desc">Nayi photos pehle</option>
-        <option value="date-asc">Purani photos pehle</option>
+        <option value="name-asc">Name (A&#8594;Z)</option>
+        <option value="name-desc">Name (Z&#8594;A)</option>
+        <option value="date-desc">Newest photos first</option>
+        <option value="date-asc">Oldest photos first</option>
       </select>
-      <button id="btnSlide" class="btn" type="button" title="Slideshow chalao">
+      <button id="btnSlide" class="btn" type="button" title="Play slideshow">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
         Slideshow
       </button>
-      <button id="btnCollage" class="btn" type="button" title="Collage banao">
+      <button id="btnCollage" class="btn" type="button" title="Create collage">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="12.9" y="3.5" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3.5" y="12.9" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="12.9" y="12.9" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
         Collage
       </button>
@@ -671,35 +671,35 @@
       <button type="button">File</button>
       <div class="dd">
         <button type="button" data-act="import">Import Folder&hellip;</button>
-        <button type="button" data-act="export">Selected Export&hellip;</button>
-        <button type="button" data-act="collage">Collage Banao&hellip;</button>
+        <button type="button" data-act="export">Export Selected&hellip;</button>
+        <button type="button" data-act="collage">Create Collage&hellip;</button>
         <div class="sep"></div>
-        <button type="button" data-act="clear">Library Clear&hellip;</button>
+        <button type="button" data-act="clear">Clear Library&hellip;</button>
       </div>
     </div>
     <div class="menu" data-m="edit">
       <button type="button">Edit</button>
       <div class="dd">
-        <button type="button" data-act="edit">Photo Edit Karo</button>
+        <button type="button" data-act="edit">Edit Photo</button>
         <div class="sep"></div>
-        <button type="button" data-act="selall">Sab Photos Tray Me Daalo</button>
-        <button type="button" data-act="selnone">Selection Hatao</button>
+        <button type="button" data-act="selall">Add All Photos to Tray</button>
+        <button type="button" data-act="selnone">Clear Selection</button>
       </div>
     </div>
     <div class="menu" data-m="view">
       <button type="button">View</button>
       <div class="dd">
         <button type="button" data-act="side">Folders Panel On/Off</button>
-        <button type="button" data-act="zin">Thumbnails Badi Karo</button>
-        <button type="button" data-act="zout">Thumbnails Chhoti Karo</button>
+        <button type="button" data-act="zin">Bigger Thumbnails</button>
+        <button type="button" data-act="zout">Smaller Thumbnails</button>
         <div class="sep"></div>
-        <button type="button" data-act="slide">Slideshow Chalao</button>
+        <button type="button" data-act="slide">Play Slideshow</button>
       </div>
     </div>
     <div class="menu" data-m="photo">
       <button type="button">Photo</button>
       <div class="dd">
-        <button type="button" data-act="all">Puri Library Dikhao (filter hatao)</button>
+        <button type="button" data-act="all">Show Whole Library (clear filter)</button>
         <button type="button" data-act="slide">Slideshow</button>
         <button type="button" data-act="collage">Collage</button>
       </div>
@@ -707,10 +707,10 @@
     <div class="menu" data-m="tools">
       <button type="button">Tools</button>
       <div class="dd">
-        <button type="button" data-act="fonts">Fonts Add Karo (PC se)&hellip;</button>
+        <button type="button" data-act="fonts">Add Fonts (from PC)&hellip;</button>
         <div class="sep"></div>
-        <button type="button" data-act="refresh">Folders Refresh Karo</button>
-        <button type="button" data-act="search">Photos Search ( / )</button>
+        <button type="button" data-act="refresh">Refresh Folders</button>
+        <button type="button" data-act="search">Search Photos ( / )</button>
       </div>
     </div>
     <div class="menu" data-m="help">
@@ -724,25 +724,25 @@
   <!-- ===== Restore last folder bar ===== -->
   <div id="restoreBar" class="restorebar" hidden>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-    <span>Last folder: <b id="restoreName"></b> &mdash; wahi photos wapas kholein?</span>
-    <button id="btnRestoreOpen" class="linkbtn" type="button">Wapas Kholo</button>
-    <button id="btnRestoreDel" class="linkbtn dim" type="button">Nahi chahiye</button>
+    <span>Last folder: <b id="restoreName"></b> &mdash; reopen the same photos?</span>
+    <button id="btnRestoreOpen" class="linkbtn" type="button">Reopen</button>
+    <button id="btnRestoreDel" class="linkbtn dim" type="button">No thanks</button>
   </div>
 
   <!-- ===== Restore last collage (power-cut safe) ===== -->
   <div id="collageBar" class="restorebar" hidden>
     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 12h17M12 3.5v17" stroke="currentColor" stroke-width="1.4"/></svg>
-    <span>Pichla <b>Collage</b> auto-save mila: <b id="collageInfo"></b> &mdash; wapas kholein?</span>
-    <button id="btnCollageOpen" class="linkbtn" type="button">Collage Kholo</button>
+    <span>Auto-saved <b>Collage</b> found: <b id="collageInfo"></b> &mdash; reopen it?</span>
+    <button id="btnCollageOpen" class="linkbtn" type="button">Open Collage</button>
     <button id="btnCollageDl" class="linkbtn" type="button">Download</button>
-    <button id="btnCollageDel" class="linkbtn dim" type="button">Hatao</button>
+    <button id="btnCollageDel" class="linkbtn dim" type="button">Remove</button>
   </div>
 
   <!-- ===== Notice bar (browser/preview issue) ===== -->
   <div id="noticeBar" class="noticebar" hidden>
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16.5" r="1.2" fill="currentColor"/></svg>
     <span id="noticeText"></span>
-    <button id="btnPop" class="linkbtn" type="button" hidden>App alag tab me kholo</button>
+    <button id="btnPop" class="linkbtn" type="button" hidden>Open app in a new tab</button>
   </div>
 
   <!-- ===== Body: sidebar + main ===== -->
@@ -750,7 +750,7 @@
     <aside class="sidebar" aria-label="Folders">
       <div class="side-head">
         <span>Folders</span>
-        <button id="btnRefresh" class="iconbtn2" type="button" title="Folder dobara scan karo (nayi photos ke liye)">
+        <button id="btnRefresh" class="iconbtn2" type="button" title="Rescan folder (find new photos)">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 3.5V7h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
@@ -762,21 +762,21 @@
         <div class="empty-ico">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10" r="1.6" fill="currentColor"/><path d="M4 17l5-5 3.5 3.5L16 12l4 4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        <h1>Chalo shuru karein</h1>
-        <p>Apne PC se koi bhi <b>photos wala folder choose karo</b> &mdash; saari photos (sub-folders ki bhi) yahin ek jagah aa jayengi. Sab kuch aapke PC me hi rahega, <b>kuch bhi upload nahi hota</b>.</p>
+        <h1>Let's Get Started</h1>
+        <p>Choose any <b>folder of photos on your PC</b> &mdash; all photos (including sub-folders) appear here in one place. Everything stays on your PC, <b>nothing is ever uploaded</b>.</p>
         <div class="row2">
           <button id="btnImport2" class="btn btn-accent" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-            Folder Choose Karo
+            Choose Folder
           </button>
-          <button id="btnDemo" class="btn" type="button">Demo Photos Dekho</button>
+          <button id="btnDemo" class="btn" type="button">View Demo Photos</button>
         </div>
-        <p class="tip">Photo pe <b>ek click</b> = photo khulegi <b>aur uska poora folder app me load ho jayega</b>, corner <b>+</b> = Photo Tray me daalo, <b>double-click</b> = <b>Edit</b> (crop, light, effects). Supported: JPG, PNG, WebP, GIF, BMP, AVIF. iPhone ki <b>HEIC</b> photos Edge me preview nahi hoti &mdash; phone ki Settings me Camera &#8594; Formats &#8594; <b>&#8220;Most Compatible&#8221;</b> kar do, ya JPG me convert karo.</p>
+        <p class="tip"><b>One click</b> on a photo = opens it <b>and loads its entire folder into the app</b>, corner <b>+</b> = add to Photo Tray, <b>double-click</b> = <b>Edit</b> (crop, light, effects). Supported: JPG, PNG, WebP, GIF, BMP, AVIF. iPhone <b>HEIC</b> photos do not preview in Edge &mdash; on your phone go to Settings &#8594; Camera &#8594; Formats &#8594; <b>&#8220;Most Compatible&#8221;</b>, or convert them to JPG.</p>
       </div>
 
       <div id="noResults" class="empty small" hidden>
-        <h2>Kuch nahi mila</h2>
-        <p>Search badal ke dekho &mdash; ya left side me "All photos" wale folder pe click karo.</p>
+        <h2>Nothing found</h2>
+        <p>Try a different search &mdash; or click the "All photos" folder on the left.</p>
       </div>
 
       <div id="grid" hidden></div>
@@ -790,7 +790,7 @@
     <span id="trayCount" class="tray-count"></span>
     <div id="trayStrip" class="tray-strip" aria-label="Selected photos"></div>
     <div class="tray-actions">
-      <button id="btnTrayExport" class="btn" type="button" title="Selected photos kisi dusre folder me copy karo">Export</button>
+      <button id="btnTrayExport" class="btn" type="button" title="Copy selected photos to another folder">Export</button>
       <button id="btnTraySlide" class="btn" type="button">Slideshow</button>
       <button id="btnTrayCollage" class="btn btn-accent" type="button">Collage</button>
       <button id="btnTrayClear" class="linkbtn dim" type="button">Clear</button>
@@ -799,39 +799,39 @@
 
   <!-- ===== Status bar ===== -->
   <footer class="statusbar">
-    <span id="stName">Koi folder nahi chuna</span>
-    <button id="btnAllF" class="linkbtn" type="button" hidden>&#8592; Sab folders dikhao</button>
+    <span id="stName">No folder selected</span>
+    <button id="btnAllF" class="linkbtn" type="button" hidden>&#8592; Show all folders</button>
     <span id="stCount"></span>
     <span class="right">
       <span class="zoomwrap" title="Thumbnail size">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1" fill="currentColor"/><rect x="13" y="4" width="7" height="7" rx="1" fill="currentColor" opacity=".45"/><rect x="4" y="13" width="7" height="7" rx="1" fill="currentColor" opacity=".45"/><rect x="13" y="13" width="7" height="7" rx="1" fill="currentColor"/></svg>
         <input id="zoom" type="range" min="120" max="300" step="10" aria-label="Thumbnail size" />
       </span>
-      <button id="btnClear" class="linkbtn dim" type="button" hidden>Library clear karo</button>
+      <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.2.0</span>
+      <span class="ver">v3.3.0</span>
     </span>
   </footer>
 
   <!-- ===== Viewer ===== -->
   <div id="viewer" class="viewer" hidden role="dialog" aria-label="Photo viewer">
     <div class="v-top">
-      <button id="vBack" class="btn-green" type="button" title="Library par wapas jao">
+      <button id="vBack" class="btn-green" type="button" title="Back to the library">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Wapas Library
+        Back to Library
       </button>
       <span id="vName"></span>
       <span id="vCount"></span>
-      <button id="vClose" class="icobtn" type="button" aria-label="Band karo">
+      <button id="vClose" class="icobtn" type="button" aria-label="Close">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
       </button>
     </div>
     <div id="vStage" class="v-stage">
       <img id="vImg" alt="" />
-      <button id="vPrev" class="icobtn v-nav prev" type="button" aria-label="Pichli photo">
+      <button id="vPrev" class="icobtn v-nav prev" type="button" aria-label="Previous photo">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
-      <button id="vNext" class="icobtn v-nav next" type="button" aria-label="Agli photo">
+      <button id="vNext" class="icobtn v-nav next" type="button" aria-label="Next photo">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5L16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <div class="v-zoom">
@@ -841,13 +841,13 @@
         <button id="vZoomOut" class="icobtn" type="button" aria-label="Zoom out">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12h13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </button>
-        <button id="vFit" class="icobtn" type="button" aria-label="Fit karo">
+        <button id="vFit" class="icobtn" type="button" aria-label="Fit to screen">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
         <button id="vPlay" class="icobtn" type="button" hidden aria-label="Play / Pause" style="font-size:13px">&#10074;&#10074;</button>
       </div>
       <div id="vLoad" hidden><span class="spin"></span></div>
-      <div id="vErr" hidden>Ye photo load nahi ho payi &mdash; shayad file move ya delete ho gayi hai.</div>
+      <div id="vErr" hidden>This photo could not be loaded &mdash; the file may have been moved or deleted.</div>
     </div>
     <div class="v-bottom" id="vMeta"></div>
   </div>
@@ -862,10 +862,10 @@
       <span id="eName" class="e-name"></span>
       <span id="eCount" class="e-count"></span>
       <div class="e-nav">
-        <button id="ePrev" class="iconbtn2" type="button" title="Pichli photo (Left arrow)">
+        <button id="ePrev" class="iconbtn2" type="button" title="Previous photo (Left arrow)">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <button id="eNext" class="iconbtn2" type="button" title="Agli photo (Right arrow)">
+        <button id="eNext" class="iconbtn2" type="button" title="Next photo (Right arrow)">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5L16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
@@ -891,12 +891,12 @@
           <div id="tab-basic" class="e-tab on">
             <button class="fixbtn" type="button" data-fix="autocon">Auto Contrast</button>
             <button class="fixbtn" type="button" data-fix="autocolor">Auto Color</button>
-            <button class="fixbtn" type="button" data-fix="redeye">Redeye Hatao</button>
+            <button class="fixbtn" type="button" data-fix="redeye">Remove Redeye</button>
             <button class="fixbtn" type="button" data-fix="retouch">Retouch (Blur)</button>
             <button class="fixbtn" type="button" data-fix="crop">Crop</button>
             <button class="fixbtn" type="button" data-fix="straighten">Straighten</button>
-            <button class="fixbtn" type="button" data-fix="text">Text Likho</button>
-            <button class="fixbtn" type="button" data-fix="sticker">Logo / Sticker Lagao (PNG)</button>
+            <button class="fixbtn" type="button" data-fix="text">Add Text</button>
+            <button class="fixbtn" type="button" data-fix="sticker">Add Logo / Sticker (PNG)</button>
             <div class="rotrow">
               <button class="fixbtn" type="button" data-fix="rotl">Rotate Left</button>
               <button class="fixbtn" type="button" data-fix="rotr">Rotate Right</button>
@@ -910,7 +910,7 @@
             <div class="srow"><span class="sname">Temperature</span><input id="adTemp" type="range" min="-100" max="100" value="0" /><span class="val" id="vTemp">0</span></div>
             <div class="srow"><span class="sname">Tint</span><input id="adTint" type="range" min="-100" max="100" value="0" /><span class="val" id="vTint">0</span></div>
             <div class="srow"><span class="sname">Saturation</span><input id="adSat" type="range" min="-100" max="100" value="0" /><span class="val" id="vSat">0</span></div>
-            <p class="cnote">Slider ghumao — live preview milega. Double-click kisi bhi slider pe — wo zero par reset ho jayega.</p>
+            <p class="cnote">Drag a slider for a live preview. Double-click any slider to reset it to zero.</p>
           </div>
           <div id="tab-effects" class="e-tab">
             <div class="fxpager">
@@ -919,14 +919,14 @@
               <button id="fxNext" type="button" title="Agle effects">&#8250;</button>
             </div>
             <div id="fxGrid" class="fxgrid"></div>
-            <p class="cnote">Effect turant lag jata hai — hatana ho to <b>Undo</b> dabao. Teen pages hain, arrow se badlo.</p>
+            <p class="cnote">Effects apply instantly — press <b>Undo</b> to remove one. There are three pages; use the arrows to switch.</p>
           </div>
         </div>
         <div class="e-actions">
           <button id="eUndo" type="button" title="Undo (Ctrl+Z)">Undo</button>
           <button id="eRedo" type="button" title="Redo (Ctrl+Y)">Redo</button>
-          <button id="eSave" class="accent" type="button" title="Original file me save (Ctrl+S)">Save</button>
-          <button id="eSaveCopy" type="button" title="Nayi copy ke roop me save">Save a Copy</button>
+          <button id="eSave" class="accent" type="button" title="Save into the original file (Ctrl+S)">Save</button>
+          <button id="eSaveCopy" type="button" title="Save as a new copy">Save a Copy</button>
         </div>
       </aside>
     </div>
@@ -942,12 +942,12 @@
   <div id="collage" class="modal" hidden role="dialog" aria-label="Collage maker">
     <div class="m-box">
       <header class="m-head">
-        <button id="cBackTop" class="btn-green" type="button" title="Library par wapas jao">
+        <button id="cBackTop" class="btn-green" type="button" title="Back to the library">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Wapas
+          Back
         </button>
-        Collage Banao
-        <button id="cClose" class="icobtn" type="button" aria-label="Band karo">
+        Create Collage
+        <button id="cClose" class="icobtn" type="button" aria-label="Close">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </button>
       </header>
@@ -982,7 +982,7 @@
             <option value="white" selected>White border</option>
             <option value="polaroid">Polaroid frame</option>
           </select>
-          <label class="chkrow" style="margin-top:8px"><input type="checkbox" id="cBgPhoto" /> Pehli photo ko background banao</label>
+          <label class="chkrow" style="margin-top:8px"><input type="checkbox" id="cBgPhoto" /> Use the first photo as background</label>
           <h5>Background</h5>
           <input id="cBg" type="color" value="#f5f2ec" style="height:28px;width:100%" />
           <div class="presets">
@@ -995,7 +995,7 @@
             <h5>Grid Spacing</h5>
             <input id="cSpacing" type="range" min="0" max="60" value="10" style="width:100%" />
           </div>
-          <button id="cShuffle" class="btn" type="button" hidden style="margin-top:10px;width:100%;justify-content:center">Shuffle Karo</button>
+          <button id="cShuffle" class="btn" type="button" hidden style="margin-top:10px;width:100%;justify-content:center">Shuffle</button>
           <p class="cnote" id="cNote"></p>
         </div>
         <div class="c-prev">
@@ -1006,9 +1006,9 @@
       <footer class="m-foot">
         <button id="cCancel" class="btn" type="button">Cancel</button>
         <button id="cCreate" class="btn btn-accent" type="button">Create Collage</button>
-        <button id="cSaveDir" class="btn btn-accent" type="button" hidden>Library Me Save</button>
+        <button id="cSaveDir" class="btn btn-accent" type="button" hidden>Save to Library</button>
         <button id="cDownload" class="btn" type="button" hidden>Download</button>
-        <button id="cBack" class="btn" type="button" hidden>Wapas Edit</button>
+        <button id="cBack" class="btn" type="button" hidden>Back to Edit</button>
       </footer>
     </div>
   </div>
@@ -1131,9 +1131,9 @@
       } catch (e) {
         if (e && e.name === 'AbortError') return;
         if (e && e.name === 'SecurityError') {
-          toast('Preview window me folder access block hota hai — "App alag tab me kholo" button dabao', 'err', 7000);
+          toast('Folder access is blocked in preview windows — use the "Open app in a new tab" button', 'err', 7000);
         } else {
-          toast('Folder nahi khul paya: ' + (e.message || e.name), 'err', 6000);
+          toast('Could not open folder: ' + (e.message || e.name), 'err', 6000);
         }
         return;
       }
@@ -1149,7 +1149,7 @@
         out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: (f.webkitRelativePath || f.name).split('/').slice(1, -1).join('/') });
       }
       if (!out.length) {
-        toast(total ? `${total} files mili, par koi supported photo nahi (JPG/PNG/WebP/GIF/BMP/AVIF chahiye${unsup ? `; ${unsup} HEIC/RAW thi` : ''})` : 'Koi file nahi mili', 'err', 8000);
+        toast(total ? `${total} files found, but no supported photo among them (JPG/PNG/WebP/GIF/BMP/AVIF required${unsup ? `; ${unsup} were HEIC/RAW` : ''})` : 'No files found', 'err', 8000);
         return;
       }
       state.photos = out;
@@ -1161,7 +1161,7 @@
       buildTree();
       applyFilter();
       const nfolders = new Set(out.map((q) => q.folder || '')).size;
-      toast(`${out.length} photos import ho gayi • ${nfolders} folders me${unsup ? ` • ${unsup} HEIC/RAW skip (Edge me preview nahi banta)` : ''}`, 'ok', 6500);
+      toast(`${out.length} photos imported • in ${nfolders} folders${unsup ? ` • ${unsup} HEIC/RAW skipped (no preview in Edge)` : ''}`, 'ok', 6500);
     }
     els.fileInput.addEventListener('change', () => {
       const list = [...els.fileInput.files];
@@ -1178,7 +1178,7 @@
       const files = [];
       const stats = { total: 0, unsupported: 0, count: 0 };
       els.restore.hidden = true;
-      setStatus('Scan ho raha hai...');
+      setStatus('Scanning...');
       try {
         await scanDir(dir, 0, files, stats, '');
       } catch (e) {
@@ -1187,11 +1187,11 @@
         return;
       }
       if (!files.length) {
-        let msg = 'Is folder me koi file hi nahi mili';
+        let msg = 'No files found in this folder';
         if (stats.unsupported) {
-          msg = `${stats.total} files mili, par ${stats.unsupported} HEIC/TIFF/RAW photos ka preview Edge me nahi banta. JPG/PNG/WebP wale folder try karo.`;
+          msg = `${stats.total} files found, but ${stats.unsupported} HEIC/TIFF/RAW photos cannot be previewed in Edge. Try a folder with JPG/PNG/WebP photos.`;
         } else if (stats.total) {
-          msg = `${stats.total} files mili, par unme koi photo format (JPG/PNG/WebP/GIF/BMP/AVIF) nahi tha`;
+          msg = `${stats.total} files found, but none of them is a supported photo format (JPG/PNG/WebP/GIF/BMP/AVIF)`;
         }
         toast(msg, 'err', 8000);
         setStatus();
@@ -1208,9 +1208,9 @@
       applyFilter();
       if (!isRefresh) {
         const nfolders = new Set(files.map((f) => f.folder || '')).size;
-        toast(`${files.length} photos mili • ${nfolders} folders me${stats.unsupported ? ` • ${stats.unsupported} HEIC/RAW (Edge me preview nahi banti)` : ''} • ${stats.total} files scan hui`, 'ok', 7000);
+        toast(`${files.length} photos found • in ${nfolders} folders${stats.unsupported ? ` • ${stats.unsupported} HEIC/RAW (no preview in Edge)` : ''} • ${stats.total} files scanned`, 'ok', 7000);
       } else {
-        toast(`Refresh ho gaya — ${files.length} photos`, 'ok', 3000);
+        toast(`Refreshed — ${files.length} photos`, 'ok', 3000);
       }
     }
 
@@ -1227,7 +1227,7 @@
             const f = await entry.getFile();
             out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: entry, file: null, folder: prefix });
             stats.count++;
-            if (stats.count % 500 === 0) setStatus(`Scan ho raha hai... ${stats.count} photos`);
+            if (stats.count % 500 === 0) setStatus(`Scanning... ${stats.count} photos`);
           } catch (e) { /* unreadable file — skip */ }
         } else if (entry.kind === 'directory') {
           await scanDir(entry, depth + 1, out, stats, prefix ? `${prefix}/${name}` : name);
@@ -1238,11 +1238,11 @@
     /* ================= refresh ================= */
     els.btnRefresh.addEventListener('click', async () => {
       const h = await idbGet('kv', 'lastFolder');
-      if (!h || !h.name) { toast('Pehle folder import karo, phir refresh kaam karega', 'err'); return; }
+      if (!h || !h.name) { toast('Import a folder first — then refresh will work', 'err'); return; }
       try {
         let perm = await h.queryPermission({ mode: 'read' });
         if (perm !== 'granted') perm = await h.requestPermission({ mode: 'read' });
-        if (perm !== 'granted') { toast('Permission nahi mili — folder dobara import karo', 'err'); return; }
+        if (perm !== 'granted') { toast('Permission not granted — import the folder again', 'err'); return; }
         await loadFolder(h, true);
       } catch (e) {
         toast('Refresh fail: ' + (e.message || e.name), 'err');
@@ -1278,7 +1278,7 @@
       if (!e.dataTransfer) return;
       const out = [];
       els.restore.hidden = true;
-      setStatus('Drop scan ho raha hai...');
+      setStatus('Scanning dropped files...');
       const items = [...e.dataTransfer.items];
       const entries = items.map((it) => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
       if (entries.length) {
@@ -1288,7 +1288,7 @@
           if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: '' });
         }
       }
-      if (!out.length) { toast('Koi supported photo nahi mili drop me (JPG/PNG/WebP/GIF/BMP/AVIF)', 'err', 6000); setStatus(); return; }
+      if (!out.length) { toast('No supported photo found in the dropped files (JPG/PNG/WebP/GIF/BMP/AVIF)', 'err', 6000); setStatus(); return; }
       state.photos = out;
       state.folder = entries.length && entries[0].isDirectory ? entries[0].name : 'Dropped photos';
       state.folderFilter = '';
@@ -1297,7 +1297,7 @@
       state.query = ''; els.search.value = '';
       buildTree();
       applyFilter();
-      toast(`${out.length} photos drop se aa gayi`);
+      toast(`${out.length} photos added from the drop`);
     });
 
     /* ================= demo photos ================= */
@@ -1343,7 +1343,7 @@
       return out;
     }
     async function loadDemo() {
-      setStatus('Demo photos ban rahi hain...');
+      setStatus('Generating demo photos...');
       state.photos = await makeDemoPhotos();
       state.folder = 'Demo Photos';
       state.folderFilter = '';
@@ -1352,7 +1352,7 @@
       state.query = ''; els.search.value = '';
       buildTree();
       applyFilter();
-      toast('Demo photos load ho gayi — asli photos ke liye "Import Folder" dabao');
+      toast('Demo photos loaded — press "Import Folder" for your real photos');
     }
 
     /* ================= filter / groups / status ================= */
@@ -1400,11 +1400,11 @@
           els.stName.appendChild(s);
         }
       } else {
-        els.stName.textContent = 'Koi folder nahi chuna';
+        els.stName.textContent = 'No folder selected';
       }
       const n = state.photos.length;
       els.stCount.textContent = n
-        ? `${n} photos${state.query || state.folderFilter !== '' ? ` • ${state.filtered.length} dikhai de rahi` : ''}`
+        ? `${n} photos${state.query || state.folderFilter !== '' ? ` • ${state.filtered.length} shown` : ''}`
         : '';
       els.clearBtn.hidden = !n;
       els.btnAllF.hidden = state.folderFilter === '';
@@ -1467,7 +1467,7 @@
       els.trayStrip.innerHTML = '';
       for (const p of state.selArr) {
         const d = document.createElement('div'); d.className = 'tthumb'; d.title = p.name;
-        const x = document.createElement('button'); x.className = 'tx'; x.type = 'button'; x.textContent = '✕'; x.title = 'Tray se hatao';
+        const x = document.createElement('button'); x.className = 'tx'; x.type = 'button'; x.textContent = '✕'; x.title = 'Remove from tray';
         x.onclick = () => toggleSel(p);
         d.appendChild(x);
         const img = document.createElement('img'); img.decoding = 'async'; img.alt = '';
@@ -1498,7 +1498,7 @@
           ok++;
         } catch (e) { fail++; }
       }
-      toast(`Export: ${ok} photos${fail ? `, ${fail} fail` : ''}${target ? ` — "${target.name}" folder me` : ' — Downloads me'}`, ok ? 'ok' : 'err', 6000);
+      toast(`Export: ${ok} photos${fail ? `, ${fail} failed` : ''}${target ? ` — into "${target.name}"` : ' — into Downloads'}`, ok ? 'ok' : 'err', 6000);
     }
 
     /* ================= grid (folder-grouped, Picasa style) ================= */
@@ -1547,7 +1547,7 @@
       els.grid.appendChild(frag);
     }
 
-    /* photo par click -> uska POORA folder app me load + viewer khule */
+    /* click a photo -> its ENTIRE folder loads into the app + viewer opens */
     function openPhotoFolder(idx) {
       const p = state.filtered[idx];
       if (!p) return;
@@ -1561,7 +1561,7 @@
       const j = state.filtered.findIndex((x) => photoKey(x) === k);
       openViewer(j >= 0 ? j : 0);
       const label = f ? `${state.folder}/${f}` : (state.folder || 'Library');
-      toast(`📁 ${label} khul gaya — ${state.filtered.length} photos`, 'ok', 3200);
+      toast(`📁 ${label} opened — ${state.filtered.length} photos`, 'ok', 3200);
     }
 
     function makeCell(entry) {
@@ -1578,7 +1578,7 @@
       const chk = document.createElement('span'); chk.className = 'chk'; chk.textContent = '✓';
       const add = document.createElement('button');
       add.type = 'button'; add.className = 'addbtn'; add.textContent = '+';
-      add.title = 'Photo Tray me daalo';
+      add.title = 'Add to Photo Tray';
       add.addEventListener('click', (e) => { e.stopPropagation(); toggleSel(entry.p); });
       btn.appendChild(ph); btn.appendChild(cap); btn.appendChild(chk); btn.appendChild(add);
       btn.addEventListener('click', (e) => {
@@ -1606,14 +1606,14 @@
       }
       let src, alphaSrc = false;
       try {
-        /* edited (auto-saved) version pehle dikhe — jo user ne banayi wahi thumbnails/viewer me */
+        /* show the edited (auto-saved) version first — thumbnails/viewer match what the user made */
         const ses = await idbGet('edits', key);
         const file = ses && ses.previewBlob ? ses.previewBlob : await getFile(p);
         alphaSrc = ses && ses.previewBlob ? ses.previewBlob.type === 'image/png' : /\.(png|gif|webp)$/i.test(p.name);
         try {
           src = await createImageBitmap(file);
         } catch (e1) {
-          /* fallback: <img> decode (kuch files createImageBitmap se nahi khulti) */
+          /* fallback: <img> decode (some files fail in createImageBitmap) */
           src = await new Promise((res, rej) => {
             const url = URL.createObjectURL(file);
             const img = new Image();
@@ -1629,7 +1629,7 @@
       const c = document.createElement('canvas'); c.width = w; c.height = h;
       c.getContext('2d').drawImage(src, 0, 0, w, h);
       if (src.close) src.close();
-      /* transparent PNG/GIF/WebP: alpha bacha lo (JPEG me black ho jata) */
+      /* transparent PNG/GIF/WebP: preserve alpha (JPEG would turn black) */
       if (!alphaSrc) {
         const cx2 = c.getContext('2d');
         cx2.globalCompositeOperation = 'destination-over';
@@ -1718,7 +1718,7 @@
       els.vErr.hidden = true;
       els.vLoad.hidden = false;
       try {
-        /* auto-saved edits wali version pehle — power-cut ke baad bhi edits dikhen */
+        /* prefer the auto-saved-edits version — edits survive even a power cut */
         const k = `${p.name}|${p.size}|${p.lastModified}`;
         const ses = await idbGet('edits', k);
         const file = ses && ses.previewBlob ? ses.previewBlob : await getFile(p);
@@ -1836,14 +1836,14 @@
                 els.restore.hidden = true;
                 await loadFolder(h);
               } else {
-                toast('Permission nahi mili — "Wapas Kholo" dobara dabao ya folder re-import karo', 'err');
+                toast('Permission not granted — press "Reopen" again or re-import the folder', 'err');
               }
-            } catch (e) { toast('Folder dobara nahi khul paya', 'err'); }
+            } catch (e) { toast('Could not reopen the folder', 'err'); }
           };
           els.restoreDel.onclick = async () => {
             await idbDel('kv', 'lastFolder').catch(() => {});
             els.restore.hidden = true;
-            toast('Purana folder list se hata diya');
+            toast('Old folder removed from the list');
           };
         }
       } catch (e) { /* ignore */ }
@@ -1878,12 +1878,12 @@
     els.btnSide.addEventListener('click', () => document.body.classList.toggle('side-off'));
     els.btnSlide.addEventListener('click', () => {
       const list = state.selArr.length ? state.selArr : state.filtered;
-      if (!list.length) { toast('Pehle photos import karo', 'err'); return; }
+      if (!list.length) { toast('Import photos first', 'err'); return; }
       openViewer(0, list, true);
     });
     els.btnCollage.addEventListener('click', () => {
       const list = state.selArr.length ? state.selArr : state.filtered;
-      if (!list.length) { toast('Pehle photos import karo', 'err'); return; }
+      if (!list.length) { toast('Import photos first', 'err'); return; }
       if (window.PixsaCollage) window.PixsaCollage.open(list);
     });
     els.btnTrayClear.addEventListener('click', clearSel);
@@ -1898,12 +1898,12 @@
         case 'import': importFolder(); break;
         case 'export':
           if (state.selArr.length) exportSelected();
-          else toast('Pehle photos Tray me daalo (photo ke corner + button se)', 'err');
+          else toast('Add photos to the Tray first (use the + button on a photo)', 'err');
           break;
         case 'collage': els.btnCollage.click(); break;
         case 'clear': els.clearBtn.click(); break;
         case 'edit': {
-          if (!state.filtered.length) { toast('Pehle photos import karo', 'err'); break; }
+          if (!state.filtered.length) { toast('Import photos first', 'err'); break; }
           const p = state.selArr[0] || state.filtered[0];
           const k = photoKey(p);
           const i = state.filtered.findIndex((x) => photoKey(x) === k);
@@ -1911,11 +1911,11 @@
           break;
         }
         case 'selall':
-          if (!state.filtered.length) { toast('Pehle photos import karo', 'err'); break; }
+          if (!state.filtered.length) { toast('Import photos first', 'err'); break; }
           const have = selSet();
           state.filtered.forEach((p) => { const k2 = photoKey(p); if (!have.has(k2)) state.selArr.push(p); });
           renderTray();
-          toast(`${state.filtered.length} photos Tray me daal di`);
+          toast(`${state.filtered.length} photos added to the Tray`);
           break;
         case 'selnone': clearSel(); break;
         case 'side': els.btnSide.click(); break;
@@ -1933,7 +1933,7 @@
         case 'refresh': els.btnRefresh.click(); break;
         case 'search': els.search.focus(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.2.0 — 100% offline photo library + editor (Picasa style, 36 effects, 6 collage types, auto-save, transparent PNG stickers, custom fonts). SHIVAM ka official app. Sab kuch aapke PC par, kuch bhi upload nahi hota.', 'ok', 9000);
+          toast('S H I V A M PIXA v3.3.0 — 100% offline photo library + editor (Picasa style, 36 effects, 6 collage types, auto-save, transparent PNG stickers, custom fonts). The official SHIVAM app. Everything stays on your PC, nothing is ever uploaded.', 'ok', 9000);
           break;
       }
     }
@@ -1977,22 +1977,22 @@
     });
 
     els.clearBtn.addEventListener('click', async () => {
-      if (!confirm('Library clear karni hai? (Photos aapke PC me safe rahengi — sirf app ki list hategi)')) return;
+      if (!confirm('Clear the library? (Your photos stay safe on your PC — only the app list is removed)')) return;
       state.photos = []; state.filtered = []; state.groups = []; state.folder = ''; state.folderFilter = '';
       state.query = ''; els.search.value = '';
       await idbDel('kv', 'lastFolder').catch(() => {});
       els.restore.hidden = true;
       buildTree();
       applyFilter();
-      toast('Library clear ho gayi');
+      toast('Library cleared');
     });
 
     if (!canPicker) {
-      els.noticeText.textContent = 'Is browser me folder picker nahi hai — "Import Folder" ab file-picker se folder ki saari photos le lega. Behtar experience ke liye Edge/Chrome use karo.';
+      els.noticeText.textContent = 'This browser has no folder picker — "Import Folder" will now load all photos in the folder through the file picker. For a better experience, use Edge/Chrome.';
       els.notice.hidden = false;
       els.restore.hidden = true;
     } else if (inIframe) {
-      els.noticeText.textContent = 'Ye preview window hai — yahan PC ke folder access nahi hota. App ko alag tab me kholo, wahan sab kaam karega.';
+      els.noticeText.textContent = 'This is a preview window — PC folder access is not available here. Open the app in a separate tab; everything works there.';
       els.notice.hidden = false;
       els.btnPop.hidden = false;
       els.btnPop.addEventListener('click', () => window.open(location.href, '_blank'));
@@ -2009,8 +2009,8 @@
             if (!nw) return;
             nw.addEventListener('statechange', () => {
               if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-                toast('Naya version aa gaya hai!', 'ok', 12000, {
-                  label: 'Refresh karo',
+                toast('A new version is available!', 'ok', 12000, {
+                  label: 'Refresh',
                   fn: () => location.reload()
                 });
                 setTimeout(() => { try { nw.postMessage('SKIP_WAITING'); } catch (e) {} }, 1500);
@@ -2026,7 +2026,7 @@
       });
     }
 
-    /* ================= custom fonts (PC se add kiye hue — restart par bhi yaad) ================= */
+    /* ================= custom fonts (added from PC — remembered across restarts) ================= */
     const PixaFonts = { list: [] };
     async function loadCustomFonts() {
       try {
@@ -2055,10 +2055,10 @@
           await idbSet('fonts', nm, { name: nm, buf });
           if (!PixaFonts.list.includes(nm)) PixaFonts.list.push(nm);
           added++;
-        } catch (e) { toast(`Font load nahi hua: ${f.name}`, 'err'); }
+        } catch (e) { toast(`Could not load font: ${f.name}`, 'err'); }
       }
       if (added) {
-        toast(`${added} font${added > 1 ? 's' : ''} add ho gaye — Text tool ke Font list me milenge`, 'ok', 5000);
+        toast(`${added} font${added > 1 ? 's' : ''} added — they will appear in the Font list of the Text tool`, 'ok', 5000);
         document.dispatchEvent(new CustomEvent('pixa-fonts-updated'));
       }
     }
@@ -2078,7 +2078,7 @@
       };
       document.getElementById('btnCollageDl').onclick = () => {
         const b = lastCollageProj && lastCollageProj.previewBlob;
-        if (!b) { toast('Preview abhi save nahi hua — collage kholke Create karo', 'err'); return; }
+        if (!b) { toast('Preview not saved yet — open the collage and press Create', 'err'); return; }
         const a = document.createElement('a');
         a.href = URL.createObjectURL(b);
         a.download = `SHIVAM-PIXA-collage.${b.type === 'image/png' ? 'png' : 'jpg'}`;
@@ -2088,7 +2088,7 @@
       document.getElementById('btnCollageDel').onclick = async () => {
         await idbDel('collage', 'current').catch(() => {});
         document.getElementById('collageBar').hidden = true;
-        toast('Purana collage project hata diya');
+        toast('Old collage project removed');
       };
     }
 
@@ -2102,7 +2102,7 @@
       sp.classList.add('gone');
       setTimeout(() => sp.remove(), 850);
     }
-    /* dheema splash — par click/kisi bhi key se turant skip */
+    /* slow splash — click or any key skips it instantly */
     setTimeout(hideSplash, prefersReducedMotion() ? 400 : 3400);
     document.getElementById('splash')?.addEventListener('click', hideSplash);
     window.addEventListener('keydown', hideSplash, { once: true });
