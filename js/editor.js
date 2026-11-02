@@ -2,7 +2,9 @@
    Picasa-style edit view: Basic Fixes | Tuning | Effects
    Non-destructive: original + ops list; full-res render on Save.
    v3.3.0: power-cut safe auto-save (IndexedDB 'edits' store), text panel
-   (fonts/bold/italic/outline/shadow/align), transparent PNG stickers. */
+   (fonts/bold/italic/outline/shadow/align), transparent PNG stickers.
+   v3.4.0: cached ops base (adj-only redraws), effect intensity, before/after
+   compare, live RGB histogram, I'm Feeling Lucky. */
 (() => {
   'use strict';
   const P = window.Pixsa;
@@ -34,7 +36,7 @@
     prevAdj: null, undo: [], redo: [], tool: null, saved: false,
     cropR: null, aspect: 0, pendPts: [], brush: 16, draft: null,
     fit: true, zoom: 100, fxPage: 1,
-    /* v3.3.0: stickers + text draft + autosave state */
+    /* v3.4.0: stickers + text draft + autosave state */
     stickers: [], stkSeq: 0, stkSel: null,
     pendText: { x: 0.5, y: 0.5 }, textDraft: { ...TEXT0 },
     dirty: false, restored: false
@@ -50,20 +52,37 @@
     return m;
   }
 
-  /* ---------- preview ---------- */
+  /* ---------- preview ----------
+     v3.4.0: the ops stack is rendered once into a cached "base" canvas;
+     slider drags only re-run the tuning pass on top — buttery smooth. */
   let rafPend = false;
+  let baseCv = null, baseKey = '';
+  function opsKey() {
+    return JSON.stringify(E.ops) + (E.draft ? '|S' + E.draft.deg : '') + '|' + (E.src ? E.src.width + 'x' + E.src.height : '');
+  }
+  function ensureBase() {
+    const k = opsKey();
+    if (!baseCv || baseKey !== k) {
+      baseCv = FX.renderOps(E.src, E.draft ? [...E.ops, E.draft] : E.ops, E.pmax || 1400, stickerMap());
+      baseKey = k;
+    }
+    return baseCv;
+  }
   function renderPreview() {
-    if (rafPend) return Promise.resolve();
+    if (rafPend || comparing) return Promise.resolve();
     rafPend = true;
     return new Promise((res) => requestAnimationFrame(() => {
       rafPend = false;
-      if (!E.src) return res();
-      const ops = E.draft ? [...E.ops, E.draft] : E.ops;
-      const c = FX.renderStack(E.src, ops, E.adj, 1400, stickerMap());
+      if (!E.src || !E.open) return res();
+      const base = ensureBase();
       const cv = ed.canvas;
-      if (cv.width !== c.width || cv.height !== c.height) { cv.width = c.width; cv.height = c.height; }
-      cv.getContext('2d').drawImage(c, 0, 0);
+      if (cv.width !== base.width || cv.height !== base.height) { cv.width = base.width; cv.height = base.height; }
+      const cx = cv.getContext('2d');
+      cx.clearRect(0, 0, cv.width, cv.height);
+      cx.drawImage(base, 0, 0);
+      FX.applyAdjTo(cv, E.adj);
       applyDisp();
+      schedHist();
       res();
     }));
   }
@@ -71,16 +90,79 @@
   function applyDisp() {
     const cv = ed.canvas, st = ed.stage;
     const pad = 36;
+    let w, h;
     if (E.fit) {
       const sc = Math.min((st.clientWidth - pad) / cv.width, (st.clientHeight - pad) / cv.height, 1.5);
-      cv.style.width = (cv.width * sc) + 'px';
-      cv.style.height = (cv.height * sc) + 'px';
+      w = (cv.width * sc) + 'px'; h = (cv.height * sc) + 'px';
     } else {
       const zz = E.zoom / 100;
-      cv.style.width = (cv.width * zz) + 'px';
-      cv.style.height = (cv.height * zz) + 'px';
+      w = (cv.width * zz) + 'px'; h = (cv.height * zz) + 'px';
     }
+    cv.style.width = w; cv.style.height = h;
+    const oc = q('#eOrig');
+    if (oc && !oc.hidden) { oc.style.width = w; oc.style.height = h; }
     syncCropOverlay();
+  }
+
+  /* ---------- before / after compare (hold) ---------- */
+  let comparing = false;
+  function setCompare(on) {
+    if (!E.open || on === comparing) return;
+    comparing = on;
+    const oc = q('#eOrig'), tag = q('#eOrigTag'), btn = q('#eCompare');
+    if (on) {
+      const cv = ed.canvas;
+      if (oc.width !== cv.width || oc.height !== cv.height) { oc.width = cv.width; oc.height = cv.height; }
+      const ox = oc.getContext('2d');
+      ox.clearRect(0, 0, oc.width, oc.height);
+      ox.imageSmoothingQuality = 'high';
+      ox.drawImage(E.src, 0, 0, oc.width, oc.height);
+      oc.style.width = cv.style.width; oc.style.height = cv.style.height;
+      oc.hidden = false; tag.hidden = false;
+    } else {
+      oc.hidden = true; tag.hidden = true;
+      renderPreview();
+    }
+    if (btn) btn.classList.toggle('holding', on);
+  }
+
+  /* ---------- live RGB histogram ---------- */
+  let histT = null;
+  function schedHist() { if (histT) return; histT = setTimeout(() => { histT = null; drawHist(); }, 140); }
+  function drawHist() {
+    const hc = q('#eHist');
+    if (!hc || !E.open || !E.src) return;
+    const cv = ed.canvas;
+    if (!cv.width || !cv.height) return;
+    const sc = Math.min(1, 480 / Math.max(cv.width, cv.height));
+    const t = FX.mkCanvas(Math.max(1, (cv.width * sc) | 0), Math.max(1, (cv.height * sc) | 0));
+    const tx = t.getContext('2d');
+    tx.drawImage(cv, 0, 0, t.width, t.height);
+    let d;
+    try { d = tx.getImageData(0, 0, t.width, t.height).data; } catch (e) { return; }
+    const R = new Uint32Array(256), G = new Uint32Array(256), B = new Uint32Array(256);
+    for (let i = 0; i < d.length; i += 16) { R[d[i]]++; G[d[i + 1]]++; B[d[i + 2]]++; }
+    let mx = 1;
+    for (let v = 1; v < 255; v++) { if (R[v] > mx) mx = R[v]; if (G[v] > mx) mx = G[v]; if (B[v] > mx) mx = B[v]; }
+    const g = hc.getContext('2d');
+    const W = hc.width, H = hc.height;
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = '#191b1f';
+    g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'screen';
+    const chan = (hist, col) => {
+      g.beginPath();
+      g.moveTo(0, H);
+      for (let v = 0; v < 256; v++) g.lineTo((v / 255) * W, H - Math.min(1, hist[v] / mx) * (H - 6));
+      g.lineTo(W, H);
+      g.closePath();
+      g.fillStyle = col;
+      g.fill();
+    };
+    chan(R, 'rgba(235,72,72,.72)');
+    chan(G, 'rgba(88,200,110,.72)');
+    chan(B, 'rgba(86,140,240,.72)');
+    g.globalCompositeOperation = 'source-over';
   }
 
   /* ---------- history ---------- */
@@ -197,7 +279,20 @@
     for (const f of list) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'fxtile'; b.textContent = f.name; b.dataset.fx = f.id;
-      b.addEventListener('click', () => { commit({ type: 'effect', id: f.id }); toast(f.name + ' applied', 'ok', 1300); });
+      b.addEventListener('click', () => {
+        const has = E.ops.some((o) => o.type === 'effect' && o.id === f.id);
+        if (has) {
+          pushUndo();
+          E.ops = E.ops.filter((o) => !(o.type === 'effect' && o.id === f.id));
+          updFxTiles(); updUndoBtns(); renderPreview(); scheduleEditSave();
+          toast(f.name + ' removed', 'ok', 1100);
+        } else {
+          const sEl = q('#fxStr');
+          const st = sEl && !sEl.disabled ? Math.max(0.03, Math.min(1, +sEl.value / 100)) : 1;
+          commit({ type: 'effect', id: f.id, strength: st });
+          toast(f.name + ' applied', 'ok', 1300);
+        }
+      });
       ed.fxGrid.appendChild(b);
     }
     const lab = q('#fxPageLab');
@@ -210,6 +305,39 @@
   function updFxTiles() {
     const has = new Set(E.ops.filter((o) => o.type === 'effect').map((o) => o.id));
     qa('.fxtile').forEach((t) => t.classList.toggle('applied', has.has(t.dataset.fx)));
+    syncFxStr();
+  }
+
+  /* ---------- effect intensity (v3.4.0) ---------- */
+  function lastEffectIdx() {
+    for (let i = E.ops.length - 1; i >= 0; i--) if (E.ops[i].type === 'effect') return i;
+    return -1;
+  }
+  function syncFxStr() {
+    const s = q('#fxStr'), v = q('#fxStrV');
+    if (!s || !v) return;
+    const i = lastEffectIdx();
+    if (i < 0) { s.disabled = true; s.value = 100; v.textContent = '\u2014'; return; }
+    s.disabled = false;
+    const st = Math.round((E.ops[i].strength == null ? 1 : E.ops[i].strength) * 100);
+    s.value = st; v.textContent = st + '%';
+  }
+  function wireFxStr() {
+    const s = q('#fxStr');
+    if (!s) return;
+    let prevSnap = null;
+    s.addEventListener('input', () => {
+      const i = lastEffectIdx();
+      if (i < 0) return;
+      if (prevSnap === null) prevSnap = snap();
+      E.pmax = 900; /* fast low-res while dragging intensity, full-res on release */
+      E.ops[i].strength = Math.max(0.03, Math.min(1, +s.value / 100));
+      q('#fxStrV').textContent = s.value + '%';
+      renderPreview();
+    });
+    s.addEventListener('change', () => {
+      if (prevSnap !== null) { pushUndo(prevSnap); prevSnap = null; E.pmax = 1400; renderPreview(); scheduleEditSave(); }
+    });
   }
 
   /* ---------- fonts (system + added from PC) ---------- */
@@ -410,14 +538,15 @@
       s.addEventListener('input', () => {
         const v = +s.value;
         q('#tbStrV').textContent = v + '\u00B0';
+        E.pmax = 900; /* fast low-res while straightening */
         E.draft = { type: 'straighten', deg: v };
         renderPreview();
       });
       q('#tbApply').addEventListener('click', () => {
-        if (E.draft) { const d = E.draft; E.draft = null; commit(d); }
+        if (E.draft) { const d = E.draft; E.draft = null; E.pmax = 1400; commit(d); }
         setTool(null);
       });
-      q('#tbCancel').addEventListener('click', () => { E.draft = null; setTool(null); renderPreview(); });
+      q('#tbCancel').addEventListener('click', () => { E.draft = null; E.pmax = 1400; setTool(null); renderPreview(); });
     }
   }
 
@@ -576,6 +705,7 @@
       if (!hit) return;
       E.stkSel = hit.sid;
       pushUndo();
+      E.pmax = 900; /* fast low-res while dragging the sticker */
       dragStk = { op: hit, ox: hit.x - nx, oy: hit.y - ny };
       try { ed.canvas.setPointerCapture(e.pointerId); } catch (err) {}
       e.preventDefault();
@@ -593,7 +723,7 @@
   });
   ['pointerup', 'pointercancel'].forEach((ev) => ed.canvas.addEventListener(ev, () => {
     stroking = false;
-    if (dragStk) { dragStk = null; scheduleEditSave(); }
+    if (dragStk) { dragStk = null; E.pmax = 1400; renderPreview(); scheduleEditSave(); }
   }));
 
   /* ---------- auto fixes ---------- */
@@ -608,6 +738,16 @@
     const wb = FX.computeWB(c);
     commit({ type: 'autocolor', gr: wb.gr, gg: wb.gg, gb: wb.gb });
     toast('Auto Color applied', 'ok', 1500);
+  }
+  function feelingLucky() {
+    const c = FX.renderStack(E.src, E.ops, null, 900, stickerMap());
+    const { lo, hi } = FX.computeLevels(c);
+    const wb = FX.computeWB(c);
+    pushUndo();
+    E.ops.push({ type: 'autocontrast', lo, hi }, { type: 'autocolor', gr: wb.gr, gg: wb.gg, gb: wb.gb });
+    updFxTiles(); updUndoBtns();
+    renderPreview(); scheduleEditSave();
+    toast("I'm Feeling Lucky \u2014 contrast + color fixed in one click", 'ok', 1800);
   }
 
   /* ---------- save ---------- */
@@ -722,6 +862,9 @@
     E.pendText = { x: 0.5, y: 0.5 }; E.textDraft = { ...TEXT0 };
     E.dirty = false; E.restored = false;
     E.fit = true; E.zoom = 100; ed.zoom.value = 100;
+    baseCv = null; baseKey = '';
+    comparing = false;
+    q('#eOrig').hidden = true; q('#eOrigTag').hidden = true;
 
     /* power-cut safe: reload the previous auto-saved edits */
     try {
@@ -755,6 +898,9 @@
     if (!E.open) return;
     E.open = false;
     E.tool = null;
+    comparing = false;
+    q('#eOrig').hidden = true; q('#eOrigTag').hidden = true;
+    baseCv = null; baseKey = '';
     if (E.dirty) saveEditSession();
     ed.root.hidden = true;
     document.body.classList.remove('noscroll', 'ed-open');
@@ -780,6 +926,7 @@
       const f = b.dataset.fix;
       if (f === 'autocon') autoContrast();
       else if (f === 'autocolor') autoColor();
+      else if (f === 'lucky') feelingLucky();
       else if (f === 'rotl') commit({ type: 'rot', deg: -90 });
       else if (f === 'rotr') commit({ type: 'rot', deg: 90 });
       else if (f === 'sticker') q('#stickerFile').click();
@@ -790,6 +937,12 @@
   });
   ed.undoBtn.addEventListener('click', doUndo);
   ed.redoBtn.addEventListener('click', doRedo);
+  const cmpBtn = q('#eCompare');
+  if (cmpBtn) {
+    cmpBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); setCompare(true); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => cmpBtn.addEventListener(ev, () => setCompare(false)));
+  }
+  document.addEventListener('keyup', (e) => { if (E.open && (e.key === 'b' || e.key === 'B')) setCompare(false); });
   q('#eSave').addEventListener('click', doSave);
   q('#eSaveCopy').addEventListener('click', doSaveCopy);
   q('#eBack').addEventListener('click', close);
@@ -813,6 +966,7 @@
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     if (e.key === 'ArrowRight') { e.preventDefault(); nav(1); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); nav(-1); }
+    else if (e.key === 'b' || e.key === 'B') { if (!e.repeat) setCompare(true); }
     else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) doRedo(); else doUndo(); }
     else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); doRedo(); }
     else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); doSave(); }
@@ -820,6 +974,7 @@
 
   buildFx();
   wireSliders();
+  wireFxStr();
 
   window.PixsaEditor = { open, close, isOpen: () => E.open };
 })();
