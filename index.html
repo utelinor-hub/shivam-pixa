@@ -225,6 +225,9 @@
       box-shadow: 0 1px 2px rgba(0,0,0,.14);
       transition: border-color .12s, box-shadow .12s;
       text-align: left;
+      /* v3.4.0 speed: browser skips painting off-screen cells entirely */
+      content-visibility: auto;
+      contain-intrinsic-size: auto 172px;
     }
     .cell:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(43,124,211,.35); }
     .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -488,7 +491,13 @@
       flex: 1; min-width: 0; position: relative; background: #4d5055;
       display: grid; place-items: center; overflow: auto; padding: 18px;
     }
-    #eCanvas { box-shadow: 0 3px 18px rgba(0,0,0,.5); background: #222; max-width: none; }
+    #eCanvas, #eOrig { grid-area: 1 / 1; box-shadow: 0 3px 18px rgba(0,0,0,.5); background: #222; max-width: none; }
+    #eOrigTag {
+      position: absolute; top: 12px; left: 12px; z-index: 6; pointer-events: none;
+      background: rgba(22,24,28,.85); color: #fff; font-size: 11px; font-weight: 700;
+      letter-spacing: .14em; padding: 5px 11px; border-radius: 3px;
+    }
+    #eHist { width: 100%; height: 84px; display: block; background: #191b1f; border: 1px solid #3a3d42; border-radius: 4px; margin: 0 0 4px; }
     .e-panel { width: 302px; background: #eceae5; border-left: 1px solid #bcb9b2; display: flex; flex-direction: column; }
     .e-tabs { display: flex; border-bottom: 1px solid #bdbab3; background: #dfddd7; }
     .e-tabs button {
@@ -533,6 +542,7 @@
     .e-actions button:disabled { opacity: .45; cursor: default; }
     .e-actions button.accent { background: linear-gradient(#4d92dc, #2b6fc0); color: #fff; border-color: #1e5a9e; text-shadow: 0 1px 1px rgba(0,0,0,.2); }
     .e-actions button.accent:hover { background: linear-gradient(#5a9de6, #2f79cf); }
+    .e-actions button.holding { border-color: var(--accent); background: #dcebfb; }
     .e-bottom {
       display: flex; align-items: center; gap: 12px; padding: 6px 12px;
       background: linear-gradient(#f8f7f5, #dedcd6); border-top: 1px solid #b8b5ae; font-size: 12px; color: #55585e;
@@ -809,7 +819,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.3.0</span>
+      <span class="ver">v3.4.0</span>
     </span>
   </footer>
 
@@ -873,6 +883,8 @@
     <div class="e-body">
       <div id="eStage" class="e-stage">
         <canvas id="eCanvas"></canvas>
+        <canvas id="eOrig" hidden></canvas>
+        <div id="eOrigTag" hidden>ORIGINAL</div>
         <div id="eCrop" hidden>
           <div class="thirds"></div>
           <div class="h nw" data-h="nw"></div><div class="h n" data-h="n"></div><div class="h ne" data-h="ne"></div>
@@ -889,6 +901,7 @@
         </div>
         <div class="e-tabbody">
           <div id="tab-basic" class="e-tab on">
+            <button class="fixbtn" type="button" data-fix="lucky">I'm Feeling Lucky</button>
             <button class="fixbtn" type="button" data-fix="autocon">Auto Contrast</button>
             <button class="fixbtn" type="button" data-fix="autocolor">Auto Color</button>
             <button class="fixbtn" type="button" data-fix="redeye">Remove Redeye</button>
@@ -904,6 +917,7 @@
             <div id="eToolBox" class="toolbox" hidden></div>
           </div>
           <div id="tab-tuning" class="e-tab">
+            <canvas id="eHist" width="280" height="84"></canvas>
             <div class="srow"><span class="sname">Fill Light</span><input id="adFill" type="range" min="0" max="100" value="0" /><span class="val" id="vFill">0</span></div>
             <div class="srow"><span class="sname">Highlights</span><input id="adHigh" type="range" min="0" max="100" value="0" /><span class="val" id="vHigh">0</span></div>
             <div class="srow"><span class="sname">Shadows</span><input id="adShad" type="range" min="0" max="100" value="0" /><span class="val" id="vShad">0</span></div>
@@ -911,18 +925,21 @@
             <div class="srow"><span class="sname">Tint</span><input id="adTint" type="range" min="-100" max="100" value="0" /><span class="val" id="vTint">0</span></div>
             <div class="srow"><span class="sname">Saturation</span><input id="adSat" type="range" min="-100" max="100" value="0" /><span class="val" id="vSat">0</span></div>
             <p class="cnote">Drag a slider for a live preview. Double-click any slider to reset it to zero.</p>
+            <p class="cnote">The graph above is the live RGB histogram of your photo.</p>
           </div>
           <div id="tab-effects" class="e-tab">
             <div class="fxpager">
-              <button id="fxPrev" type="button" title="Pichle effects">&#8249;</button>
+              <button id="fxPrev" type="button" title="Previous effects page">&#8249;</button>
               <span id="fxPageLab">1 / 3</span>
-              <button id="fxNext" type="button" title="Agle effects">&#8250;</button>
+              <button id="fxNext" type="button" title="Next effects page">&#8250;</button>
             </div>
+            <div class="srow"><span class="sname">Intensity</span><input id="fxStr" type="range" min="5" max="100" value="100" disabled /><span class="val" id="fxStrV">&mdash;</span></div>
             <div id="fxGrid" class="fxgrid"></div>
-            <p class="cnote">Effects apply instantly — press <b>Undo</b> to remove one. There are three pages; use the arrows to switch.</p>
+            <p class="cnote">Effects apply instantly. Click a tile again to remove it, and use <b>Intensity</b> to fine-tune the last applied effect. Three pages; use the arrows to switch.</p>
           </div>
         </div>
         <div class="e-actions">
+          <button id="eCompare" type="button" title="Before / After — hold to view the original (B)">Before</button>
           <button id="eUndo" type="button" title="Undo (Ctrl+Z)">Undo</button>
           <button id="eRedo" type="button" title="Redo (Ctrl+Y)">Redo</button>
           <button id="eSave" class="accent" type="button" title="Save into the original file (Ctrl+S)">Save</button>
@@ -1593,11 +1610,22 @@
       return btn;
     }
 
-    /* ================= thumbnails ================= */
+    /* ================= thumbnails =================
+       v3.4.0 speed: one shared decode queue (max 3 in flight) so mass thumbnail
+       generation never floods the main thread, plus in-flight dedupe. */
     const thumbMem = new Map();
-    async function getThumbURL(p) {
-      const key = `${p.name}|${p.size}|${p.lastModified}`;
-      if (thumbMem.has(key)) return thumbMem.get(key);
+    const thumbInflight = new Map();
+    const thumbQ = [];
+    let thumbRun = 0;
+    const THUMB_PAR = 3;
+    function pumpThumbs() {
+      while (thumbRun < THUMB_PAR && thumbQ.length) {
+        const job = thumbQ.shift();
+        thumbRun++;
+        job().catch(() => {}).finally(() => { thumbRun--; pumpThumbs(); });
+      }
+    }
+    async function genThumb(p, key) {
       const cached = await idbGet('thumbs', key);
       if (cached) {
         const u = URL.createObjectURL(cached);
@@ -1644,6 +1672,17 @@
       thumbMem.set(key, u);
       return u;
     }
+    function getThumbURL(p) {
+      const key = `${p.name}|${p.size}|${p.lastModified}`;
+      if (thumbMem.has(key)) return Promise.resolve(thumbMem.get(key));
+      if (thumbInflight.has(key)) return thumbInflight.get(key);
+      const pr = new Promise((res, rej) => {
+        thumbQ.push(() => genThumb(p, key).then(res, rej));
+        pumpThumbs();
+      });
+      thumbInflight.set(key, pr);
+      return pr.finally(() => thumbInflight.delete(key));
+    }
 
     async function loadThumb(ph) {
       const i = +ph.dataset.pi;
@@ -1666,7 +1705,35 @@
       }
     }
 
-    /* ================= viewer + slideshow ================= */
+    /* ================= viewer + slideshow =================
+       v3.4.0 speed: neighboring photos are prefetched in the background, so
+       Next/Previous (and slideshow) feel instant — faster than Picasa. */
+    const vPre = new Map();
+    function vKeyOf(p) { return `${p.name}|${p.size}|${p.lastModified}`; }
+    function fetchViewerFile(p) {
+      const k = vKeyOf(p);
+      if (vPre.has(k)) return vPre.get(k);
+      const pr = (async () => {
+        const ses = await idbGet('edits', k);
+        return { file: ses && ses.previewBlob ? ses.previewBlob : await getFile(p) };
+      })();
+      vPre.set(k, pr);
+      pr.catch(() => vPre.delete(k));
+      if (vPre.size > 6) {
+        const oldest = vPre.keys().next().value;
+        if (oldest !== k) vPre.delete(oldest);
+      }
+      return pr;
+    }
+    function prefetchNeighbors() {
+      const list = state.ss || state.filtered;
+      const n = list.length;
+      if (!n) return;
+      for (const d of [1, -1]) {
+        const p2 = list[(state.vi + d + n) % n];
+        if (p2) fetchViewerFile(p2).catch(() => {});
+      }
+    }
     let z = 1, zx = 0, zy = 0, curURL = null, dragging = false, moved = false, lx = 0, ly = 0;
     let ssTimer = null;
     function startSS() {
@@ -1696,6 +1763,7 @@
       els.viewer.hidden = true;
       document.body.classList.remove('noscroll');
       state.vi = -1; state.ss = null;
+      vPre.clear();
       if (curURL) { URL.revokeObjectURL(curURL); curURL = null; }
       els.vImg.removeAttribute('src');
       els.vImg.removeAttribute('style');
@@ -1719,15 +1787,14 @@
       els.vLoad.hidden = false;
       try {
         /* prefer the auto-saved-edits version — edits survive even a power cut */
-        const k = `${p.name}|${p.size}|${p.lastModified}`;
-        const ses = await idbGet('edits', k);
-        const file = ses && ses.previewBlob ? ses.previewBlob : await getFile(p);
+        const file = (await fetchViewerFile(p)).file;
         const url = URL.createObjectURL(file);
         els.vImg.onload = () => {
           els.vLoad.hidden = true;
           if (curURL && curURL !== url) URL.revokeObjectURL(curURL);
           curURL = url;
           els.vMeta.textContent = `${els.vImg.naturalWidth} × ${els.vImg.naturalHeight} px  •  ${fmtBytes(file.size)}  •  ${new Date(p.lastModified || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+          prefetchNeighbors();
         };
         els.vImg.onerror = () => {
           els.vLoad.hidden = true;
@@ -1933,7 +2000,7 @@
         case 'refresh': els.btnRefresh.click(); break;
         case 'search': els.search.focus(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.3.0 — 100% offline photo library + editor (Picasa style, 36 effects, 6 collage types, auto-save, transparent PNG stickers, custom fonts). The official SHIVAM app. Everything stays on your PC, nothing is ever uploaded.', 'ok', 9000);
+          toast('S H I V A M PIXA v3.4.0 — 100% offline photo library + editor (Picasa style, 36 effects with intensity, before/after compare, live histogram, I\'m Feeling Lucky, 6 collage types, power-cut safe auto-save, transparent PNG stickers, custom fonts). The official SHIVAM app. Everything stays on your PC, nothing is ever uploaded.', 'ok', 9000);
           break;
       }
     }
