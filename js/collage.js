@@ -1,5 +1,6 @@
 /* SHIVAM PIXSA — collage.js
-   Picasa-style collage maker: Picture Pile | Picture Grid | Contact Sheet | Multiple Exposure */
+   Picasa-style collage maker: Picture Pile | Mosaic | Frame Mosaic |
+   Picture Grid | Contact Sheet | Multiple Exposure */
 (() => {
   'use strict';
   const P = window.Pixsa;
@@ -10,20 +11,30 @@
   const el = {
     root: q('#collage'), canvas: q('#cCanvas'), busy: q('#cBusy'), note: q('#cNote'),
     fmt: q('#cFormat'), bg: q('#cBg'), spacingRow: q('#cSpacingRow'), spacing: q('#cSpacing'),
-    shuffle: q('#cShuffle'),
+    shuffle: q('#cShuffle'), border: q('#cBorder'), orient: q('#cOrient'), bgPhoto: q('#cBgPhoto'),
     cCreate: q('#cCreate'), cCancel: q('#cCancel'), cSaveDir: q('#cSaveDir'),
     cDownload: q('#cDownload'), cBack: q('#cBack')
   };
 
-  const C = { open: false, list: [], imgs: [], type: 'pile', bg: '#f5f2ec', spacing: 10, seed: 7, blob: null, url: null };
+  const C = { open: false, list: [], imgs: [], type: 'pile', bg: '#f5f2ec', spacing: 10, seed: 7, blob: null, url: null,
+              border: 'white', landscape: true, bgPhoto: false };
 
   function dims() {
+    let W, H;
     switch (el.fmt.value) {
-      case '16x9': return [1920, 1080];
-      case 'sq': return [1400, 1400];
-      case 'a4p': return [1191, 1684];
-      default: return [1600, 1200];
+      case '16x9': W = 1920; H = 1080; break;
+      case 'sq': W = 1400; H = 1400; break;
+      case 'a4': W = 1191; H = 1684; break;
+      case 'letter': W = 1700; H = 2200; break;
+      case '4x6': W = 1200; H = 1800; break;
+      case '5x7': W = 1500; H = 2100; break;
+      case '8x10': W = 1600; H = 2000; break;
+      case '11x14': W = 1760; H = 2240; break;
+      case '16x20': W = 2000; H = 2500; break;
+      default: W = 1600; H = 1200;
     }
+    /* base orientation: print sizes portrait, 4x3/16x9 landscape — toggle swaps */
+    return (C.landscape !== (W >= H)) ? [H, W] : [W, H];
   }
 
   function rng() {
@@ -48,6 +59,17 @@
     x.drawImage(img, dx + (dw - w) / 2, dy + (dh - h) / 2, w, h);
   }
 
+  /* border styles: none | white | polaroid — grid/mosaic/frame cells ke liye */
+  function drawBordered(x, img, dx, dy, dw, dh) {
+    if (C.border === 'none') { drawCover(x, img, dx, dy, dw, dh); return; }
+    const u = Math.min(dw, dh);
+    const pad = C.border === 'polaroid' ? u * 0.055 : u * 0.035;
+    const bot = C.border === 'polaroid' ? u * 0.17 : pad;
+    x.fillStyle = '#ffffff';
+    x.fillRect(dx, dy, dw, dh);
+    drawCover(x, img, dx + pad, dy + pad, Math.max(4, dw - pad * 2), Math.max(4, dh - pad - bot));
+  }
+
   function renderCollage(W, H) {
     const c = document.createElement('canvas');
     c.width = W; c.height = H;
@@ -57,6 +79,14 @@
     const n = C.imgs.length;
     if (!n) return c;
     const rand = rng();
+
+    if (C.bgPhoto && C.imgs[0]) {
+      drawCover(x, C.imgs[0], 0, 0, W, H);
+      x.globalAlpha = 0.84;
+      x.fillStyle = C.bg;
+      x.fillRect(0, 0, W, H);
+      x.globalAlpha = 1;
+    }
 
     if (C.type === 'mex') {
       x.globalAlpha = 1 / n;
@@ -90,6 +120,52 @@
           x.restore();
         }
       }
+    } else if (C.type === 'mosaic') {
+      /* brick-pattern mosaic: har row photos ke aspect se fill hoti hai */
+      const sp = Math.max(C.spacing, 4);
+      const rows = clamp(Math.round(Math.sqrt(n * (H / W) * 0.95)), 1, 10);
+      const rh = (H - sp * (rows - 1)) / rows;
+      let i = 0;
+      for (let r = 0; r < rows && i < n; r++) {
+        const rowImg = [];
+        let aspects = 0;
+        while (i < n) {
+          const a = C.imgs[i].width / C.imgs[i].height;
+          if (rowImg.length && aspects + a > (W / rh) * 1.18) break;
+          rowImg.push(i); aspects += a; i++;
+        }
+        if (!rowImg.length) { rowImg.push(i); aspects = C.imgs[i].width / C.imgs[i].height; i++; }
+        const scale = (W - sp * (rowImg.length - 1)) / (aspects * rh);
+        let px2 = 0;
+        for (const idx of rowImg) {
+          const img = C.imgs[idx];
+          const wpx = (img.width / img.height) * rh * scale;
+          drawBordered(x, img, px2, r * (rh + sp), wpx, rh);
+          px2 += wpx + sp;
+        }
+      }
+    } else if (C.type === 'frame') {
+      /* frame mosaic: center me featured photo, charo taraf border grid */
+      const side = clamp(Math.ceil(Math.sqrt(n + 4)), 3, 7);
+      const sp = Math.max(C.spacing, 8);
+      const cw = (W - sp * (side - 1)) / side;
+      const ch = (H - sp * (side - 1)) / side;
+      const cx0 = Math.floor((side - 2) / 2), cy0 = Math.floor((side - 2) / 2);
+      let i = 1;
+      for (let r = 0; r < side; r++) {
+        for (let c2 = 0; c2 < side; c2++) {
+          const px2 = c2 * (cw + sp), py2 = r * (ch + sp);
+          const inCenter = c2 >= cx0 && c2 < cx0 + 2 && r >= cy0 && r < cy0 + 2;
+          if (inCenter) {
+            if (c2 === cx0 && r === cy0) {
+              drawBordered(x, C.imgs[0], px2, py2, cw * 2 + sp, ch * 2 + sp);
+            }
+          } else if (i < n) {
+            drawBordered(x, C.imgs[i], px2, py2, cw, ch);
+            i++;
+          }
+        }
+      }
     } else {
       const sp = C.type === 'sheet' ? Math.max(C.spacing, 16) : C.spacing;
       const marg = C.type === 'sheet' ? Math.max(34, sp + 20) : sp + 6;
@@ -108,7 +184,7 @@
             x.fillRect(px, py, cw, ch);
             drawContain(x, img, px + cw * 0.045, py + cw * 0.045, cw * 0.91, ch - cw * 0.09);
           } else {
-            drawCover(x, img, px, py, cw, ch);
+            drawBordered(x, img, px, py, cw, ch);
           }
         }
       }
@@ -151,12 +227,12 @@
   }
 
   function updateUI() {
-    q('.c-types [data-ct="pile"]').classList.toggle('on', C.type === 'pile');
-    q('.c-types [data-ct="grid"]').classList.toggle('on', C.type === 'grid');
-    q('.c-types [data-ct="sheet"]').classList.toggle('on', C.type === 'sheet');
-    q('.c-types [data-ct="mex"]').classList.toggle('on', C.type === 'mex');
-    el.spacingRow.hidden = !(C.type === 'grid' || C.type === 'sheet');
+    for (const b of q('.c-types').querySelectorAll('button[data-ct]')) {
+      b.classList.toggle('on', b.dataset.ct === C.type);
+    }
+    el.spacingRow.hidden = !['grid', 'sheet', 'mosaic', 'frame'].includes(C.type);
     el.shuffle.hidden = C.type !== 'pile';
+    el.orient.textContent = 'Orientation: ' + (C.landscape ? 'Landscape' : 'Portrait');
   }
 
   async function open(list) {
@@ -216,6 +292,9 @@
     });
     el.spacing.addEventListener('input', () => { C.spacing = +el.spacing.value; renderPreview(); });
     el.shuffle.addEventListener('click', () => { C.seed = (Math.random() * 2147483646) | 0; renderPreview(); });
+    el.border.addEventListener('change', () => { C.border = el.border.value; renderPreview(); });
+    el.orient.addEventListener('click', () => { C.landscape = !C.landscape; updateUI(); renderPreview(); });
+    el.bgPhoto.addEventListener('change', () => { C.bgPhoto = el.bgPhoto.checked; renderPreview(); });
     el.cCreate.addEventListener('click', create);
     el.cCancel.addEventListener('click', close);
     q('#cClose').addEventListener('click', close);
