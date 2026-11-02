@@ -50,10 +50,10 @@
       };
       await P.idbSet('collage', 'current', proj);
       C.savedProj = true;
-    } catch (e) { /* storage full — Create/Download phir bhi kaam karega */ }
+    } catch (e) { /* storage full — Create/Download still work */ }
   }
   async function openRestored(proj) {
-    if (!proj || !proj.photos || !proj.photos.length) { toast('Collage project adhoora hai', 'err'); return; }
+    if (!proj || !proj.photos || !proj.photos.length) { toast('The collage project is incomplete', 'err'); return; }
     C.open = true; C.blob = null; C.restored = true;
     C.list = proj.photos.map((ph) => ({ name: ph.name || 'photo', size: 0, lastModified: 0, handle: null, file: null }));
     C.type = proj.type || 'pile';
@@ -71,7 +71,7 @@
     el.bgPhoto.checked = C.bgPhoto;
     el.cCreate.hidden = false; el.cCancel.hidden = false;
     el.cSaveDir.hidden = true; el.cDownload.hidden = !proj.previewBlob; el.cBack.hidden = true;
-    el.note.textContent = `Auto-saved collage wapas khul gaya (${proj.photos.length} photos) — Create karke save karo ya Download karo.`;
+    el.note.textContent = `Auto-saved collage reopened (${proj.photos.length} photos) — press Create to save it, or Download it.`;
     updateUI();
     el.busy.hidden = false;
     const out = [];
@@ -86,7 +86,7 @@
       if (C.url) URL.revokeObjectURL(C.url);
       C.url = URL.createObjectURL(C.blob);
     }
-    toast('Pichla collage wapas aa gaya \u2713 \u2014 kuch bhi kho nahi payega, sab auto-save hai', 'ok', 4500);
+    toast('Previous collage restored \u2713 \u2014 nothing is ever lost, everything auto-saves', 'ok', 4500);
   }
 
   function dims() {
@@ -191,7 +191,7 @@
         }
       }
     } else if (C.type === 'mosaic') {
-      /* brick-pattern mosaic: har row photos ke aspect se fill hoti hai */
+      /* brick-pattern mosaic: each row fills according to the photo aspect ratios */
       const sp = Math.max(C.spacing, 4);
       const rows = clamp(Math.round(Math.sqrt(n * (H / W) * 0.95)), 1, 10);
       const rh = (H - sp * (rows - 1)) / rows;
@@ -215,7 +215,7 @@
         }
       }
     } else if (C.type === 'frame') {
-      /* frame mosaic: center me featured photo, charo taraf border grid */
+      /* frame mosaic: featured photo in the center, border grid all around */
       const side = clamp(Math.ceil(Math.sqrt(n + 4)), 3, 7);
       const sp = Math.max(C.spacing, 8);
       const cw = (W - sp * (side - 1)) / side;
@@ -315,7 +315,7 @@
     el.root.hidden = false;
     el.cCreate.hidden = false; el.cCancel.hidden = false;
     el.cSaveDir.hidden = true; el.cDownload.hidden = true; el.cBack.hidden = true;
-    el.note.textContent = `${C.list.length} ${C.list.length === 1 ? 'photo use hogi' : 'photos use hongi'}${list.length > 40 ? ' (pehli 40)' : ''}. Zyada photos chahiye to pehle Photo Tray me select karo.`;
+    el.note.textContent = `${C.list.length} ${C.list.length === 1 ? 'photo used' : 'photos used'}${list.length > 40 ? ' (first 40)' : ''}. To use more photos, select them in the Photo Tray first.`;
     updateUI();
     await loadImgs();
     renderPreview();
@@ -333,17 +333,17 @@
     await new Promise((r) => setTimeout(r, 40));
     const [W, H] = dims();
     const c = renderCollage(W, H);
-    /* transparent PNG use hua ho to PNG me save — alpha kabhi nahi khoyega */
+    /* if a transparent PNG is used, save as PNG — alpha is never lost */
     C.blob = await new Promise((r) => c.toBlob(r, C.alphaAny ? 'image/png' : 'image/jpeg', 0.9));
     el.busy.hidden = true;
-    if (!C.blob) { toast('Collage ban nahi paya — dobara try karo', 'err'); return; }
+    if (!C.blob) { toast('The collage could not be created — please try again', 'err'); return; }
     if (C.url) URL.revokeObjectURL(C.url);
     C.url = URL.createObjectURL(C.blob);
     el.canvas.width = c.width; el.canvas.height = c.height;
     el.canvas.getContext('2d').drawImage(c, 0, 0);
     el.cCreate.hidden = true; el.cCancel.hidden = true;
     el.cSaveDir.hidden = false; el.cDownload.hidden = false; el.cBack.hidden = false;
-    el.note.textContent = `Collage ready hai (${W} \u00D7 ${H}px). Save karo ya download karo. \u2713 Auto-save bhi ho gaya \u2014 PC band bhi ho jaye to wapas milega.`;
+    el.note.textContent = `Collage ready (${W} \u00D7 ${H}px). Save or download it. \u2713 Auto-saved too \u2014 it will be restored even after a shutdown.`;
     saveCollageProject();
   }
 
@@ -391,14 +391,14 @@
       a.href = C.url;
       a.download = `collage-${new Date().toISOString().slice(0, 10)}.jpg`;
       a.click();
-      toast('Collage download ho gaya', 'ok', 3000);
+      toast('Collage downloaded', 'ok', 3000);
     });
     el.cSaveDir.addEventListener('click', async () => {
       if (!C.blob) return;
       const dir = state.dirHandle;
       const nm = `collage-${Date.now().toString(36)}.${C.alphaAny ? 'png' : 'jpg'}`;
       if (dir && await P.saveBlobToDir(dir, nm, C.blob)) {
-        toast(`Collage folder me save hua: ${nm}`, 'ok', 4000);
+        toast(`Collage saved to folder: ${nm}`, 'ok', 4000);
         close();
         P.loadFolder(dir, true);
       } else {
@@ -406,7 +406,7 @@
         a.href = C.url;
         a.download = nm;
         a.click();
-        toast('Folder access nahi tha — collage download kar diya', 'ok', 4000);
+        toast('No folder access — the collage was downloaded instead', 'ok', 4000);
         close();
       }
     });
