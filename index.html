@@ -5,23 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SHIVAM PIXSA — Offline Photo Library</title>
   <meta name="description" content="Offline photo library — bilkul Picasa jaisa. Sab kuch 100% aapke PC par." />
-  <meta name="theme-color" content="#0b0e13" />
-  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#e8e8e8" />
+  <meta name="color-scheme" content="light" />
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" href="./icons/favicon.png" type="image/png" />
   <style>
     :root {
-      --bg: #0b0e13;
-      --panel: #12161d;
-      --panel2: #171c25;
-      --border: #232b38;
-      --border-hi: #334054;
-      --text: #e7edf5;
-      --muted: #8b98ab;
-      --accent: #38bdf8;
-      --accent-strong: #0ea5e9;
-      --danger: #f87171;
-      --radius: 10px;
+      --bg: #ececec;
+      --panel: #f4f4f4;
+      --panel2: #ffffff;
+      --border: #cfcfcf;
+      --border-hi: #a8b8cc;
+      --text: #1f2328;
+      --muted: #6b7280;
+      --accent: #2b7cd3;
+      --accent-deep: #1e5fa8;
+      --accent-soft: #e3effb;
+      --accent-line: #b9d4f0;
+      --danger: #c0392b;
+      --thumb: 170px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
@@ -38,123 +40,178 @@
     button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
     [hidden] { display: none !important; }
 
-    /* ---------- top bar ---------- */
+    /* ---------- top bar (Picasa style) ---------- */
     .topbar {
-      display: flex; align-items: center; gap: 12px;
-      padding: 10px 16px;
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 14px;
+      background: linear-gradient(#fdfdfd, #e6e6e6);
+      border-bottom: 1px solid #c4c4c4;
       flex-wrap: wrap;
     }
-    .brand { display: flex; align-items: center; gap: 9px; user-select: none; }
-    .brand svg { width: 22px; height: 22px; color: var(--accent); }
-    .brand-name { font-size: 13px; font-weight: 600; letter-spacing: .14em; white-space: nowrap; }
+    .brand { display: flex; align-items: center; gap: 8px; user-select: none; padding-right: 4px; }
+    .brand svg { width: 21px; height: 21px; color: var(--accent); }
+    .brand-name { font-size: 13px; font-weight: 600; letter-spacing: .12em; white-space: nowrap; color: #4a4f57; }
     .brand-name b { color: var(--accent); font-weight: 700; }
 
-    .searchwrap { position: relative; flex: 1; max-width: 430px; min-width: 180px; margin-inline: auto; }
-    .searchwrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--muted); pointer-events: none; }
+    .searchwrap { position: relative; flex: 1; max-width: 400px; min-width: 160px; margin-inline: auto; }
+    .searchwrap svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--muted); pointer-events: none; }
     .searchwrap input {
-      width: 100%; padding: 8px 12px 8px 32px;
-      background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+      width: 100%; padding: 7px 11px 7px 30px;
+      background: #fff; border: 1px solid #bcbcbc; border-radius: 4px;
       color: var(--text); outline: none; font-size: 13px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.06);
     }
-    .searchwrap input:focus { border-color: var(--accent-strong); }
-    .searchwrap input::placeholder { color: var(--muted); }
+    .searchwrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(43,124,211,.18); }
+    .searchwrap input::placeholder { color: #9aa1ab; }
 
     .tools { display: flex; align-items: center; gap: 8px; }
     select {
-      background: var(--panel2); color: var(--text);
-      border: 1px solid var(--border); border-radius: 8px;
-      padding: 8px 10px; font-size: 13px; outline: none; cursor: pointer;
+      background: #fff; color: var(--text);
+      border: 1px solid #bcbcbc; border-radius: 4px;
+      padding: 7px 9px; font-size: 13px; outline: none; cursor: pointer;
     }
-    select:focus { border-color: var(--accent-strong); }
+    select:focus { border-color: var(--accent); }
     .btn {
       display: inline-flex; align-items: center; gap: 7px;
-      padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
-      background: var(--panel2); border: 1px solid var(--border);
+      padding: 7px 13px; border-radius: 4px; font-size: 13px; font-weight: 500;
+      background: linear-gradient(#ffffff, #e4e4e4);
+      border: 1px solid #b3b3b3; color: #333;
       transition: border-color .15s, background .15s;
       white-space: nowrap;
     }
-    .btn:hover { border-color: var(--border-hi); background: #1c2330; }
+    .btn:hover { border-color: #8f8f8f; background: linear-gradient(#ffffff, #dadada); }
     .btn svg { width: 15px; height: 15px; }
-    .btn-accent { background: var(--accent-strong); border-color: var(--accent-strong); color: #04141f; font-weight: 600; }
-    .btn-accent:hover { background: var(--accent); border-color: var(--accent); }
-    .btn[disabled] { opacity: .45; cursor: not-allowed; }
+    .btn-accent {
+      background: linear-gradient(#4a90d9, #2b6fc2);
+      border-color: #2264ab; color: #fff; font-weight: 600;
+      text-shadow: 0 1px 1px rgba(0,0,0,.18);
+    }
+    .btn-accent:hover { background: linear-gradient(#57a0e5, #2f7ad0); border-color: #1e5fa8; }
+    .btn[disabled] { opacity: .5; cursor: not-allowed; }
+    .iconbtn2 {
+      width: 32px; height: 32px; border-radius: 4px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: linear-gradient(#ffffff, #e4e4e4); border: 1px solid #b3b3b3; color: #555;
+    }
+    .iconbtn2:hover { border-color: #8f8f8f; }
+    .iconbtn2 svg { width: 15px; height: 15px; }
 
     /* ---------- bars ---------- */
     .restorebar, .noticebar {
       display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-      padding: 8px 16px; font-size: 13px;
-      background: #10202e; border-bottom: 1px solid #1b3a4d;
-      color: #bfe3f7;
+      padding: 7px 14px; font-size: 13px;
+      background: #e8f1fb; border-bottom: 1px solid #c4dcf2;
+      color: #235d9c;
     }
-    .noticebar { background: #2a1d10; border-color: #4d3319; color: #f4d9b0; }
+    .noticebar { background: #fdf3e3; border-color: #ecd9b0; color: #8a5a1f; }
     .restorebar svg, .noticebar svg { width: 15px; height: 15px; flex: none; }
-    .linkbtn { color: var(--accent); font-weight: 600; font-size: 13px; padding: 4px 6px; border-radius: 6px; }
-    .linkbtn:hover { background: rgba(56,189,248,.12); }
+    .linkbtn { color: var(--accent-deep); font-weight: 600; font-size: 13px; padding: 3px 7px; border-radius: 4px; }
+    .linkbtn:hover { background: rgba(43,124,211,.14); }
     .linkbtn.dim { color: var(--muted); font-weight: 400; }
 
-    /* ---------- main / grid ---------- */
-    main { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
-    main::-webkit-scrollbar { width: 10px; }
-    main::-webkit-scrollbar-thumb { background: #26303f; border-radius: 6px; }
+    /* ---------- body row: sidebar + main ---------- */
+    .body-row { display: flex; flex: 1; min-height: 0; }
+    body.side-off .sidebar { display: none; }
+
+    .sidebar {
+      width: 220px; flex: none;
+      background: #f7f7f7; border-right: 1px solid #d4d4d4;
+      display: flex; flex-direction: column; overflow-y: auto;
+    }
+    .side-head {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 12px 6px; font-size: 11.5px; font-weight: 700;
+      color: #7a7f88; letter-spacing: .08em; text-transform: uppercase;
+    }
+    .side-head .iconbtn2 { margin-left: auto; width: 24px; height: 24px; }
+    .side-head .iconbtn2 svg { width: 12px; height: 12px; }
+    .titem {
+      display: flex; align-items: center; gap: 7px;
+      width: 100%; text-align: left;
+      padding: 6px 10px; font-size: 13px;
+      border: 1px solid transparent; border-radius: 4px;
+      margin: 1px 6px; width: calc(100% - 12px);
+      color: #2c3138;
+    }
+    .titem:hover { background: #e8f1fb; }
+    .titem.sel { background: #d6e8fa; border-color: var(--accent-line); font-weight: 600; }
+    .titem svg { width: 15px; height: 15px; color: #5a7ca6; flex: none; }
+    .titem .tname { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .titem .tcount { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+
+    main { flex: 1; overflow-y: auto; overscroll-behavior: contain; background: #f1f1f1; }
+    main::-webkit-scrollbar { width: 12px; }
+    main::-webkit-scrollbar-thumb { background: #c2c2c2; border: 3px solid #f1f1f1; border-radius: 8px; }
     main::-webkit-scrollbar-track { background: transparent; }
 
-    .grid {
+    /* ---------- grid (Picasa folders) ---------- */
+    #grid { padding: 14px 18px 44px; }
+    .fhead {
+      display: flex; align-items: center; gap: 9px;
+      background: linear-gradient(#e9f1fa, #d8e6f5);
+      border: 1px solid var(--accent-line); border-radius: 4px;
+      padding: 7px 12px; margin: 18px 0 10px;
+    }
+    #grid .fhead:first-child { margin-top: 0; }
+    .fhead svg { width: 16px; height: 16px; color: #3e6fa5; flex: none; }
+    .fhead .fname { font-weight: 600; color: #235d9c; font-size: 13.5px; }
+    .fhead .fcount { color: #6b7f95; font-size: 12px; margin-left: 2px; }
+    .row {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-      gap: 10px;
-      padding: 16px 20px 44px;
+      grid-template-columns: repeat(auto-fill, minmax(var(--thumb), 1fr));
+      gap: 9px;
     }
     .cell {
       position: relative; aspect-ratio: 1 / 1;
-      border-radius: var(--radius); overflow: hidden;
-      background: var(--panel2); border: 1px solid var(--border);
-      transition: border-color .15s, transform .15s;
+      border-radius: 4px; overflow: hidden;
+      background: #dcdcdc; border: 1px solid #b4b4b4;
+      box-shadow: 0 1px 2px rgba(0,0,0,.14);
+      transition: border-color .12s, box-shadow .12s;
       text-align: left;
     }
-    .cell:hover { border-color: var(--accent-strong); transform: translateY(-2px); }
+    .cell:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(43,124,211,.35); }
     .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .cell .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
     .cell .ph img {
       width: 100%; height: 100%; object-fit: cover; display: block;
-      opacity: 0; transition: opacity .25s, transform .25s;
+      opacity: 0; transition: opacity .2s;
     }
+    .cell .ph.ready { background: #fff; }
     .cell .ph.ready img { opacity: 1; }
-    .cell:hover .ph.ready img { transform: scale(1.05); }
-    .cell .ph.bad { background: repeating-linear-gradient(45deg, #151a23, #151a23 8px, #10141c 8px, #10141c 16px); }
-    .cell .ph.bad::after { content: "Load nahi hui"; font-size: 11px; color: var(--muted); }
+    .cell .ph.bad { background: repeating-linear-gradient(45deg, #e6e6e6, #e6e6e6 8px, #dcdcdc 8px, #dcdcdc 16px); }
+    .cell .ph.bad::after { content: "Load nahi hui"; font-size: 11px; color: #98a0aa; }
     .spin {
-      width: 22px; height: 22px; border-radius: 50%;
-      border: 2px solid #26303f; border-top-color: var(--accent);
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid #c5ccd6; border-top-color: var(--accent);
       animation: spin 1s linear infinite;
     }
     .cell .ph.ready .spin { display: none; }
     .cell .cap {
       position: absolute; left: 0; right: 0; bottom: 0;
-      padding: 20px 9px 7px; font-size: 11px; color: #e3ebf4;
-      background: linear-gradient(transparent, rgba(4,7,11,.88));
+      padding: 20px 9px 6px; font-size: 11px; color: #f2f6fb;
+      background: linear-gradient(transparent, rgba(10,20,32,.82));
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      opacity: 0; transition: opacity .15s; pointer-events: none;
+      opacity: 0; transition: opacity .12s; pointer-events: none;
     }
     .cell:hover .cap { opacity: 1; }
 
     /* ---------- empty state ---------- */
     .empty {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      text-align: center; padding: 72px 24px; gap: 6px; min-height: 62vh;
+      text-align: center; padding: 60px 24px; gap: 6px; min-height: 62vh;
     }
     .empty-ico {
       width: 84px; height: 84px; border-radius: 50%;
-      background: var(--panel2); border: 1px solid var(--border);
+      background: #fff; border: 1px solid #c9c9c9;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
       display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
     }
     .empty-ico svg { width: 38px; height: 38px; color: var(--accent); }
-    .empty h1 { font-size: 21px; font-weight: 600; }
-    .empty p { color: var(--muted); max-width: 470px; line-height: 1.65; font-size: 13.5px; }
-    .empty .row { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; justify-content: center; }
-    .empty .row .btn { padding: 11px 20px; font-size: 14px; }
-    .empty .tip { margin-top: 26px; font-size: 12px; color: #5f6b7d; max-width: 470px; line-height: 1.6; }
+    .empty h1 { font-size: 21px; font-weight: 600; color: #2c3138; }
+    .empty p { color: #5f6773; max-width: 480px; line-height: 1.65; font-size: 13.5px; }
+    .empty .row2 { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; justify-content: center; }
+    .empty .row2 .btn { padding: 10px 18px; font-size: 14px; }
+    .empty .tip { margin-top: 24px; font-size: 12px; color: #8a919c; max-width: 480px; line-height: 1.6; }
     .empty.small { min-height: 40vh; }
     .empty.small h2 { font-size: 17px; font-weight: 600; }
     .empty.small p { font-size: 13px; }
@@ -162,35 +219,39 @@
     /* ---------- status bar ---------- */
     .statusbar {
       display: flex; align-items: center; gap: 12px;
-      padding: 7px 16px; font-size: 12px; color: var(--muted);
-      background: var(--panel); border-top: 1px solid var(--border);
+      padding: 6px 14px; font-size: 12px; color: #555b64;
+      background: linear-gradient(#f4f4f4, #e4e4e4);
+      border-top: 1px solid #c4c4c4;
     }
-    .statusbar .right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .statusbar .right { margin-left: auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .zoomwrap { display: flex; align-items: center; gap: 7px; color: #6b7280; }
+    .zoomwrap svg { width: 13px; height: 13px; }
+    input[type="range"] { accent-color: var(--accent); width: 110px; cursor: pointer; }
     .badge {
-      padding: 3px 9px; border-radius: 99px; font-size: 10.5px; font-weight: 600;
-      background: rgba(56,189,248,.12); color: var(--accent); letter-spacing: .05em;
+      padding: 2px 8px; border-radius: 99px; font-size: 10.5px; font-weight: 700;
+      background: #dcead9; color: #2e6b2e; letter-spacing: .05em; border: 1px solid #b9d4b4;
     }
-    .ver { font-variant-numeric: tabular-nums; }
-    #stName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
-    #stName b { color: #b9c6d6; font-weight: 600; }
+    .ver { font-variant-numeric: tabular-nums; color: #8a919c; }
+    #stName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 38vw; }
+    #stName b { color: #2c3138; font-weight: 600; }
 
-    /* ---------- viewer ---------- */
+    /* ---------- viewer (dark, Picasa photo view jaisa) ---------- */
     .viewer {
       position: fixed; inset: 0; z-index: 50;
-      background: rgba(4, 6, 10, .97);
+      background: rgba(8, 10, 14, .97);
       display: flex; flex-direction: column;
       animation: fadein .18s ease;
     }
-    .v-top { display: flex; align-items: center; gap: 14px; padding: 12px 16px; }
+    .v-top { display: flex; align-items: center; gap: 14px; padding: 12px 16px; color: #e7edf5; }
     #vName { flex: 1; font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    #vCount { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    #vCount { color: #8b98ab; font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .icobtn {
       width: 40px; height: 40px; border-radius: 50%; flex: none;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(23, 28, 37, .85); border: 1px solid var(--border);
+      background: rgba(23, 28, 37, .85); border: 1px solid #2a3547; color: #e7edf5;
       transition: border-color .15s, background .15s;
     }
-    .icobtn:hover { border-color: var(--accent-strong); background: #1c2330; }
+    .icobtn:hover { border-color: var(--accent); background: #1c2330; }
     .icobtn svg { width: 17px; height: 17px; }
     .v-stage {
       flex: 1; position: relative; overflow: hidden;
@@ -212,31 +273,31 @@
     .v-zoom { position: absolute; right: 16px; bottom: 18px; display: flex; flex-direction: column; gap: 8px; }
     .v-zoom .icobtn { width: 38px; height: 38px; }
     #vLoad { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-    #vLoad .spin { width: 34px; height: 34px; border-width: 3px; }
-    #vErr { position: absolute; color: var(--muted); font-size: 13.5px; background: var(--panel); border: 1px solid var(--border); padding: 14px 20px; border-radius: 10px; }
-    .v-bottom { text-align: center; padding: 10px 16px 14px; color: var(--muted); font-size: 12.5px; min-height: 38px; }
+    #vLoad .spin { width: 34px; height: 34px; border-width: 3px; border-color: #2a3547; border-top-color: var(--accent); }
+    #vErr { position: absolute; color: #b9c4d4; font-size: 13.5px; background: #171c25; border: 1px solid #2a3547; padding: 14px 20px; border-radius: 8px; }
+    .v-bottom { text-align: center; padding: 10px 16px 14px; color: #8b98ab; font-size: 12.5px; min-height: 38px; }
 
     /* ---------- toasts ---------- */
-    .toasts { position: fixed; right: 18px; bottom: 52px; z-index: 70; display: flex; flex-direction: column; gap: 8px; max-width: 340px; }
+    .toasts { position: fixed; right: 18px; bottom: 52px; z-index: 70; display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
     .toast {
       display: flex; align-items: center; gap: 12px;
-      background: #1a212c; border: 1px solid var(--border); border-left: 3px solid var(--accent);
-      padding: 11px 14px; border-radius: 9px; font-size: 13px; line-height: 1.5;
-      box-shadow: 0 8px 28px rgba(0,0,0,.45);
+      background: #ffffff; border: 1px solid #c9c9c9; border-left: 3px solid var(--accent);
+      padding: 11px 14px; border-radius: 6px; font-size: 13px; line-height: 1.5; color: #2c3138;
+      box-shadow: 0 6px 24px rgba(0,0,0,.22);
       opacity: 0; transform: translateY(10px); transition: opacity .25s, transform .25s;
     }
     .toast.on { opacity: 1; transform: translateY(0); }
     .toast.err { border-left-color: var(--danger); }
-    .toast .tbtn { color: var(--accent); font-weight: 700; font-size: 12.5px; white-space: nowrap; padding: 4px 6px; border-radius: 6px; }
-    .toast .tbtn:hover { background: rgba(56,189,248,.12); }
+    .toast .tbtn { color: var(--accent-deep); font-weight: 700; font-size: 12.5px; white-space: nowrap; padding: 4px 6px; border-radius: 4px; }
+    .toast .tbtn:hover { background: rgba(43,124,211,.12); }
 
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes fadein { from { opacity: 0; } }
 
-    @media (max-width: 640px) {
+    @media (max-width: 760px) {
+      .sidebar { position: absolute; z-index: 20; top: 0; bottom: 0; left: 0; box-shadow: 4px 0 16px rgba(0,0,0,.15); }
       .searchwrap { order: 3; max-width: none; flex-basis: 100%; }
-      .grid { grid-template-columns: repeat(auto-fill, minmax(122px, 1fr)); gap: 7px; padding: 10px 12px 40px; }
-      .brand-name { letter-spacing: .08em; }
+      #grid { padding: 10px 12px 40px; }
       .v-nav.prev { left: 6px; } .v-nav.next { right: 6px; }
     }
   </style>
@@ -245,6 +306,9 @@
 
   <!-- ===== Top bar ===== -->
   <header class="topbar">
+    <button id="btnSide" class="iconbtn2" type="button" aria-label="Folders panel dikhao/chhupao" title="Folders">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16M4 12h16M4 17.5h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
     <div class="brand" title="SHIVAM PIXSA">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="3.4" fill="currentColor"/></svg>
       <span class="brand-name">SHIVAM <b>PIXSA</b></span>
@@ -277,47 +341,64 @@
     <button id="btnRestoreDel" class="linkbtn dim" type="button">Nahi chahiye</button>
   </div>
 
-  <!-- ===== Browser not supported bar ===== -->
+  <!-- ===== Notice bar (browser/preview issue) ===== -->
   <div id="noticeBar" class="noticebar" hidden>
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16.5" r="1.2" fill="currentColor"/></svg>
-    <span>Folder import ke liye Windows 11 ka <b>Edge</b> ya <b>Chrome</b> use karo. Filhaal Demo mode try karo.</span>
+    <span id="noticeText"></span>
+    <button id="btnPop" class="linkbtn" type="button" hidden>App alag tab me kholo</button>
   </div>
 
-  <!-- ===== Main ===== -->
-  <main id="main">
-    <div id="emptyState" class="empty">
-      <div class="empty-ico">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10" r="1.6" fill="currentColor"/><path d="M4 17l5-5 3.5 3.5L16 12l4 4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </div>
-      <h1>Chalo shuru karein</h1>
-      <p>Apne PC se koi bhi <b>photos wala folder choose karo</b> &mdash; saari photos (sub-folders ki bhi) yahin ek jagah aa jayengi. Sab kuch aapke PC me hi rahega, <b>kuch bhi upload nahi hota</b>.</p>
-      <div class="row">
-        <button id="btnImport2" class="btn btn-accent" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-          Folder Choose Karo
+  <!-- ===== Body: sidebar + main ===== -->
+  <div class="body-row">
+    <aside class="sidebar" aria-label="Folders">
+      <div class="side-head">
+        <span>Folders</span>
+        <button id="btnRefresh" class="iconbtn2" type="button" title="Folder dobara scan karo (nayi photos ke liye)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 3.5V7h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <button id="btnDemo" class="btn" type="button">Demo Photos Dekho</button>
       </div>
-      <p class="tip">Tip: Is page ko Edge me kholke <b>&#8220;Install app&#8221;</b> kar lo &mdash; app Start Menu me aa jayegi aur internet ke bina bhi chalegi. Supported formats: JPG, PNG, WebP, GIF, BMP, AVIF.</p>
-    </div>
+      <nav id="tree" aria-label="Folder tree"></nav>
+    </aside>
 
-    <div id="noResults" class="empty small" hidden>
-      <h2>Kuch nahi mila</h2>
-      <p>Search badal ke dekho &mdash; ya sort order check karo.</p>
-    </div>
+    <main id="main">
+      <div id="emptyState" class="empty">
+        <div class="empty-ico">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10" r="1.6" fill="currentColor"/><path d="M4 17l5-5 3.5 3.5L16 12l4 4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h1>Chalo shuru karein</h1>
+        <p>Apne PC se koi bhi <b>photos wala folder choose karo</b> &mdash; saari photos (sub-folders ki bhi) yahin ek jagah aa jayengi. Sab kuch aapke PC me hi rahega, <b>kuch bhi upload nahi hota</b>.</p>
+        <div class="row2">
+          <button id="btnImport2" class="btn btn-accent" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+            Folder Choose Karo
+          </button>
+          <button id="btnDemo" class="btn" type="button">Demo Photos Dekho</button>
+        </div>
+        <p class="tip">Supported formats: JPG, PNG, WebP, GIF, BMP, AVIF. iPhone ki <b>HEIC</b> photos Edge me preview nahi hoti &mdash; phone ki Settings me Camera &#8594; Formats &#8594; <b>&#8220;Most Compatible&#8221;</b> kar do, ya photos ko JPG me convert karo.</p>
+      </div>
 
-    <div id="grid" class="grid" hidden></div>
-    <div id="sentinel" style="height:1px"></div>
-  </main>
+      <div id="noResults" class="empty small" hidden>
+        <h2>Kuch nahi mila</h2>
+        <p>Search badal ke dekho &mdash; ya left side me "All photos" wale folder pe click karo.</p>
+      </div>
+
+      <div id="grid" hidden></div>
+      <div id="sentinel" style="height:1px"></div>
+    </main>
+  </div>
 
   <!-- ===== Status bar ===== -->
   <footer class="statusbar">
     <span id="stName">Koi folder nahi chuna</span>
     <span id="stCount"></span>
     <span class="right">
+      <span class="zoomwrap" title="Thumbnail size">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1" fill="currentColor"/><rect x="13" y="4" width="7" height="7" rx="1" fill="currentColor" opacity=".45"/><rect x="4" y="13" width="7" height="7" rx="1" fill="currentColor" opacity=".45"/><rect x="13" y="13" width="7" height="7" rx="1" fill="currentColor"/></svg>
+        <input id="zoom" type="range" min="120" max="300" step="10" aria-label="Thumbnail size" />
+      </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Library clear karo</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v1.0.0</span>
+      <span class="ver">v1.1.0</span>
     </span>
   </footer>
 
@@ -375,10 +456,13 @@
     /* ================= elements ================= */
     const els = {
       grid: $('#grid'), empty: $('#emptyState'), noRes: $('#noResults'), sentinel: $('#sentinel'),
-      search: $('#search'), sort: $('#sort'), importBtn: $('#btnImport'), importBtn2: $('#btnImport2'), demoBtn: $('#btnDemo'),
+      search: $('#search'), sort: $('#sort'),
+      importBtn: $('#btnImport'), importBtn2: $('#btnImport2'), demoBtn: $('#btnDemo'),
+      btnSide: $('#btnSide'), btnRefresh: $('#btnRefresh'), tree: $('#tree'),
+      zoom: $('#zoom'),
       stName: $('#stName'), stCount: $('#stCount'), clearBtn: $('#btnClear'),
       restore: $('#restoreBar'), restoreName: $('#restoreName'), restoreOpen: $('#btnRestoreOpen'), restoreDel: $('#btnRestoreDel'),
-      notice: $('#noticeBar'),
+      notice: $('#noticeBar'), noticeText: $('#noticeText'), btnPop: $('#btnPop'),
       viewer: $('#viewer'), vStage: $('#vStage'), vImg: $('#vImg'), vName: $('#vName'), vCount: $('#vCount'),
       vMeta: $('#vMeta'), vPrev: $('#vPrev'), vNext: $('#vNext'), vClose: $('#vClose'),
       vZoomIn: $('#vZoomIn'), vZoomOut: $('#vZoomOut'), vFit: $('#vFit'), vLoad: $('#vLoad'), vErr: $('#vErr'),
@@ -386,15 +470,17 @@
     };
 
     /* ================= state ================= */
-    const THUMB = 512, BATCH = 400, MAX_PHOTOS = 15000;
+    const THUMB = 512, MAX_PHOTOS = 15000;
     const IMG_EXT = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
+    const UNSUPPORTED_EXT = /\.(heic|heif|tiff?|dng|raw|cr2|cr3|nef|arw|orf|rw2)$/i;
     const state = {
-      photos: [], filtered: [], folder: '',
+      photos: [], filtered: [], groups: [], folder: '', folderFilter: '',
       query: '', sort: localStorage.getItem('pixsa.sort') || 'name-asc',
       vi: -1
     };
     let renderCursor = 0;
     const canPicker = typeof window.showDirectoryPicker === 'function';
+    const inIframe = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
 
     /* ================= toasts ================= */
     function toast(msg, type = 'ok', ms = 3500, action) {
@@ -451,55 +537,96 @@
       try {
         dir = await window.showDirectoryPicker({ id: 'pixsa-photos', mode: 'read' });
       } catch (e) {
-        if (e && e.name !== 'AbortError') toast('Folder nahi khul paya: ' + (e.message || e.name), 'err');
+        if (e && e.name === 'AbortError') return;
+        if (e && e.name === 'SecurityError') {
+          toast('Preview window me folder access block hota hai — "App alag tab me kholo" button dabao', 'err', 7000);
+        } else {
+          toast('Folder nahi khul paya: ' + (e.message || e.name), 'err', 6000);
+        }
         return;
       }
       await loadFolder(dir);
     }
 
-    async function loadFolder(dir) {
-      const t0 = performance.now();
+    async function loadFolder(dir, isRefresh = false) {
       const files = [];
+      const stats = { total: 0, unsupported: 0, count: 0 };
       els.restore.hidden = true;
-      await scanDir(dir, 0, files);
+      setStatus('Scan ho raha hai...');
+      try {
+        await scanDir(dir, 0, files, stats, '');
+      } catch (e) {
+        toast('Folder scan fail: ' + (e.message || e.name), 'err', 7000);
+        setStatus();
+        return;
+      }
       if (!files.length) {
-        toast('Is folder me koi photo nahi mili (JPG/PNG/WebP/GIF/BMP/AVIF)', 'err');
+        let msg = 'Is folder me koi file hi nahi mili';
+        if (stats.unsupported) {
+          msg = `${stats.total} files mili, par ${stats.unsupported} HEIC/TIFF/RAW photos ka preview Edge me nahi banta. JPG/PNG/WebP wale folder try karo.`;
+        } else if (stats.total) {
+          msg = `${stats.total} files mili, par unme koi photo format (JPG/PNG/WebP/GIF/BMP/AVIF) nahi tha`;
+        }
+        toast(msg, 'err', 8000);
         setStatus();
         return;
       }
       state.photos = files;
       state.folder = dir.name;
+      state.folderFilter = '';
       state.query = ''; els.search.value = '';
       if (canPicker) { try { await idbSet('kv', 'lastFolder', dir); } catch (e) {} }
+      buildTree();
       applyFilter();
-      toast(`${files.length} photos mil gayi, ${((performance.now() - t0) / 1000).toFixed(1)}s me import ho gayi`);
+      if (!isRefresh) {
+        toast(`${files.length} photos import ho gayi${stats.unsupported ? ` (${stats.unsupported} HEIC/RAW skip — preview support nahi)` : ''}`, 'ok', 6000);
+      } else {
+        toast(`Refresh ho gaya — ${files.length} photos`, 'ok', 3000);
+      }
     }
 
-    async function scanDir(dir, depth, out) {
+    async function scanDir(dir, depth, out, stats, prefix) {
       if (depth > 6 || out.length >= MAX_PHOTOS) return;
       for await (const [name, entry] of dir.entries()) {
         if (out.length >= MAX_PHOTOS) return;
         if (name.startsWith('.') || name.toLowerCase() === 'node_modules' || name.toLowerCase() === '$recycle.bin') continue;
         if (entry.kind === 'file') {
+          stats.total++;
+          if (UNSUPPORTED_EXT.test(name)) { stats.unsupported++; continue; }
           if (!IMG_EXT.test(name)) continue;
           try {
             const f = await entry.getFile();
-            out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: entry, file: null });
-            if (out.length % 500 === 0) setStatus(`Scan ho raha hai... ${out.length} photos`);
-          } catch (e) { /* skip unreadable file */ }
+            out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: entry, file: null, folder: prefix });
+            stats.count++;
+            if (stats.count % 500 === 0) setStatus(`Scan ho raha hai... ${stats.count} photos`);
+          } catch (e) { /* unreadable file — skip */ }
         } else if (entry.kind === 'directory') {
-          await scanDir(entry, depth + 1, out);
+          await scanDir(entry, depth + 1, out, stats, prefix ? `${prefix}/${name}` : name);
         }
       }
     }
 
-    /* ================= drag & drop folder ================= */
+    /* ================= refresh ================= */
+    els.btnRefresh.addEventListener('click', async () => {
+      const h = await idbGet('kv', 'lastFolder');
+      if (!h || !h.name) { toast('Pehle folder import karo, phir refresh kaam karega', 'err'); return; }
+      try {
+        let perm = await h.queryPermission({ mode: 'read' });
+        if (perm !== 'granted') perm = await h.requestPermission({ mode: 'read' });
+        if (perm !== 'granted') { toast('Permission nahi mili — folder dobara import karo', 'err'); return; }
+        await loadFolder(h, true);
+      } catch (e) {
+        toast('Refresh fail: ' + (e.message || e.name), 'err');
+      }
+    });
+
+    /* ================= drag & drop ================= */
     function walkEntry(entry, depth, out) {
       return new Promise((resolve) => {
         if (!entry) return resolve();
         if (entry.isFile) {
           entry.file((f) => {
-            if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f });
+            if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: '' });
             resolve();
           }, () => resolve());
         } else if (entry.isDirectory && depth < 6) {
@@ -520,21 +647,24 @@
     document.addEventListener('drop', async (e) => {
       e.preventDefault();
       if (!e.dataTransfer) return;
-      const items = [...e.dataTransfer.items];
-      const entries = items.map((it) => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
-      if (!entries.length) return;
       const out = [];
       els.restore.hidden = true;
       setStatus('Drop scan ho raha hai...');
-      let dirCount = 0;
-      for (const en of entries) {
-        if (en.isDirectory) { dirCount++; await walkEntry(en, 0, out); }
-        else await walkEntry(en, 0, out);
+      const items = [...e.dataTransfer.items];
+      const entries = items.map((it) => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
+      if (entries.length) {
+        for (const en of entries) await walkEntry(en, 0, out);
+      } else {
+        for (const f of e.dataTransfer.files || []) {
+          if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: '' });
+        }
       }
-      if (!out.length) { toast('Koi photo nahi mili drop me', 'err'); setStatus(); return; }
+      if (!out.length) { toast('Koi supported photo nahi mili drop me (JPG/PNG/WebP/GIF/BMP/AVIF)', 'err', 6000); setStatus(); return; }
       state.photos = out;
-      state.folder = dirCount && entries[0].isDirectory ? entries[0].name : 'Dropped photos';
+      state.folder = entries.length && entries[0].isDirectory ? entries[0].name : 'Dropped photos';
+      state.folderFilter = '';
       state.query = ''; els.search.value = '';
+      buildTree();
       applyFilter();
       toast(`${out.length} photos drop se aa gayi`);
     });
@@ -577,7 +707,7 @@
         const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.85));
         const name = `Demo-${String(i + 1).padStart(2, '0')}.jpg`;
         const file = new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() - i * 86400000 });
-        out.push({ name, size: file.size, lastModified: file.lastModified, handle: null, file });
+        out.push({ name, size: file.size, lastModified: file.lastModified, handle: null, file, folder: '' });
       }
       return out;
     }
@@ -585,15 +715,18 @@
       setStatus('Demo photos ban rahi hain...');
       state.photos = await makeDemoPhotos();
       state.folder = 'Demo Photos';
+      state.folderFilter = '';
       state.query = ''; els.search.value = '';
+      buildTree();
       applyFilter();
       toast('Demo photos load ho gayi — asli photos ke liye "Import Folder" dabao');
     }
 
-    /* ================= filter / sort / status ================= */
+    /* ================= filter / groups / status ================= */
     function applyFilter() {
       const q = state.query.trim().toLowerCase();
       let arr = state.photos;
+      if (state.folderFilter !== '') arr = arr.filter((p) => (p.folder || '') === state.folderFilter);
       if (q) arr = arr.filter((p) => p.name.toLowerCase().includes(q));
       const s = state.sort;
       arr = arr.slice().sort((a, b) => {
@@ -603,27 +736,84 @@
         return (a.lastModified || 0) - (b.lastModified || 0);
       });
       state.filtered = arr;
+      buildGroups();
       renderGrid();
       setStatus();
+    }
+
+    function buildGroups() {
+      const map = new Map();
+      state.filtered.forEach((p, idx) => {
+        const k = p.folder || '';
+        if (!map.has(k)) map.set(k, []);
+        map.get(k).push({ p, idx });
+      });
+      const keys = [...map.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      state.groups = keys.map((k) => ({ path: k, items: map.get(k) }));
     }
 
     function setStatus(scanMsg) {
       if (scanMsg) { els.stName.textContent = scanMsg; els.stCount.textContent = ''; return; }
       els.stName.innerHTML = '';
-      if (state.folder) {
-        const b = document.createElement('b'); b.textContent = state.folder;
+      const label = state.folderFilter !== '' ? `${state.folder}/${state.folderFilter}`.replace(/^\//, '') : '';
+      if (state.folder || label) {
+        const b = document.createElement('b');
+        b.textContent = label ? label : state.folder;
         els.stName.appendChild(b);
+        if (label && state.folderFilter !== '') {
+          const s = document.createElement('span');
+          s.textContent = '  (folder filter ON)';
+          els.stName.appendChild(s);
+        }
       } else {
         els.stName.textContent = 'Koi folder nahi chuna';
       }
       const n = state.photos.length;
       els.stCount.textContent = n
-        ? `${n} photos${state.query ? ` • ${state.filtered.length} match` : ''}`
+        ? `${n} photos${state.query || state.folderFilter !== '' ? ` • ${state.filtered.length} dikhai de rahi` : ''}`
         : '';
       els.clearBtn.hidden = !n;
     }
 
-    /* ================= grid ================= */
+    /* ================= sidebar tree ================= */
+    function buildTree() {
+      els.tree.innerHTML = '';
+      const counts = new Map();
+      for (const p of state.photos) {
+        const k = p.folder || '';
+        counts.set(k, (counts.get(k) || 0) + 1);
+      }
+      const paths = [...counts.keys()].sort((a, b) => {
+        const da = a ? a.split('/').length : 0, db = b ? b.split('/').length : 0;
+        return da - db || a.localeCompare(b, undefined, { numeric: true });
+      });
+      const mk = (label, path, count, depth) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'titem';
+        if (path === state.folderFilter) b.classList.add('sel');
+        b.style.paddingLeft = (10 + depth * 16) + 'px';
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.innerHTML = '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>';
+        const nm = document.createElement('span'); nm.className = 'tname'; nm.textContent = label;
+        const cn = document.createElement('span'); cn.className = 'tcount'; cn.textContent = count;
+        b.appendChild(svg); b.appendChild(nm); b.appendChild(cn);
+        b.addEventListener('click', () => {
+          state.folderFilter = path;
+          buildTree();
+          applyFilter();
+        });
+        els.tree.appendChild(b);
+      };
+      mk(state.folder || 'Library', '', state.photos.length, 0);
+      for (const p of paths) {
+        if (p === '') continue;
+        const parts = p.split('/');
+        mk(parts[parts.length - 1], p, counts.get(p), parts.length);
+      }
+    }
+
+    /* ================= grid (folder-grouped, Picasa style) ================= */
     const thumbIO = new IntersectionObserver((ents) => {
       for (const en of ents) {
         if (!en.isIntersecting) continue;
@@ -633,7 +823,7 @@
     }, { rootMargin: '600px 0px' });
 
     const sentinelIO = new IntersectionObserver(() => {
-      if (renderCursor < state.filtered.length) renderMore();
+      if (renderCursor < state.groups.length) renderMore();
     }, { root: $('#main'), rootMargin: '800px 0px' });
     sentinelIO.observe(els.sentinel);
 
@@ -649,25 +839,37 @@
     }
 
     function renderMore() {
-      const end = Math.min(state.filtered.length, renderCursor + BATCH);
+      if (renderCursor >= state.groups.length) return;
+      const g = state.groups[renderCursor++];
+      const label = g.path === '' ? state.folder : g.path;
+      const head = document.createElement('div');
+      head.className = 'fhead';
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.innerHTML = '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>';
+      const nm = document.createElement('span'); nm.className = 'fname'; nm.textContent = label || 'Photos';
+      const cn = document.createElement('span'); cn.className = 'fcount'; cn.textContent = `${g.items.length} photos`;
+      head.appendChild(svg); head.appendChild(nm); head.appendChild(cn);
+
+      const row = document.createElement('div');
+      row.className = 'row';
       const frag = document.createDocumentFragment();
-      for (let i = renderCursor; i < end; i++) frag.appendChild(makeCell(i));
+      frag.appendChild(head); frag.appendChild(row);
+      for (const it of g.items) row.appendChild(makeCell(it));
       els.grid.appendChild(frag);
-      renderCursor = end;
     }
 
-    function makeCell(i) {
-      const p = state.filtered[i];
+    function makeCell(entry) {
       const btn = document.createElement('button');
-      btn.type = 'button'; btn.className = 'cell'; btn.title = p.name;
+      btn.type = 'button'; btn.className = 'cell'; btn.title = entry.p.name;
       const ph = document.createElement('span');
-      ph.className = 'ph'; ph.dataset.i = i;
+      ph.className = 'ph'; ph.dataset.pi = entry.idx;
       const spin = document.createElement('span'); spin.className = 'spin';
       ph.appendChild(spin);
       const cap = document.createElement('span');
-      cap.className = 'cap'; cap.textContent = p.name;
+      cap.className = 'cap'; cap.textContent = entry.p.name;
       btn.appendChild(ph); btn.appendChild(cap);
-      btn.addEventListener('click', () => openViewer(i));
+      btn.addEventListener('click', () => openViewer(entry.idx));
       thumbIO.observe(ph);
       return btn;
     }
@@ -703,7 +905,7 @@
     }
 
     async function loadThumb(ph) {
-      const i = +ph.dataset.i;
+      const i = +ph.dataset.pi;
       const p = state.filtered[i];
       if (!p) return;
       try {
@@ -828,7 +1030,6 @@
     });
     els.vImg.addEventListener('dblclick', (e) => {
       if (z > 1.01) { resetZoom(); return; }
-      const r = els.vStage.getBoundingClientRect();
       zoomAt(e.clientX, e.clientY, 2.5);
     });
 
@@ -840,18 +1041,24 @@
     els.vFit.addEventListener('click', resetZoom);
 
     document.addEventListener('keydown', (e) => {
-      if (els.viewer.hidden) return;
-      if (e.key === 'Escape') closeViewer();
-      else if (e.key === 'ArrowRight') nav(1);
-      else if (e.key === 'ArrowLeft') nav(-1);
-      else if (e.key === '+' || e.key === '=') zoomCenter(1.25);
-      else if (e.key === '-') zoomCenter(1 / 1.25);
-      else if (e.key === '0') resetZoom();
+      if (!els.viewer.hidden) {
+        if (e.key === 'Escape') closeViewer();
+        else if (e.key === 'ArrowRight') nav(1);
+        else if (e.key === 'ArrowLeft') nav(-1);
+        else if (e.key === '+' || e.key === '=') zoomCenter(1.25);
+        else if (e.key === '-') zoomCenter(1 / 1.25);
+        else if (e.key === '0') resetZoom();
+        return;
+      }
+      if (e.key === '/' && document.activeElement !== els.search && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        els.search.focus();
+      }
     });
 
     /* ================= restore last folder ================= */
     async function initRestore() {
-      if (!canPicker) return;
+      if (!canPicker || inIframe) return;
       try {
         const h = await idbGet('kv', 'lastFolder');
         if (h && h.name) {
@@ -881,6 +1088,7 @@
     els.importBtn.addEventListener('click', importFolder);
     els.importBtn2.addEventListener('click', importFolder);
     els.demoBtn.addEventListener('click', loadDemo);
+    els.btnSide.addEventListener('click', () => document.body.classList.toggle('side-off'));
 
     els.search.addEventListener('input', debounce(() => {
       state.query = els.search.value;
@@ -894,21 +1102,38 @@
       applyFilter();
     });
 
+    function applyZoom() {
+      document.documentElement.style.setProperty('--thumb', els.zoom.value + 'px');
+    }
+    els.zoom.value = localStorage.getItem('pixsa.zoom') || '170';
+    applyZoom();
+    els.zoom.addEventListener('input', () => {
+      localStorage.setItem('pixsa.zoom', els.zoom.value);
+      applyZoom();
+    });
+
     els.clearBtn.addEventListener('click', async () => {
-      if (!confirm('Library clear karni hai? (Photos aapke PC me safe rahengi — sirf app ki list hatégì)')) return;
-      state.photos = []; state.filtered = []; state.folder = '';
+      if (!confirm('Library clear karni hai? (Photos aapke PC me safe rahengi — sirf app ki list hategi)')) return;
+      state.photos = []; state.filtered = []; state.groups = []; state.folder = ''; state.folderFilter = '';
       state.query = ''; els.search.value = '';
       await idbDel('kv', 'lastFolder').catch(() => {});
       els.restore.hidden = true;
+      buildTree();
       applyFilter();
       toast('Library clear ho gayi');
     });
 
     if (!canPicker) {
+      els.noticeText.textContent = 'Folder import ke liye Windows 11 ka Edge ya Chrome use karo. Filhaal Demo mode try karo.';
       els.notice.hidden = false;
       els.importBtn.disabled = true;
       els.importBtn2.disabled = true;
       els.restore.hidden = true;
+    } else if (inIframe) {
+      els.noticeText.textContent = 'Ye preview window hai — yahan PC ke folder access nahi hota. App ko alag tab me kholo, wahan sab kaam karega.';
+      els.notice.hidden = false;
+      els.btnPop.hidden = false;
+      els.btnPop.addEventListener('click', () => window.open(location.href, '_blank'));
     }
 
     /* ================= service worker (auto-update) ================= */
@@ -941,7 +1166,7 @@
 
     /* ================= boot ================= */
     initRestore();
-    setStatus();
+    if (window.innerWidth < 760) document.body.classList.add('side-off');
     if (new URLSearchParams(location.search).get('demo') === '1') loadDemo();
   })();
   </script>
