@@ -74,9 +74,11 @@
       display: block;
       border-radius: 50%;
     }
-    /* v3.6.0: the colour wheel turns slowly like a car tyre while the dark
+    /* v3.6.1: the colour wheel turns slowly like a car tyre while the dark
        shutter emblem stays perfectly still — like the RR badge on a
-       Rolls-Royce wheel: the wheel spins, the emblem does not. */
+       Rolls-Royce wheel: the wheel spins, the emblem does not.
+       The spin is always on ("humesha") — it no longer switches off when
+       Windows "Animation effects" are turned off. */
     .brand-logo .ring { animation: tyreSpin 12s linear infinite; }
     @keyframes tyreSpin { to { transform: rotate(360deg); } }
     .brand-name {
@@ -423,8 +425,9 @@
     @keyframes spUp { from { opacity: 0; transform: translateY(16px); } }
     @keyframes spBar { 0% { transform: translateX(-110%); } 100% { transform: translateX(280%); } }
     @media (prefers-reduced-motion: reduce) {
+      /* v3.6.1: the header tyre spin is intentionally NOT disabled here —
+         it must turn always, on every PC, exactly as requested. */
       #splash, #splash * { animation: none !important; }
-      .brand-logo .ring { animation: none !important; }
     }
 
     @media (max-width: 760px) {
@@ -798,7 +801,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.6.0</span>
+      <span class="ver">v3.6.1</span>
     </span>
   </footer>
 
@@ -2018,7 +2021,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.6.0 — 100% offline photo editor + collage (Picasa style): 36 effects with intensity, live histogram, I\'m Feeling Lucky, crop, straighten, text, stickers, Sizer photo resizer, 6 collage types, power-cut safe auto-save. The official SHIVAM app. Everything stays on your PC, nothing is ever uploaded.', 'ok', 9000);
+          toast('S H I V A M PIXA v3.6.1 — 100% offline photo editor + collage (Picasa style): 36 effects with intensity, live histogram, I\'m Feeling Lucky, crop, straighten, text, stickers, Sizer photo resizer, 6 collage types, power-cut safe auto-save. The official SHIVAM app. Everything stays on your PC, nothing is ever uploaded.', 'ok', 9000);
           break;
       }
     }
