@@ -63,10 +63,22 @@
     }
     .brand { display: flex; align-items: center; gap: 8px; user-select: none; padding-right: 4px; }
     .brand-logo {
+      position: relative;
       width: 22px; height: 22px; border-radius: 50%;
       box-shadow: 0 1px 3px rgba(0,0,0,.28);
       flex: none;
     }
+    .brand-logo img {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+      border-radius: 50%;
+    }
+    /* v3.6.0: the colour wheel turns slowly like a car tyre while the dark
+       shutter emblem stays perfectly still — like the RR badge on a
+       Rolls-Royce wheel: the wheel spins, the emblem does not. */
+    .brand-logo .ring { animation: tyreSpin 12s linear infinite; }
+    @keyframes tyreSpin { to { transform: rotate(360deg); } }
     .brand-name {
       font-family: 'Aboreto', 'Segoe UI', sans-serif;
       font-weight: 400;
@@ -412,6 +424,7 @@
     @keyframes spBar { 0% { transform: translateX(-110%); } 100% { transform: translateX(280%); } }
     @media (prefers-reduced-motion: reduce) {
       #splash, #splash * { animation: none !important; }
+      .brand-logo .ring { animation: none !important; }
     }
 
     @media (max-width: 760px) {
@@ -619,7 +632,10 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16M4 12h16M4 17.5h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
     <div class="brand" title="S H I V A M PIXA">
-      <img class="brand-logo" src="./icons/logo-round.png" alt="" draggable="false" onerror="this.remove()" />
+      <span class="brand-logo" aria-hidden="true">
+        <img class="ring" src="./icons/logo-ring.png" alt="" draggable="false" onerror="this.remove()" />
+        <img class="core" src="./icons/logo-core.png" alt="" draggable="false" onerror="this.remove()" />
+      </span>
       <span class="brand-name"><span class="shine">SHIVAM</span><b>PIXA</b></span>
     </div>
 
@@ -782,7 +798,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.5.0</span>
+      <span class="ver">v3.6.0</span>
     </span>
   </footer>
 
@@ -2002,7 +2018,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.5.0 — 100% offline photo editor + collage (Picasa style): 36 effects with intensity, live histogram, I\'m Feeling Lucky, crop, straighten, text, stickers, Sizer photo resizer, 6 collage types, power-cut safe auto-save. The official SHIVAM app. Everything stays on your PC, nothing is ever uploaded.', 'ok', 9000);
+          toast('S H I V A M PIXA v3.6.0 — 100% offline photo editor + collage (Picasa style): 36 effects with intensity, live histogram, I\'m Feeling Lucky, crop, straighten, text, stickers, Sizer photo resizer, 6 collage types, power-cut safe auto-save. The official SHIVAM app. Everything stays on your PC, nothing is ever uploaded.', 'ok', 9000);
           break;
       }
     }
