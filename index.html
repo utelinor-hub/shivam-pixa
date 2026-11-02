@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SHIVAM PIXSA — Offline Photo Library</title>
+  <meta name="description" content="Offline photo library — bilkul Picasa jaisa. Sab kuch 100% aapke PC par." />
+  <meta name="theme-color" content="#0b0e13" />
+  <meta name="color-scheme" content="dark" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icons/favicon.png" type="image/png" />
+  <style>
+    :root {
+      --bg: #0b0e13;
+      --panel: #12161d;
+      --panel2: #171c25;
+      --border: #232b38;
+      --border-hi: #334054;
+      --text: #e7edf5;
+      --muted: #8b98ab;
+      --accent: #38bdf8;
+      --accent-strong: #0ea5e9;
+      --danger: #f87171;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    body.noscroll main { overflow: hidden; }
+    button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+    [hidden] { display: none !important; }
+
+    /* ---------- top bar ---------- */
+    .topbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 16px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 9px; user-select: none; }
+    .brand svg { width: 22px; height: 22px; color: var(--accent); }
+    .brand-name { font-size: 13px; font-weight: 600; letter-spacing: .14em; white-space: nowrap; }
+    .brand-name b { color: var(--accent); font-weight: 700; }
+
+    .searchwrap { position: relative; flex: 1; max-width: 430px; min-width: 180px; margin-inline: auto; }
+    .searchwrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--muted); pointer-events: none; }
+    .searchwrap input {
+      width: 100%; padding: 8px 12px 8px 32px;
+      background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); outline: none; font-size: 13px;
+    }
+    .searchwrap input:focus { border-color: var(--accent-strong); }
+    .searchwrap input::placeholder { color: var(--muted); }
+
+    .tools { display: flex; align-items: center; gap: 8px; }
+    select {
+      background: var(--panel2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 10px; font-size: 13px; outline: none; cursor: pointer;
+    }
+    select:focus { border-color: var(--accent-strong); }
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+      background: var(--panel2); border: 1px solid var(--border);
+      transition: border-color .15s, background .15s;
+      white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--border-hi); background: #1c2330; }
+    .btn svg { width: 15px; height: 15px; }
+    .btn-accent { background: var(--accent-strong); border-color: var(--accent-strong); color: #04141f; font-weight: 600; }
+    .btn-accent:hover { background: var(--accent); border-color: var(--accent); }
+    .btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+    /* ---------- bars ---------- */
+    .restorebar, .noticebar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 8px 16px; font-size: 13px;
+      background: #10202e; border-bottom: 1px solid #1b3a4d;
+      color: #bfe3f7;
+    }
+    .noticebar { background: #2a1d10; border-color: #4d3319; color: #f4d9b0; }
+    .restorebar svg, .noticebar svg { width: 15px; height: 15px; flex: none; }
+    .linkbtn { color: var(--accent); font-weight: 600; font-size: 13px; padding: 4px 6px; border-radius: 6px; }
+    .linkbtn:hover { background: rgba(56,189,248,.12); }
+    .linkbtn.dim { color: var(--muted); font-weight: 400; }
+
+    /* ---------- main / grid ---------- */
+    main { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+    main::-webkit-scrollbar { width: 10px; }
+    main::-webkit-scrollbar-thumb { background: #26303f; border-radius: 6px; }
+    main::-webkit-scrollbar-track { background: transparent; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 10px;
+      padding: 16px 20px 44px;
+    }
+    .cell {
+      position: relative; aspect-ratio: 1 / 1;
+      border-radius: var(--radius); overflow: hidden;
+      background: var(--panel2); border: 1px solid var(--border);
+      transition: border-color .15s, transform .15s;
+      text-align: left;
+    }
+    .cell:hover { border-color: var(--accent-strong); transform: translateY(-2px); }
+    .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .cell .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+    .cell .ph img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      opacity: 0; transition: opacity .25s, transform .25s;
+    }
+    .cell .ph.ready img { opacity: 1; }
+    .cell:hover .ph.ready img { transform: scale(1.05); }
+    .cell .ph.bad { background: repeating-linear-gradient(45deg, #151a23, #151a23 8px, #10141c 8px, #10141c 16px); }
+    .cell .ph.bad::after { content: "Load nahi hui"; font-size: 11px; color: var(--muted); }
+    .spin {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid #26303f; border-top-color: var(--accent);
+      animation: spin 1s linear infinite;
+    }
+    .cell .ph.ready .spin { display: none; }
+    .cell .cap {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      padding: 20px 9px 7px; font-size: 11px; color: #e3ebf4;
+      background: linear-gradient(transparent, rgba(4,7,11,.88));
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      opacity: 0; transition: opacity .15s; pointer-events: none;
+    }
+    .cell:hover .cap { opacity: 1; }
+
+    /* ---------- empty state ---------- */
+    .empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 72px 24px; gap: 6px; min-height: 62vh;
+    }
+    .empty-ico {
+      width: 84px; height: 84px; border-radius: 50%;
+      background: var(--panel2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
+    }
+    .empty-ico svg { width: 38px; height: 38px; color: var(--accent); }
+    .empty h1 { font-size: 21px; font-weight: 600; }
+    .empty p { color: var(--muted); max-width: 470px; line-height: 1.65; font-size: 13.5px; }
+    .empty .row { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; justify-content: center; }
+    .empty .row .btn { padding: 11px 20px; font-size: 14px; }
+    .empty .tip { margin-top: 26px; font-size: 12px; color: #5f6b7d; max-width: 470px; line-height: 1.6; }
+    .empty.small { min-height: 40vh; }
+    .empty.small h2 { font-size: 17px; font-weight: 600; }
+    .empty.small p { font-size: 13px; }
+
+    /* ---------- status bar ---------- */
+    .statusbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 7px 16px; font-size: 12px; color: var(--muted);
+      background: var(--panel); border-top: 1px solid var(--border);
+    }
+    .statusbar .right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .badge {
+      padding: 3px 9px; border-radius: 99px; font-size: 10.5px; font-weight: 600;
+      background: rgba(56,189,248,.12); color: var(--accent); letter-spacing: .05em;
+    }
+    .ver { font-variant-numeric: tabular-nums; }
+    #stName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+    #stName b { color: #b9c6d6; font-weight: 600; }
+
+    /* ---------- viewer ---------- */
+    .viewer {
+      position: fixed; inset: 0; z-index: 50;
+      background: rgba(4, 6, 10, .97);
+      display: flex; flex-direction: column;
+      animation: fadein .18s ease;
+    }
+    .v-top { display: flex; align-items: center; gap: 14px; padding: 12px 16px; }
+    #vName { flex: 1; font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #vCount { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .icobtn {
+      width: 40px; height: 40px; border-radius: 50%; flex: none;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(23, 28, 37, .85); border: 1px solid var(--border);
+      transition: border-color .15s, background .15s;
+    }
+    .icobtn:hover { border-color: var(--accent-strong); background: #1c2330; }
+    .icobtn svg { width: 17px; height: 17px; }
+    .v-stage {
+      flex: 1; position: relative; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      touch-action: none;
+    }
+    .v-stage.clickclose { cursor: pointer; }
+    #vImg {
+      max-width: 94%; max-height: 100%;
+      user-select: none; -webkit-user-drag: none;
+      transform-origin: center center;
+      will-change: transform;
+      box-shadow: 0 12px 48px rgba(0,0,0,.55);
+    }
+    #vImg.zoomed { cursor: grab; }
+    .v-stage.grabbing #vImg { cursor: grabbing; }
+    .v-nav { position: absolute; top: 50%; transform: translateY(-50%); }
+    .v-nav.prev { left: 14px; } .v-nav.next { right: 14px; }
+    .v-zoom { position: absolute; right: 16px; bottom: 18px; display: flex; flex-direction: column; gap: 8px; }
+    .v-zoom .icobtn { width: 38px; height: 38px; }
+    #vLoad { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+    #vLoad .spin { width: 34px; height: 34px; border-width: 3px; }
+    #vErr { position: absolute; color: var(--muted); font-size: 13.5px; background: var(--panel); border: 1px solid var(--border); padding: 14px 20px; border-radius: 10px; }
+    .v-bottom { text-align: center; padding: 10px 16px 14px; color: var(--muted); font-size: 12.5px; min-height: 38px; }
+
+    /* ---------- toasts ---------- */
+    .toasts { position: fixed; right: 18px; bottom: 52px; z-index: 70; display: flex; flex-direction: column; gap: 8px; max-width: 340px; }
+    .toast {
+      display: flex; align-items: center; gap: 12px;
+      background: #1a212c; border: 1px solid var(--border); border-left: 3px solid var(--accent);
+      padding: 11px 14px; border-radius: 9px; font-size: 13px; line-height: 1.5;
+      box-shadow: 0 8px 28px rgba(0,0,0,.45);
+      opacity: 0; transform: translateY(10px); transition: opacity .25s, transform .25s;
+    }
+    .toast.on { opacity: 1; transform: translateY(0); }
+    .toast.err { border-left-color: var(--danger); }
+    .toast .tbtn { color: var(--accent); font-weight: 700; font-size: 12.5px; white-space: nowrap; padding: 4px 6px; border-radius: 6px; }
+    .toast .tbtn:hover { background: rgba(56,189,248,.12); }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadein { from { opacity: 0; } }
+
+    @media (max-width: 640px) {
+      .searchwrap { order: 3; max-width: none; flex-basis: 100%; }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(122px, 1fr)); gap: 7px; padding: 10px 12px 40px; }
+      .brand-name { letter-spacing: .08em; }
+      .v-nav.prev { left: 6px; } .v-nav.next { right: 6px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== Top bar ===== -->
+  <header class="topbar">
+    <div class="brand" title="SHIVAM PIXSA">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="3.4" fill="currentColor"/></svg>
+      <span class="brand-name">SHIVAM <b>PIXSA</b></span>
+    </div>
+
+    <div class="searchwrap">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M20 20l-3.8-3.8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <input id="search" type="search" placeholder="Photos search karo..." aria-label="Photo search" autocomplete="off" />
+    </div>
+
+    <div class="tools">
+      <select id="sort" aria-label="Sort order">
+        <option value="name-asc">Naam (A&#8594;Z)</option>
+        <option value="name-desc">Naam (Z&#8594;A)</option>
+        <option value="date-desc">Nayi photos pehle</option>
+        <option value="date-asc">Purani photos pehle</option>
+      </select>
+      <button id="btnImport" class="btn btn-accent" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        Import Folder
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== Restore last folder bar ===== -->
+  <div id="restoreBar" class="restorebar" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+    <span>Last folder: <b id="restoreName"></b> &mdash; wahi photos wapas kholein?</span>
+    <button id="btnRestoreOpen" class="linkbtn" type="button">Wapas Kholo</button>
+    <button id="btnRestoreDel" class="linkbtn dim" type="button">Nahi chahiye</button>
+  </div>
+
+  <!-- ===== Browser not supported bar ===== -->
+  <div id="noticeBar" class="noticebar" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16.5" r="1.2" fill="currentColor"/></svg>
+    <span>Folder import ke liye Windows 11 ka <b>Edge</b> ya <b>Chrome</b> use karo. Filhaal Demo mode try karo.</span>
+  </div>
+
+  <!-- ===== Main ===== -->
+  <main id="main">
+    <div id="emptyState" class="empty">
+      <div class="empty-ico">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10" r="1.6" fill="currentColor"/><path d="M4 17l5-5 3.5 3.5L16 12l4 4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h1>Chalo shuru karein</h1>
+      <p>Apne PC se koi bhi <b>photos wala folder choose karo</b> &mdash; saari photos (sub-folders ki bhi) yahin ek jagah aa jayengi. Sab kuch aapke PC me hi rahega, <b>kuch bhi upload nahi hota</b>.</p>
+      <div class="row">
+        <button id="btnImport2" class="btn btn-accent" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          Folder Choose Karo
+        </button>
+        <button id="btnDemo" class="btn" type="button">Demo Photos Dekho</button>
+      </div>
+      <p class="tip">Tip: Is page ko Edge me kholke <b>&#8220;Install app&#8221;</b> kar lo &mdash; app Start Menu me aa jayegi aur internet ke bina bhi chalegi. Supported formats: JPG, PNG, WebP, GIF, BMP, AVIF.</p>
+    </div>
+
+    <div id="noResults" class="empty small" hidden>
+      <h2>Kuch nahi mila</h2>
+      <p>Search badal ke dekho &mdash; ya sort order check karo.</p>
+    </div>
+
+    <div id="grid" class="grid" hidden></div>
+    <div id="sentinel" style="height:1px"></div>
+  </main>
+
+  <!-- ===== Status bar ===== -->
+  <footer class="statusbar">
+    <span id="stName">Koi folder nahi chuna</span>
+    <span id="stCount"></span>
+    <span class="right">
+      <button id="btnClear" class="linkbtn dim" type="button" hidden>Library clear karo</button>
+      <span class="badge">100% OFFLINE</span>
+      <span class="ver">v1.0.0</span>
+    </span>
+  </footer>
+
+  <!-- ===== Viewer ===== -->
+  <div id="viewer" class="viewer" hidden role="dialog" aria-label="Photo viewer">
+    <div class="v-top">
+      <span id="vName"></span>
+      <span id="vCount"></span>
+      <button id="vClose" class="icobtn" type="button" aria-label="Band karo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div id="vStage" class="v-stage">
+      <img id="vImg" alt="" />
+      <button id="vPrev" class="icobtn v-nav prev" type="button" aria-label="Pichli photo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="vNext" class="icobtn v-nav next" type="button" aria-label="Agli photo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5L16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="v-zoom">
+        <button id="vZoomIn" class="icobtn" type="button" aria-label="Zoom in">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+        <button id="vZoomOut" class="icobtn" type="button" aria-label="Zoom out">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12h13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+        <button id="vFit" class="icobtn" type="button" aria-label="Fit karo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div id="vLoad" hidden><span class="spin"></span></div>
+      <div id="vErr" hidden>Ye photo load nahi ho payi &mdash; shayad file move ya delete ho gayi hai.</div>
+    </div>
+    <div class="v-bottom" id="vMeta"></div>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script>
+  (() => {
+    'use strict';
+
+    /* ================= helpers ================= */
+    const $ = (s) => document.querySelector(s);
+    const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+    const fmtBytes = (n) => {
+      if (n == null) return '';
+      const u = ['B', 'KB', 'MB', 'GB']; let i = 0;
+      while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+      return `${n >= 100 || i === 0 ? Math.round(n) : n.toFixed(1)} ${u[i]}`;
+    };
+    const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+    /* ================= elements ================= */
+    const els = {
+      grid: $('#grid'), empty: $('#emptyState'), noRes: $('#noResults'), sentinel: $('#sentinel'),
+      search: $('#search'), sort: $('#sort'), importBtn: $('#btnImport'), importBtn2: $('#btnImport2'), demoBtn: $('#btnDemo'),
+      stName: $('#stName'), stCount: $('#stCount'), clearBtn: $('#btnClear'),
+      restore: $('#restoreBar'), restoreName: $('#restoreName'), restoreOpen: $('#btnRestoreOpen'), restoreDel: $('#btnRestoreDel'),
+      notice: $('#noticeBar'),
+      viewer: $('#viewer'), vStage: $('#vStage'), vImg: $('#vImg'), vName: $('#vName'), vCount: $('#vCount'),
+      vMeta: $('#vMeta'), vPrev: $('#vPrev'), vNext: $('#vNext'), vClose: $('#vClose'),
+      vZoomIn: $('#vZoomIn'), vZoomOut: $('#vZoomOut'), vFit: $('#vFit'), vLoad: $('#vLoad'), vErr: $('#vErr'),
+      toasts: $('#toasts')
+    };
+
+    /* ================= state ================= */
+    const THUMB = 512, BATCH = 400, MAX_PHOTOS = 15000;
+    const IMG_EXT = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
+    const state = {
+      photos: [], filtered: [], folder: '',
+      query: '', sort: localStorage.getItem('pixsa.sort') || 'name-asc',
+      vi: -1
+    };
+    let renderCursor = 0;
+    const canPicker = typeof window.showDirectoryPicker === 'function';
+
+    /* ================= toasts ================= */
+    function toast(msg, type = 'ok', ms = 3500, action) {
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      const span = document.createElement('span');
+      span.textContent = msg;
+      el.appendChild(span);
+      if (action) {
+        const b = document.createElement('button');
+        b.className = 'tbtn'; b.type = 'button';
+        b.textContent = action.label;
+        b.onclick = action.fn;
+        el.appendChild(b);
+      }
+      els.toasts.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('on'));
+      setTimeout(() => { el.classList.remove('on'); setTimeout(() => el.remove(), 350); }, ms);
+    }
+
+    /* ================= IndexedDB ================= */
+    let dbP = null;
+    function db() {
+      if (!dbP) dbP = new Promise((resolve, reject) => {
+        const rq = indexedDB.open('pixsa', 1);
+        rq.onupgradeneeded = () => {
+          const d = rq.result;
+          if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
+          if (!d.objectStoreNames.contains('thumbs')) d.createObjectStore('thumbs');
+        };
+        rq.onsuccess = () => resolve(rq.result);
+        rq.onerror = () => reject(rq.error);
+      });
+      return dbP;
+    }
+    const idbReq = (store, mode, fn) => db().then((d) => new Promise((resolve, reject) => {
+      const t = d.transaction(store, mode);
+      const rq = fn(t.objectStore(store));
+      t.oncomplete = () => resolve(rq ? rq.result : undefined);
+      t.onerror = () => reject(t.error);
+      t.onabort = () => reject(t.error);
+    }));
+    const idbGet = (store, key) => idbReq(store, 'readonly', (s) => s.get(key)).catch(() => null);
+    const idbSet = (store, key, val) => idbReq(store, 'readwrite', (s) => s.put(val, key));
+    const idbDel = (store, key) => idbReq(store, 'readwrite', (s) => s.delete(key));
+
+    /* ================= file access ================= */
+    const getFile = (p) => (p.handle ? p.handle.getFile() : Promise.resolve(p.file));
+
+    /* ================= folder import ================= */
+    async function importFolder() {
+      if (!canPicker) return;
+      let dir;
+      try {
+        dir = await window.showDirectoryPicker({ id: 'pixsa-photos', mode: 'read' });
+      } catch (e) {
+        if (e && e.name !== 'AbortError') toast('Folder nahi khul paya: ' + (e.message || e.name), 'err');
+        return;
+      }
+      await loadFolder(dir);
+    }
+
+    async function loadFolder(dir) {
+      const t0 = performance.now();
+      const files = [];
+      els.restore.hidden = true;
+      await scanDir(dir, 0, files);
+      if (!files.length) {
+        toast('Is folder me koi photo nahi mili (JPG/PNG/WebP/GIF/BMP/AVIF)', 'err');
+        setStatus();
+        return;
+      }
+      state.photos = files;
+      state.folder = dir.name;
+      state.query = ''; els.search.value = '';
+      if (canPicker) { try { await idbSet('kv', 'lastFolder', dir); } catch (e) {} }
+      applyFilter();
+      toast(`${files.length} photos mil gayi, ${((performance.now() - t0) / 1000).toFixed(1)}s me import ho gayi`);
+    }
+
+    async function scanDir(dir, depth, out) {
+      if (depth > 6 || out.length >= MAX_PHOTOS) return;
+      for await (const [name, entry] of dir.entries()) {
+        if (out.length >= MAX_PHOTOS) return;
+        if (name.startsWith('.') || name.toLowerCase() === 'node_modules' || name.toLowerCase() === '$recycle.bin') continue;
+        if (entry.kind === 'file') {
+          if (!IMG_EXT.test(name)) continue;
+          try {
+            const f = await entry.getFile();
+            out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: entry, file: null });
+            if (out.length % 500 === 0) setStatus(`Scan ho raha hai... ${out.length} photos`);
+          } catch (e) { /* skip unreadable file */ }
+        } else if (entry.kind === 'directory') {
+          await scanDir(entry, depth + 1, out);
+        }
+      }
+    }
+
+    /* ================= drag & drop folder ================= */
+    function walkEntry(entry, depth, out) {
+      return new Promise((resolve) => {
+        if (!entry) return resolve();
+        if (entry.isFile) {
+          entry.file((f) => {
+            if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f });
+            resolve();
+          }, () => resolve());
+        } else if (entry.isDirectory && depth < 6) {
+          const rd = entry.createReader();
+          const readBatch = () => rd.readEntries(async (list) => {
+            if (!list.length) return resolve();
+            for (const en of list) {
+              if (out.length >= MAX_PHOTOS) return resolve();
+              if (!en.name.startsWith('.')) await walkEntry(en, depth + 1, out);
+            }
+            readBatch();
+          }, () => resolve());
+          readBatch();
+        } else resolve();
+      });
+    }
+    document.addEventListener('dragover', (e) => e.preventDefault());
+    document.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      if (!e.dataTransfer) return;
+      const items = [...e.dataTransfer.items];
+      const entries = items.map((it) => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
+      if (!entries.length) return;
+      const out = [];
+      els.restore.hidden = true;
+      setStatus('Drop scan ho raha hai...');
+      let dirCount = 0;
+      for (const en of entries) {
+        if (en.isDirectory) { dirCount++; await walkEntry(en, 0, out); }
+        else await walkEntry(en, 0, out);
+      }
+      if (!out.length) { toast('Koi photo nahi mili drop me', 'err'); setStatus(); return; }
+      state.photos = out;
+      state.folder = dirCount && entries[0].isDirectory ? entries[0].name : 'Dropped photos';
+      state.query = ''; els.search.value = '';
+      applyFilter();
+      toast(`${out.length} photos drop se aa gayi`);
+    });
+
+    /* ================= demo photos ================= */
+    async function makeDemoPhotos(n = 24) {
+      const out = [];
+      const hues = [205, 190, 226, 258, 288, 165];
+      for (let i = 0; i < n; i++) {
+        const w = 960, h = 720;
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        const x = c.getContext('2d');
+        const hue = hues[i % hues.length];
+        const g = x.createLinearGradient(0, 0, 0, h);
+        g.addColorStop(0, `hsl(${hue + 14} 52% 24%)`);
+        g.addColorStop(1, `hsl(${hue} 46% 8%)`);
+        x.fillStyle = g; x.fillRect(0, 0, w, h);
+        for (let s = 0; s < 40; s++) {
+          x.fillStyle = `rgba(255,255,255,${0.04 + (s % 5) * 0.02})`;
+          x.fillRect((s * 137 + i * 53) % w, (s * 89) % (h * 0.5), 2, 2);
+        }
+        const sx = w * (0.22 + (i % 5) * 0.14), sy = h * 0.3, sr = 44 + (i % 3) * 12;
+        x.fillStyle = 'rgba(255,214,130,.22)'; x.beginPath(); x.arc(sx, sy, sr * 1.8, 0, Math.PI * 2); x.fill();
+        x.fillStyle = 'hsl(41 92% 63%)'; x.beginPath(); x.arc(sx, sy, sr, 0, Math.PI * 2); x.fill();
+        for (let L = 0; L < 3; L++) {
+          x.fillStyle = `hsl(${hue} 30% ${9 + L * 8}%)`;
+          const base = h * (0.6 + L * 0.13);
+          x.beginPath(); x.moveTo(0, h); x.lineTo(0, base);
+          let px = 0, up = true;
+          while (px < w) {
+            const nx = px + 110 + ((i * 17 + L * 31 + px) % 170);
+            const ny = base + (up ? -1 : 1) * (34 + ((px * (L + 3) + i * 11) % 84));
+            x.lineTo(nx, ny); px = nx; up = !up;
+          }
+          x.lineTo(w, base); x.lineTo(w, h); x.closePath(); x.fill();
+        }
+        x.fillStyle = 'rgba(255,255,255,.88)';
+        x.font = '600 30px "Segoe UI", sans-serif';
+        x.fillText(`DEMO ${String(i + 1).padStart(2, '0')}`, 30, h - 30);
+        const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.85));
+        const name = `Demo-${String(i + 1).padStart(2, '0')}.jpg`;
+        const file = new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() - i * 86400000 });
+        out.push({ name, size: file.size, lastModified: file.lastModified, handle: null, file });
+      }
+      return out;
+    }
+    async function loadDemo() {
+      setStatus('Demo photos ban rahi hain...');
+      state.photos = await makeDemoPhotos();
+      state.folder = 'Demo Photos';
+      state.query = ''; els.search.value = '';
+      applyFilter();
+      toast('Demo photos load ho gayi — asli photos ke liye "Import Folder" dabao');
+    }
+
+    /* ================= filter / sort / status ================= */
+    function applyFilter() {
+      const q = state.query.trim().toLowerCase();
+      let arr = state.photos;
+      if (q) arr = arr.filter((p) => p.name.toLowerCase().includes(q));
+      const s = state.sort;
+      arr = arr.slice().sort((a, b) => {
+        if (s === 'name-asc') return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        if (s === 'name-desc') return b.name.localeCompare(a.name, undefined, { numeric: true });
+        if (s === 'date-desc') return (b.lastModified || 0) - (a.lastModified || 0);
+        return (a.lastModified || 0) - (b.lastModified || 0);
+      });
+      state.filtered = arr;
+      renderGrid();
+      setStatus();
+    }
+
+    function setStatus(scanMsg) {
+      if (scanMsg) { els.stName.textContent = scanMsg; els.stCount.textContent = ''; return; }
+      els.stName.innerHTML = '';
+      if (state.folder) {
+        const b = document.createElement('b'); b.textContent = state.folder;
+        els.stName.appendChild(b);
+      } else {
+        els.stName.textContent = 'Koi folder nahi chuna';
+      }
+      const n = state.photos.length;
+      els.stCount.textContent = n
+        ? `${n} photos${state.query ? ` • ${state.filtered.length} match` : ''}`
+        : '';
+      els.clearBtn.hidden = !n;
+    }
+
+    /* ================= grid ================= */
+    const thumbIO = new IntersectionObserver((ents) => {
+      for (const en of ents) {
+        if (!en.isIntersecting) continue;
+        thumbIO.unobserve(en.target);
+        loadThumb(en.target);
+      }
+    }, { rootMargin: '600px 0px' });
+
+    const sentinelIO = new IntersectionObserver(() => {
+      if (renderCursor < state.filtered.length) renderMore();
+    }, { root: $('#main'), rootMargin: '800px 0px' });
+    sentinelIO.observe(els.sentinel);
+
+    function renderGrid() {
+      const total = state.photos.length;
+      const has = state.filtered.length > 0;
+      els.empty.hidden = has || total > 0;
+      els.noRes.hidden = !(total > 0 && !has);
+      els.grid.hidden = !has;
+      els.grid.innerHTML = '';
+      renderCursor = 0;
+      if (has) renderMore();
+    }
+
+    function renderMore() {
+      const end = Math.min(state.filtered.length, renderCursor + BATCH);
+      const frag = document.createDocumentFragment();
+      for (let i = renderCursor; i < end; i++) frag.appendChild(makeCell(i));
+      els.grid.appendChild(frag);
+      renderCursor = end;
+    }
+
+    function makeCell(i) {
+      const p = state.filtered[i];
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'cell'; btn.title = p.name;
+      const ph = document.createElement('span');
+      ph.className = 'ph'; ph.dataset.i = i;
+      const spin = document.createElement('span'); spin.className = 'spin';
+      ph.appendChild(spin);
+      const cap = document.createElement('span');
+      cap.className = 'cap'; cap.textContent = p.name;
+      btn.appendChild(ph); btn.appendChild(cap);
+      btn.addEventListener('click', () => openViewer(i));
+      thumbIO.observe(ph);
+      return btn;
+    }
+
+    /* ================= thumbnails ================= */
+    const thumbMem = new Map();
+    async function getThumbURL(p) {
+      const key = `${p.name}|${p.size}|${p.lastModified}`;
+      if (thumbMem.has(key)) return thumbMem.get(key);
+      const cached = await idbGet('thumbs', key);
+      if (cached) {
+        const u = URL.createObjectURL(cached);
+        thumbMem.set(key, u);
+        return u;
+      }
+      let bmp;
+      try {
+        const file = await getFile(p);
+        bmp = await createImageBitmap(file);
+      } catch (e) { return null; }
+      const sc = Math.min(1, THUMB / Math.max(bmp.width, bmp.height));
+      const w = Math.max(1, Math.round(bmp.width * sc));
+      const h = Math.max(1, Math.round(bmp.height * sc));
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      if (bmp.close) bmp.close();
+      const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.82));
+      if (!blob) return null;
+      idbSet('thumbs', key, blob).catch(() => {});
+      const u = URL.createObjectURL(blob);
+      thumbMem.set(key, u);
+      return u;
+    }
+
+    async function loadThumb(ph) {
+      const i = +ph.dataset.i;
+      const p = state.filtered[i];
+      if (!p) return;
+      try {
+        const url = await getThumbURL(p);
+        if (!ph.isConnected) return;
+        if (url) {
+          const img = new Image();
+          img.alt = p.name; img.decoding = 'async';
+          img.onload = () => ph.classList.add('ready');
+          img.src = url;
+          ph.appendChild(img);
+        } else {
+          ph.classList.add('bad');
+        }
+      } catch (e) {
+        if (ph.isConnected) ph.classList.add('bad');
+      }
+    }
+
+    /* ================= viewer ================= */
+    let z = 1, zx = 0, zy = 0, curURL = null, dragging = false, moved = false, lx = 0, ly = 0;
+
+    function openViewer(i) {
+      state.vi = i;
+      els.viewer.hidden = false;
+      document.body.classList.add('noscroll');
+      showPhoto();
+    }
+    function closeViewer() {
+      els.viewer.hidden = true;
+      document.body.classList.remove('noscroll');
+      state.vi = -1;
+      if (curURL) { URL.revokeObjectURL(curURL); curURL = null; }
+      els.vImg.removeAttribute('src');
+      els.vImg.removeAttribute('style');
+    }
+    function nav(d) {
+      const n = state.filtered.length;
+      if (!n || els.viewer.hidden) return;
+      state.vi = (state.vi + d + n) % n;
+      showPhoto();
+    }
+    async function showPhoto() {
+      const p = state.filtered[state.vi];
+      if (!p) return;
+      resetZoom();
+      els.vName.textContent = p.name;
+      els.vCount.textContent = `${state.vi + 1} / ${state.filtered.length}`;
+      els.vMeta.textContent = '';
+      els.vErr.hidden = true;
+      els.vLoad.hidden = false;
+      try {
+        const file = await getFile(p);
+        const url = URL.createObjectURL(file);
+        els.vImg.onload = () => {
+          els.vLoad.hidden = true;
+          if (curURL && curURL !== url) URL.revokeObjectURL(curURL);
+          curURL = url;
+          els.vMeta.textContent = `${els.vImg.naturalWidth} × ${els.vImg.naturalHeight} px  •  ${fmtBytes(file.size)}  •  ${new Date(p.lastModified || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+        };
+        els.vImg.onerror = () => {
+          els.vLoad.hidden = true;
+          els.vErr.hidden = false;
+          URL.revokeObjectURL(url);
+        };
+        els.vImg.src = url;
+      } catch (e) {
+        els.vLoad.hidden = true;
+        els.vErr.hidden = false;
+      }
+    }
+
+    function applyZ() {
+      els.vImg.style.transform = `translate(${zx}px, ${zy}px) scale(${z})`;
+      els.vImg.classList.toggle('zoomed', z > 1.01);
+      els.vStage.classList.toggle('clickclose', z <= 1.01);
+    }
+    function resetZoom() { z = 1; zx = 0; zy = 0; applyZ(); }
+    function zoomAt(clientX, clientY, factor) {
+      const r = els.vStage.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const ax = clientX - cx, ay = clientY - cy;
+      const nz = clamp(z * factor, 1, 10);
+      const k = nz / z;
+      zx = ax - k * (ax - zx);
+      zy = ay - k * (ay - zy);
+      z = nz;
+      if (z <= 1.001) { z = 1; zx = 0; zy = 0; }
+      applyZ();
+    }
+    const zoomCenter = (f) => {
+      const r = els.vStage.getBoundingClientRect();
+      zoomAt(r.left + r.width / 2, r.top + r.height / 2, f);
+    };
+
+    els.vStage.addEventListener('wheel', (e) => {
+      if (!els.vImg.src || els.viewer.hidden) return;
+      e.preventDefault();
+      zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.16 : 1 / 1.16);
+    }, { passive: false });
+
+    els.vStage.addEventListener('pointerdown', (e) => {
+      moved = false;
+      if (z <= 1.01 || e.button !== 0) return;
+      dragging = true; lx = e.clientX; ly = e.clientY;
+      els.vStage.setPointerCapture(e.pointerId);
+      els.vStage.classList.add('grabbing');
+    });
+    els.vStage.addEventListener('pointermove', (e) => {
+      if (Math.abs(e.clientX - lx) + Math.abs(e.clientY - ly) > 6) moved = true;
+      if (!dragging) return;
+      zx += e.clientX - lx; zy += e.clientY - ly;
+      lx = e.clientX; ly = e.clientY;
+      applyZ();
+    });
+    ['pointerup', 'pointercancel'].forEach((ev) => els.vStage.addEventListener(ev, () => {
+      dragging = false;
+      els.vStage.classList.remove('grabbing');
+    }));
+    els.vStage.addEventListener('click', (e) => {
+      if (e.target === els.vStage && !moved) closeViewer();
+    });
+    els.vImg.addEventListener('dblclick', (e) => {
+      if (z > 1.01) { resetZoom(); return; }
+      const r = els.vStage.getBoundingClientRect();
+      zoomAt(e.clientX, e.clientY, 2.5);
+    });
+
+    els.vClose.addEventListener('click', closeViewer);
+    els.vPrev.addEventListener('click', () => nav(-1));
+    els.vNext.addEventListener('click', () => nav(1));
+    els.vZoomIn.addEventListener('click', () => zoomCenter(1.25));
+    els.vZoomOut.addEventListener('click', () => zoomCenter(1 / 1.25));
+    els.vFit.addEventListener('click', resetZoom);
+
+    document.addEventListener('keydown', (e) => {
+      if (els.viewer.hidden) return;
+      if (e.key === 'Escape') closeViewer();
+      else if (e.key === 'ArrowRight') nav(1);
+      else if (e.key === 'ArrowLeft') nav(-1);
+      else if (e.key === '+' || e.key === '=') zoomCenter(1.25);
+      else if (e.key === '-') zoomCenter(1 / 1.25);
+      else if (e.key === '0') resetZoom();
+    });
+
+    /* ================= restore last folder ================= */
+    async function initRestore() {
+      if (!canPicker) return;
+      try {
+        const h = await idbGet('kv', 'lastFolder');
+        if (h && h.name) {
+          els.restoreName.textContent = h.name;
+          els.restore.hidden = false;
+          els.restoreOpen.onclick = async () => {
+            try {
+              const perm = await h.requestPermission({ mode: 'read' });
+              if (perm === 'granted') {
+                els.restore.hidden = true;
+                await loadFolder(h);
+              } else {
+                toast('Permission nahi mili — "Wapas Kholo" dobara dabao ya folder re-import karo', 'err');
+              }
+            } catch (e) { toast('Folder dobara nahi khul paya', 'err'); }
+          };
+          els.restoreDel.onclick = async () => {
+            await idbDel('kv', 'lastFolder').catch(() => {});
+            els.restore.hidden = true;
+            toast('Purana folder list se hata diya');
+          };
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    /* ================= toolbar events ================= */
+    els.importBtn.addEventListener('click', importFolder);
+    els.importBtn2.addEventListener('click', importFolder);
+    els.demoBtn.addEventListener('click', loadDemo);
+
+    els.search.addEventListener('input', debounce(() => {
+      state.query = els.search.value;
+      applyFilter();
+    }, 150));
+
+    els.sort.value = state.sort;
+    els.sort.addEventListener('change', () => {
+      state.sort = els.sort.value;
+      localStorage.setItem('pixsa.sort', state.sort);
+      applyFilter();
+    });
+
+    els.clearBtn.addEventListener('click', async () => {
+      if (!confirm('Library clear karni hai? (Photos aapke PC me safe rahengi — sirf app ki list hatégì)')) return;
+      state.photos = []; state.filtered = []; state.folder = '';
+      state.query = ''; els.search.value = '';
+      await idbDel('kv', 'lastFolder').catch(() => {});
+      els.restore.hidden = true;
+      applyFilter();
+      toast('Library clear ho gayi');
+    });
+
+    if (!canPicker) {
+      els.notice.hidden = false;
+      els.importBtn.disabled = true;
+      els.importBtn2.disabled = true;
+      els.restore.hidden = true;
+    }
+
+    /* ================= service worker (auto-update) ================= */
+    if ('serviceWorker' in navigator) {
+      const hadController = !!navigator.serviceWorker.controller;
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then((reg) => {
+          if (reg.update) setTimeout(() => reg.update().catch(() => {}), 2000);
+          reg.addEventListener('updatefound', () => {
+            const nw = reg.installing;
+            if (!nw) return;
+            nw.addEventListener('statechange', () => {
+              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                toast('Naya version aa gaya hai!', 'ok', 12000, {
+                  label: 'Refresh karo',
+                  fn: () => location.reload()
+                });
+                setTimeout(() => { try { nw.postMessage('SKIP_WAITING'); } catch (e) {} }, 1500);
+              }
+            });
+          });
+        }).catch(() => {});
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!hadController || sessionStorage.getItem('pixsa.up')) return;
+          sessionStorage.setItem('pixsa.up', '1');
+          location.reload();
+        });
+      });
+    }
+
+    /* ================= boot ================= */
+    initRestore();
+    setStatus();
+    if (new URLSearchParams(location.search).get('demo') === '1') loadDemo();
+  })();
+  </script>
+</body>
+</html>
