@@ -37,6 +37,12 @@
   const POLL_MS = 25000;
   const GIS_SRC = 'https://accounts.google.com/gsi/client';
 
+  /* Built-in OAuth Client ID (created by Shivam in Google Cloud Console for
+     https://utelinor-hub.github.io). A browser-app Client ID is public by
+     design — data safety comes from the authorized-origin list in the Google
+     Cloud Console plus the user's own Google consent screen. */
+  const DEFAULT_CLIENT_ID = '941573311970-4as3d63hd7kph89olmam7k725jinu22h.apps.googleusercontent.com';
+
   /* ---------- tiny helpers ---------- */
   const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
     'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
@@ -56,11 +62,13 @@
     status: 'off',        // off | setup | out | connecting | syncing | ok | err
     statusNote: '',
     timer: null,
+    renewTimer: null,
     pushTimer: null,
     pushing: false,
     pulling: false,
     gisLoaded: false,
     enabled: false,
+    everSignedIn: false,  // true only after a successful sign-in on this PC
     pendingAdopt: 0
   };
 
@@ -103,6 +111,8 @@
   const dirtyGet = async () => (await idbGet('kv', 'cloud.dirty')) || [];
   const dirtySet = (v) => idbSet('kv', 'cloud.dirty', v).catch(() => {});
   const remoteSet = (m) => idbSet('kv', 'cloud.remote', m).catch(() => {});
+  const sessGet = async () => (await idbGet('kv', 'cloud.session')) || null;
+  const sessSet = (v) => idbSet('kv', 'cloud.session', v).catch(() => {});
 
   /* ================= Google Identity Services (lazy) ================= */
   function loadGis() {
@@ -129,8 +139,11 @@
           if (resp && resp.access_token) {
             C.token = resp.access_token;
             C.tokenExp = Date.now() + Math.max(60, (Number(resp.expires_in) || 3600) - 90) * 1000;
+            /* keep the session, so a reload never needs the Google window again */
+            sessSet({ token: C.token, exp: C.tokenExp, email: (C.cfg && C.cfg.email) || '' });
           }
-        }
+        },
+        error_callback: () => { /* replaced per-call inside askToken */ }
       });
     }
     return C.tc;
@@ -139,25 +152,38 @@
   async function askToken(promptMode) {
     const tc = await ensureTokenClient();
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Google sign-in timed out')), 120000);
-      const orig = tc.callback;
+      const origC = tc.callback, origE = tc.error_callback;
+      const restore = () => { tc.callback = origC; try { tc.error_callback = origE; } catch (e) {} clearTimeout(timer); };
+      const timer = setTimeout(() => { restore(); reject(new Error('Google sign-in timed out')); }, 120000);
       tc.callback = (resp) => {
-        tc.callback = orig;
-        clearTimeout(timer);
+        restore();
         if (resp && resp.access_token) resolve(resp.access_token);
         else reject(new Error((resp && resp.error) ? resp.error : 'Sign-in was cancelled'));
       };
+      tc.error_callback = (err) => {
+        restore();
+        reject(new Error((err && (err.message || err.type)) || 'The Google window was closed or blocked'));
+      };
       try { tc.requestAccessToken({ prompt: promptMode || '' }); }
-      catch (e) { clearTimeout(timer); reject(e); }
+      catch (e) { restore(); reject(e); }
     });
   }
 
   const hasToken = () => !!(C.token && Date.now() < C.tokenExp);
 
+  /* Silent token renewal — ONLY for PCs that signed in successfully before.
+     A successful sign-in proves this origin is authorized in the Google Cloud
+     Console, so the silent (prompt 'none') flow can never bounce the app out
+     to a Google error page. First-time sign-in always needs a user click. */
+  async function silentRenew() {
+    if (!C.cfg || !C.everSignedIn) return null;
+    try { return await askToken('none'); } catch (e) { return null; }
+  }
+
   async function authFetch(url, opts = {}, retry = true) {
     if (!hasToken()) {
-      /* prompt 'none' = fully silent — never opens a popup or redirects */
-      try { await askToken('none'); } catch (e) { throw new Error('Google session expired — press Sync to sign in again'); }
+      const t = await silentRenew();
+      if (!t) throw new Error('Google session expired — open the cloud chip and press “Sign in with Google”');
     }
     opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + C.token });
     let r;
@@ -531,6 +557,17 @@
     }, POLL_MS);
   }
 
+  /* refresh the Google token before it expires so background sync never stops */
+  function startRenewTimer() {
+    clearInterval(C.renewTimer);
+    C.renewTimer = setInterval(async () => {
+      if (!C.enabled || document.hidden || !C.token) return;
+      if (Date.now() < C.tokenExp - 15 * 60000) return;
+      const t = await silentRenew();
+      if (t) setStatus_('ok');
+    }, 10 * 60000);
+  }
+
   /* ================= public API (used by index.html / editor.js) ================= */
   const API = {
     get enabled() { return C.enabled; },
@@ -584,14 +621,16 @@
   /* ================= sign in / out ================= */
   async function signIn(mode) {
     try {
-      if (!C.cfg || !C.cfg.clientId) { openModal(); toast('First paste your Google Client ID (one-time setup)', 'err', 6000); return; }
+      if (!C.cfg || !C.cfg.clientId) { openModal(); toast('Google Client ID is missing — paste it in the Cloud Sync window', 'err', 6000); return; }
       setStatus_('connecting');
       await askToken(mode);
       const info = await authFetch(`${DRIVE}/about?fields=user`).then((r) => r.ok ? r.json() : null).catch(() => null);
       if (info && info.user && info.user.emailAddress) { C.cfg.email = info.user.emailAddress; await cfgSet(C.cfg); }
+      C.everSignedIn = true;
       C.enabled = true;
+      sessSet({ token: C.token, exp: C.tokenExp, email: (C.cfg && C.cfg.email) || '' });
       setStatus_('syncing');
-      startPolling();
+      startPolling(); startRenewTimer();
       await pullCycle({ manual: false });
       schedulePush(2000);
       toast(`Signed in as ${C.cfg.email || 'Google account'} — your photos will now sync in the background`, 'ok', 5000);
@@ -604,8 +643,9 @@
 
   function signOut() {
     try { if (C.token && window.google && window.google.accounts) window.google.accounts.oauth2.revoke(C.token, () => {}); } catch (e) {}
-    C.token = null; C.enabled = false;
-    clearInterval(C.timer); clearTimeout(C.pushTimer);
+    C.token = null; C.enabled = false; C.everSignedIn = false;
+    clearInterval(C.timer); clearInterval(C.renewTimer); clearTimeout(C.pushTimer);
+    sessSet(null);
     /* remove cloud-only photos from the grid (local disk photos stay) */
     const gone = state.photos.filter((p) => p.cloud && !p.handle && !p.file);
     state.photos = state.photos.filter((p) => !(p.cloud && !p.handle && !p.file));
@@ -675,22 +715,28 @@
   async function init() {
     wireUI();
     C.cfg = await cfgGet();
-    if (!C.cfg || !C.cfg.clientId) { setStatus_('setup', 'One-time setup needed'); return; }
-    if (!navigator.onLine) { setStatus_('err', 'No internet — will retry'); C.enabled = true; return; }
+    if (!C.cfg) C.cfg = {};
+    /* the Client ID ships with the app — no manual paste needed anymore */
+    if (!C.cfg.clientId) { C.cfg.clientId = DEFAULT_CLIENT_ID; await cfgSet(C.cfg); }
     C.enabled = true;
-    try {
-      setStatus_('connecting');
-      await ensureTokenClient();
-      /* fully silent token check — prompt 'none' never shows UI or redirects;
-         if this PC never signed in, we simply wait for the user to press Sign in */
-      try { await askToken('none'); } catch (e) { setStatus_('out', 'Sign in to start syncing'); return; }
-      setStatus_('syncing');
-      startPolling();
-      await pullCycle({ manual: false });
-      schedulePush(3000);
-    } catch (e) {
-      setStatus_('out', e.message);
+    /* fast path: a still-valid session saved by the last sign-in on this PC.
+       NO Google window, NO network auth at boot — safe on every origin. */
+    const s = await sessGet();
+    if (s && s.token && s.exp && Date.now() < s.exp - 60000) {
+      C.token = s.token; C.tokenExp = s.exp;
+      if (s.email) C.cfg.email = s.email;
+      C.everSignedIn = true;
+      setStatus_('syncing', 'Restoring your library…');
+      startPolling(); startRenewTimer();
+      pullCycle({ manual: false }).catch(() => {});
+      schedulePush(4000);
+      return;
     }
+    if (!navigator.onLine) { setStatus_('err', 'No internet — will retry'); return; }
+    /* never fire Google auth without a user gesture: on an unauthorized
+       origin that would bounce the whole app to a Google error page.
+       The chip shows “Sign in” instead — one click and it connects. */
+    setStatus_('out', 'Sign in to start syncing');
   }
 
   /* faster visibility: when the user comes back to the tab, pull at once */
