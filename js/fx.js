@@ -1,6 +1,6 @@
 /* SHIVAM PIXA — fx.js
    Non-destructive render engine: original photo + ops list + tuning adjustments
-   -> kisi bhi resolution par render (preview chhota, Save full-res). */
+   -> renders at any resolution (small preview, full-res on Save). */
 (() => {
   'use strict';
 
@@ -703,7 +703,7 @@
   }
 
   /* ---------- main renderer ----------
-     stickers: optional Map(sid -> ImageBitmap/canvas) — 'sticker' ops ke liye */
+     stickers: optional Map(sid -> ImageBitmap/canvas) — for 'sticker' ops */
   function renderStack(src, ops, adj, maxSide, stickers) {
     const sw = src.width || src.naturalWidth, sh = src.height || src.naturalHeight;
     let sc = 1;
