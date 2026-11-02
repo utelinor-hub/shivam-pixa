@@ -1,7 +1,7 @@
 /* SHIVAM PIXA — Service Worker
    Update rule: when a new version arrives, the old cache is deleted and the app refreshes itself. */
 
-const VERSION = 'v3.6.1';
+const VERSION = 'v3.7.0';
 const CACHE = `shivam-pixa-${VERSION}`;
 const ASSETS = [
   './',
@@ -10,6 +10,7 @@ const ASSETS = [
   './js/fx.js',
   './js/editor.js',
   './js/collage.js',
+  './js/cloud.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
