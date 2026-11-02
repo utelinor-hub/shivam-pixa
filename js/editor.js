@@ -9,7 +9,9 @@
    v3.6.0: spinning tyre header logo (outer colour wheel rotates, the dark
    shutter emblem stays fixed like a Rolls-Royce badge).
    v3.6.1: the tyre spin is now always on — it no longer switches off when
-   Windows "Animation effects" (prefers-reduced-motion) are turned off. */
+   Windows "Animation effects" (prefers-reduced-motion) are turned off.
+   v3.7.0: Google Drive cloud sync — editing a synced photo saves locally
+   first (instant) and overwrites the same Drive file in the background. */
 (() => {
   'use strict';
   const P = window.Pixsa;
@@ -784,7 +786,11 @@
     const p = E.photo;
     const oldKey = P.photoKey(p);
     let ok = false;
-    if (p.handle) {
+    if (p.cloud && window.PixsaCloud && window.PixsaCloud.enabled) {
+      /* v3.7.0: cloud photos have no local disk file — saving updates the
+         cached copy and queues the same Drive file for overwrite */
+      try { ok = await window.PixsaCloud.onPhotoSaved(p, blob); } catch (e) { ok = false; }
+    } else if (p.handle) {
       try {
         let perm = await p.handle.queryPermission({ mode: 'readwrite' });
         if (perm !== 'granted') perm = await p.handle.requestPermission({ mode: 'readwrite' });
@@ -802,6 +808,9 @@
       P.invalidateThumb(p);
       p.size = blob.size;
       p.lastModified = Date.now();
+      /* v3.7.0: cloud photos — the SAME Google Drive file is overwritten in
+         the background (no duplicate photo is ever created) */
+      if (p.cloud && window.PixsaCloud) window.PixsaCloud.onPhotoSaved(p, blob);
       E.saved = true;
       E.dirty = false;
       try { if (E.src && E.src.close) E.src.close(); } catch (e) {}
