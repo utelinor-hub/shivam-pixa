@@ -949,7 +949,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.14.1</span>
+      <span class="ver">v3.15.0</span>
     </span>
   </footer>
 
@@ -1236,15 +1236,6 @@
       </div>
       <div class="c-body">
         <div class="c-side">
-          <h5>Layout</h5>
-          <div class="c-types">
-            <button type="button" data-ct="pile" class="on">Picture Pile</button>
-            <button type="button" data-ct="mosaic">Mosaic</button>
-            <button type="button" data-ct="grid">Grid</button>
-            <button type="button" data-ct="frame">Frame Mosaic</button>
-            <button type="button" data-ct="sheet">Contact Sheet</button>
-            <button type="button" data-ct="mex">Multiple Exposure</button>
-          </div>
           <h5>Page Format</h5>
           <select id="cFormat" style="width:100%">
             <option value="16x9">16:9 Screen (3840&times;2160)</option>
@@ -1257,7 +1248,16 @@
             <option value="16x20">16x20 Print (300 DPI)</option>
             <option value="a4">A4 (300 DPI)</option>
             <option value="letter">US Letter (300 DPI)</option>
+            <option value="custom">Custom ratio&hellip;</option>
           </select>
+          <div id="cCustomRow" hidden style="margin-top:8px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <input id="cCustW" type="number" min="1" max="60" step="0.5" value="16" style="width:70px" aria-label="Ratio width" />
+              <span style="color:#667">:</span>
+              <input id="cCustH" type="number" min="1" max="60" step="0.5" value="9" style="width:70px" aria-label="Ratio height" />
+              <button id="cCustApply" class="btn" type="button">Apply</button>
+            </div>
+          </div>
           <button id="cOrient" class="btn" type="button" style="width:100%;margin-top:8px;justify-content:center">Orientation: Landscape</button>
           <h5>Photo Borders</h5>
           <select id="cBorder" style="width:100%">
@@ -1265,10 +1265,6 @@
             <option value="white" selected>White border</option>
             <option value="polaroid">Polaroid frame</option>
           </select>
-          <div id="cSpacingRow" hidden>
-            <h5>Grid Spacing</h5>
-            <input id="cSpacing" type="range" min="0" max="40" value="10" style="width:100%" />
-          </div>
           <h5>Background</h5>
           <label class="chkrow"><input type="checkbox" id="cBgPhoto" /> Blurred photo background</label>
           <input id="cBg" type="color" value="#f5f2ec" style="height:28px;width:100%;margin-top:8px" />
@@ -2507,7 +2503,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.14.1', 'ok', 2500);
+          toast('S H I V A M PIXA v3.15.0', 'ok', 2500);
           break;
       }
     }
