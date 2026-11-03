@@ -109,7 +109,7 @@
 
   const el = {
     chip: null, label: null,
-    modal: null, clientId: null, email: null, line: null, diag: null,
+    modal: null, clientId: null, email: null, line: null, diag: null, steps: null,
     btnSaveId: null, btnSign: null, btnNow: null, btnOut: null, btnFree: null,
     btnEnable: null
   };
@@ -889,8 +889,28 @@
     /* v3.9.0: keep the exact error visible inside the dialog — the old code
        dropped C.statusNote here, so failures showed only a 7-second toast */
     el.line.textContent = (stTxt[C.status] || '') + (C.statusNote ? ` — ${C.statusNote}` : '');
-    /* v3.14.1: console-fixable error → show the one-click fix button */
-    if (el.btnEnable) el.btnEnable.hidden = !C.fixUrl;
+    /* v3.14.1: console-fixable error → show the one-click fix button.
+       v3.15.1: label the button after the page it actually opens, and show
+       numbered steps so the console fix is impossible to miss. */
+    if (el.btnEnable) {
+      el.btnEnable.hidden = !C.fixUrl;
+      if (C.fixUrl) {
+        const driveApi = C.fixUrl.includes('drive.googleapis.com');
+        el.btnEnable.textContent = driveApi ? 'Enable Drive API' : 'Open Publishing settings';
+      }
+    }
+    if (el.steps) {
+      const u = C.fixUrl || '';
+      if (u.includes('drive.googleapis.com')) {
+        el.steps.innerHTML = '<li>Press <b>Enable Drive API</b> below — Google Cloud Console opens</li><li>Press the <b>Enable</b> button there and wait about 1 minute</li><li>Come back here and press <b>Sign in with Google</b> again</li>';
+        el.steps.hidden = false;
+      } else if (u.includes('/auth/audience')) {
+        el.steps.innerHTML = '<li>Press <b>Open Publishing settings</b> below — Google Cloud Console opens</li><li>Under <b>Publishing status</b> choose <b>In production</b> and press <b>Save</b> &nbsp;<i>(or add your Google account under “Test users”)</i></li><li>Come back here and press <b>Sign in with Google</b> again</li>';
+        el.steps.hidden = false;
+      } else {
+        el.steps.hidden = true;
+      }
+    }
     if (el.diag) {
       const allowed = originAllowed();
       const cid = (C.cfg && C.cfg.clientId) || '';
@@ -905,6 +925,7 @@
   function wireUI() {
     el.chip = document.getElementById('cloudChip');
     el.label = document.getElementById('cloudLabel');
+    el.steps = document.getElementById('cloudSteps'); /* v3.15.1: numbered fix steps */
     el.modal = document.getElementById('cloud');
     if (!el.chip || !el.modal) return;
     el.clientId = document.getElementById('cloudClientId');
