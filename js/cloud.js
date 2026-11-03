@@ -43,6 +43,18 @@
      Cloud Console plus the user's own Google consent screen. */
   const DEFAULT_CLIENT_ID = '941573311970-4as3d63hd7kph89olmam7k725jinu22h.apps.googleusercontent.com';
 
+  /* Origins authorized for the BUILT-IN Client ID in the Google Cloud Console.
+     If the app runs anywhere else (localhost, a fork, a copied file), Google
+     would bounce the whole page to an error screen the moment sign-in is
+     attempted — so we simply refuse to start Google auth from there. */
+  const DEFAULT_ALLOWED_ORIGINS = ['https://utelinor-hub.github.io'];
+
+  function originAllowed() {
+    if (!C.cfg || !C.cfg.clientId) return true;
+    if (C.cfg.clientId !== DEFAULT_CLIENT_ID) return true; /* custom ID — owner manages their own origins */
+    return DEFAULT_ALLOWED_ORIGINS.includes(location.origin);
+  }
+
   /* ---------- tiny helpers ---------- */
   const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
     'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
@@ -176,7 +188,7 @@
      Console, so the silent (prompt 'none') flow can never bounce the app out
      to a Google error page. First-time sign-in always needs a user click. */
   async function silentRenew() {
-    if (!C.cfg || !C.everSignedIn) return null;
+    if (!C.cfg || !C.everSignedIn || !originAllowed()) return null;
     try { return await askToken('none'); } catch (e) { return null; }
   }
 
@@ -622,6 +634,14 @@
   async function signIn(mode) {
     try {
       if (!C.cfg || !C.cfg.clientId) { openModal(); toast('Google Client ID is missing — paste it in the Cloud Sync window', 'err', 6000); return; }
+      if (!originAllowed()) {
+        /* guard: starting Google auth from a non-authorized origin can navigate
+           this page away to a Google error screen (popup-blocked fallback) */
+        setStatus_('out', 'Sign-in works on the official app site');
+        toast('Sign-in only works on the official app site — open https://utelinor-hub.github.io/shivam-pixa/ and use it there', 'err', 9000);
+        updModal();
+        return;
+      }
       setStatus_('connecting');
       await askToken(mode);
       const info = await authFetch(`${DRIVE}/about?fields=user`).then((r) => r.ok ? r.json() : null).catch(() => null);
@@ -743,7 +763,15 @@
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && C.enabled && hasToken()) pullCycle().catch(() => {});
   });
-  window.addEventListener('online', () => { if (C.enabled) { setStatus_('syncing'); pullCycle().catch(() => {}); schedulePush(2000); } });
+  window.addEventListener('online', () => {
+    if (!C.enabled) return;
+    /* v3.7.0 fix: never leave the chip stuck on “Syncing” when nobody is
+       signed in — go back to the red “Sign in” state instead */
+    if (!hasToken()) { setStatus_('out', 'Sign in to start syncing'); return; }
+    setStatus_('syncing');
+    pullCycle().catch(() => {});
+    schedulePush(2000);
+  });
   window.addEventListener('offline', () => setStatus_('err', 'No internet'));
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
