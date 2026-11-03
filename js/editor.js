@@ -56,7 +56,22 @@
            "Install Update" live there permanently (a red dot marks Help
            while an update waits, and the check names the waiting version),
            so an update can never be missed, dismissed into nowhere or left
-           stuck again. */
+           stuck again.
+   v3.17.0: (collage + library) full Picasa 3 replica pass — the collage
+           editor gets Picasa's round wheel control (drag the ring's knob
+           to rotate AND resize in one gesture, hover shows a faint wheel),
+           a right-click menu (Set as Background, Bring to Top / Forward /
+           Backward / Bottom, Rotate Right/Left, View and Edit, Remove —
+           back to Clips), a Clips (N) tab that adds tray or PC photos onto
+           the pile any time at their natural ratio, all five Collage Types
+           (Picture Pile / Mosaic / Frame Mosaic / Grid / Contact Sheet),
+           the Picasa Page Format list with Landscape/Portrait icons, Draw
+           Shadows + Show Captions, and the 2x2 footer (Desktop Background |
+           Create Collage | Reset | Close). The library becomes Picasa's
+           home screen: Albums (Recently Updated, Starred) / Projects /
+           Collages (count) / Folders, folder headers gain a date and a
+           one-click Create Photo Collage button, and the tray gains the
+           green hold pushpin and the red clear button. */
 (() => {
   'use strict';
   const P = window.Pixsa;
