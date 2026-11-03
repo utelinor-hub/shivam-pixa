@@ -776,6 +776,25 @@
       .sidebar { position: absolute; z-index: 20; top: 0; bottom: 0; left: 0; box-shadow: 4px 0 16px rgba(0,0,0,.15); }
       #grid { padding: 10px 12px 40px; }
     }
+
+    /* ===== v3.16.1: Android-style update banner ===== */
+    #updBanner {
+      display: none; align-items: center; gap: 10px; justify-content: center;
+      padding: 8px 14px; border-bottom: 1px solid var(--accent-deep);
+      background: linear-gradient(#3b8ae0, var(--accent));
+      color: #fff; font-size: 13.5px; font-weight: 600; letter-spacing: .1px;
+    }
+    #updBanner.show { display: flex; animation: updIn .28s ease; }
+    #updBanner .upd-txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #updBanner button { flex: none; border: 0; cursor: pointer; font: inherit; font-size: 12.5px; }
+    #updRestart {
+      background: #fff; color: var(--accent-deep); font-weight: 700;
+      padding: 5px 14px; border-radius: 999px; box-shadow: 0 1px 4px rgba(0,0,0,.2);
+    }
+    #updRestart:hover { background: var(--accent-soft); }
+    #updClose { background: transparent; color: #fff; opacity: .75; padding: 4px 8px; border-radius: 6px; }
+    #updClose:hover { opacity: 1; background: rgba(255, 255, 255, .18); }
+    @keyframes updIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
@@ -789,6 +808,13 @@
       <div class="sp-tag">Photo Editor &amp; Collage &bull; 100% Offline</div>
       <div class="sp-bar"><i></i></div>
     </div>
+  </div>
+
+  <!-- ===== v3.16.1: update banner (Android-style — restart to apply) ===== -->
+  <div id="updBanner" role="alert">
+    <span class="upd-txt">A new version of SHIVAM PIXA is ready</span>
+    <button id="updRestart" type="button">Restart now</button>
+    <button id="updClose" type="button" aria-label="Dismiss" title="Later">&#10005;</button>
   </div>
 
   <!-- ===== Top bar ===== -->
@@ -807,6 +833,10 @@
     <div class="tools">
       <button id="cloudChip" class="cloud-chip" type="button" title="Cloud sync (Google Drive)">
         <span class="cdot" aria-hidden="true"></span><span id="cloudLabel">Cloud</span>
+      </button>
+      <button id="btnInstall" class="btn" type="button" hidden title="Install SHIVAM PIXA on this PC — it becomes a real Windows app: its own window, Start menu + taskbar + desktop icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v10m0 0l3.5-3.5M12 13.5L8.5 10M4.5 15.5v2A2.5 2.5 0 0 0 7 20h10a2.5 2.5 0 0 0 2.5-2.5v-2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Install App
       </button>
       <select id="sort" aria-label="Sort order">
         <option value="name-asc">Name (A&#8594;Z)</option>
@@ -965,7 +995,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.16.0</span>
+      <span class="ver">v3.16.1</span>
     </span>
   </footer>
 
@@ -1502,6 +1532,17 @@
       els.fileInput.value = '';
       if (list.length) loadFiles(list);
     });
+    /* v3.16.1: Picasa-style "Open with" — right-click any photo in Explorer
+       → Open with → SHIVAM PIXA and it lands straight in the library
+       (Windows file handling, available in the installed app). */
+    if ('launchQueue' in window) {
+      window.launchQueue.setConsumer(async (params) => {
+        if (!params || !params.files || !params.files.length) return;
+        const files = [];
+        for (const h of params.files) { try { files.push(await h.getFile()); } catch (e) { /* skipped */ } }
+        if (files.length) loadFiles(files);
+      });
+    }
     document.getElementById('fontFile').addEventListener('change', (e) => {
       const list = [...e.target.files];
       e.target.value = '';
@@ -2660,7 +2701,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.16.0', 'ok', 2500);
+          toast('S H I V A M PIXA v3.16.1', 'ok', 2500);
           break;
       }
     }
@@ -2728,33 +2769,55 @@
     }
 
     /* ================= service worker (auto-update) =================
-       1) The update is applied only when the editor is closed —
-          the app never reloads itself in the middle of an edit.
-       2) The reload after an update is remembered, and on that reload the
-          splash is skipped — so the loading screen never shows twice. */
+       v3.16.1 — updates now work Android-style:
+       1) The app checks for a new version at every launch, every 15 minutes
+          and whenever the window gets focus (an installed PC app can stay
+          open for days and still picks up every new release).
+       2) When an update is ready a persistent banner appears at the top —
+          "Restart now" applies it instantly. Otherwise it applies itself
+          once the editor is closed — never in the middle of an edit.
+       3) The reload after an update is remembered, and on that reload the
+          splash is skipped — the loading screen never shows twice. */
     if ('serviceWorker' in navigator) {
       const hadController = !!navigator.serviceWorker.controller;
+      const banner = document.getElementById('updBanner');
+      const updRestart = document.getElementById('updRestart');
+      const updClose = document.getElementById('updClose');
+      let waiting = null; /* new worker: installed, not active yet */
+      let dismissed = false;
+      const hideBanner = () => banner.classList.remove('show');
+      updRestart.addEventListener('click', () => {
+        hideBanner();
+        if (waiting) { try { waiting.postMessage('SKIP_WAITING'); } catch (e) {} setTimeout(() => location.reload(), 150); }
+        else location.reload();
+      });
+      updClose.addEventListener('click', () => { dismissed = true; hideBanner(); });
+      const markReady = (w) => {
+        if (!w || waiting === w) return;
+        waiting = w;
+        if (!dismissed) banner.classList.add('show');
+        const applyWhenIdle = () => {
+          const busy = window.PixsaEditor && window.PixsaEditor.isOpen();
+          if (busy) { setTimeout(applyWhenIdle, 4000); return; }
+          try { waiting.postMessage('SKIP_WAITING'); } catch (e) {}
+        };
+        setTimeout(applyWhenIdle, 2500);
+      };
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').then((reg) => {
-          if (reg.update) setTimeout(() => reg.update().catch(() => {}), 2000);
+          if (reg.waiting && navigator.serviceWorker.controller) markReady(reg.waiting);
           reg.addEventListener('updatefound', () => {
             const nw = reg.installing;
             if (!nw) return;
             nw.addEventListener('statechange', () => {
-              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-                toast('A new version is available!', 'ok', 12000, {
-                  label: 'Refresh',
-                  fn: () => location.reload()
-                });
-                const applyWhenIdle = () => {
-                  const busy = window.PixsaEditor && window.PixsaEditor.isOpen();
-                  if (busy) { setTimeout(applyWhenIdle, 4000); return; }
-                  try { nw.postMessage('SKIP_WAITING'); } catch (e) {}
-                };
-                setTimeout(applyWhenIdle, 1500);
-              }
+              if (nw.state === 'installed' && navigator.serviceWorker.controller) markReady(nw);
             });
           });
+          const check = () => reg.update().catch(() => {});
+          setTimeout(check, 3000);
+          setInterval(check, 15 * 60 * 1000);
+          window.addEventListener('focus', check);
+          document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
         }).catch(() => {});
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (!hadController || sessionStorage.getItem('pixsa.up')) return;
@@ -2763,6 +2826,45 @@
         });
       });
     }
+
+    /* ================= v3.16.1: install as a real desktop app =================
+       The "Install App" button shows whenever the app is NOT installed yet.
+       After installing, SHIVAM PIXA opens in its own window (no browser
+       bars), gets a Start menu + taskbar + desktop entry, and can be
+       uninstalled from Windows Settings — a real PC app, Picasa-style. */
+    (() => {
+      const btn = document.getElementById('btnInstall');
+      if (!btn) return;
+      const standalone = () =>
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+        window.matchMedia('(display-mode: minimal-ui)').matches ||
+        window.navigator.standalone === true;
+      let deferred = null;
+      const syncBtn = () => { btn.hidden = standalone(); };
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault(); /* our own button instead of the browser bar */
+        deferred = e;
+      });
+      window.addEventListener('appinstalled', () => {
+        deferred = null;
+        btn.hidden = true;
+        toast('SHIVAM PIXA is now a desktop app — find it in the Start menu (right-click it to pin to the taskbar)', 'ok', 7000);
+      });
+      btn.addEventListener('click', async () => {
+        if (deferred) {
+          try {
+            deferred.prompt();
+            const choice = await deferred.userChoice;
+            if (choice && choice.outcome === 'accepted') { deferred = null; btn.hidden = true; return; }
+          } catch (e) { /* fall through to the manual hint */ }
+          return;
+        }
+        toast('To install: open the browser menu (\u22ee) and choose "Install SHIVAM PIXA" or "Install page as app"', 'ok', 9000);
+      });
+      try { window.matchMedia('(display-mode: standalone)').addEventListener('change', syncBtn); } catch (e) {}
+      syncBtn();
+    })();
 
     /* ================= custom fonts (added from PC — remembered across restarts) ================= */
     const PixaFonts = { list: [] };
