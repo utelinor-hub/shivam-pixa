@@ -1,6 +1,9 @@
 /* SHIVAM PIXA — Cloud Sync (Google Drive)
    ------------------------------------------------------------------
    v3.7.0 — optional, 100% background Google Drive sync.
+   v3.8.0 — adopts photos that other apps upload straight into the
+   "SHIVAM PIXA" Drive folder (e.g. an auto-upload app on the phone),
+   so camera photos can reach every PC without touching PIXA.
 
    How it works (design goals):
    • Sign in with Google → each user gets their own private folder
@@ -429,6 +432,51 @@
     schedulePush(2500);
   }
 
+  /* ================= adopt photos uploaded straight into the Drive folder =================
+     v3.8.0 — the phone story: any app that auto-uploads camera photos into
+     the "SHIVAM PIXA" Drive folder (Autosync, FolderSync, PhotoSync, …)
+     is picked up here. The manifest only knows photos pushed by PIXA
+     itself, so at every pull the folder is listed and image files PIXA
+     did not file yet are adopted into the library (and into the manifest,
+     so every other PC sees them at the next poll). */
+  const ADOPT_IMG = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
+  async function adoptExternal(m) {
+    if (!C.folderId || C.pushing || !m || !m.photos) return 0;
+    const q = encodeURIComponent(`'${C.folderId}' in parents and trashed = false and mimeType contains 'image/'`);
+    const r = await authFetch(`${DRIVE}/files?q=${q}&fields=files(id,name,mimeType,size,createdTime,appProperties)&pageSize=1000`);
+    if (!r.ok) return 0;
+    const j = await r.json();
+    if (!j.files || !j.files.length) return 0;
+    const known = new Set();
+    m.photos.forEach((e) => { known.add(e.fileId); if (e.thumbId) known.add(e.thumbId); });
+    const fresh = j.files.filter((f) =>
+      f.id && !known.has(f.id) &&
+      ADOPT_IMG.test(f.name || '') &&
+      !/\.thumb\.jpe?g$/i.test(f.name || '') &&
+      !(f.appProperties && f.appProperties.pixa)
+    );
+    if (!fresh.length) return 0;
+    for (const f of fresh) {
+      m.photos.push({
+        pid: uuid(),
+        name: f.name,
+        folder: 'Phone & other uploads',
+        type: f.mimeType || 'image/jpeg',
+        size: Number(f.size) || 0,
+        lastModified: Date.parse(f.createdTime) || Date.now(),
+        fileId: f.id,
+        thumbId: null,
+        updated: f.createdTime || nowIso(),
+        deleted: false,
+        adopted: true
+      });
+    }
+    m.rev = Date.now();
+    await pushManifest(m);
+    await applyRemote(m, { silent: true });
+    return fresh.length;
+  }
+
   /* ================= upload queue (background, zero-lag) ================= */
   function schedulePush(ms) {
     if (!C.enabled) return;
@@ -545,9 +593,21 @@
       setStatus_('syncing');
       C.folderId = C.folderId || await findFolder();
       C.manifestId = C.manifestId || await findManifest();
-      const m = await pullManifest();
-      if (!m) { if (manual) { await pushCycle(); } else setStatus_('ok'); return; }
+      let m = await pullManifest();
+      if (!m) {
+        /* no manifest yet — still pick up photos other apps dropped in the folder */
+        let adopted0 = 0;
+        try { adopted0 = await adoptExternal(emptyManifest()); } catch (e) { /* non-fatal */ }
+        if (adopted0) toast(`${adopted0} photo${adopted0 > 1 ? 's' : ''} arrived from the phone`, 'ok', 4500);
+        if (manual) { await pushCycle(); } else setStatus_('ok');
+        return;
+      }
       const changed = await applyRemote(m, { silent: !manual });
+      /* v3.8.0: adopt photos that other apps uploaded straight into the
+         Drive folder (e.g. an auto-upload app on the phone) */
+      let adopted = 0;
+      try { adopted = await adoptExternal(m); } catch (e) { /* non-fatal */ }
+      if (adopted) toast(`${adopted} photo${adopted > 1 ? 's' : ''} arrived from the phone`, 'ok', 4500);
       const mine = await linksGet();
       const haveLocalNew = state.photos.some((p) => !p.cloud && !mine[linkKey(p)]);
       if (haveLocalNew) schedulePush(1500);
