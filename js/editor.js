@@ -57,6 +57,15 @@
            while an update waits, and the check names the waiting version),
            so an update can never be missed, dismissed into nowhere or left
            stuck again.
+   v3.18.0: (library) Picasa 3 Complete Edition pass — a real view tab strip
+           under the menu bar (Library | Collage: the Collage tab appears with
+           the first collage of the session and reopens the latest one with
+           its positions), the menu bar becomes Picasa's exact eight menus
+           (File Edit View Folder Picture Create Tools Help — Folder and
+           Create are new, with Collage from Tray and Set Desktop
+           Background), and the Photo Tray matches the reference: solid
+           green hold pushpin, solid red clear button and a big blue
+           "Create Photo Collage" button on an inset tray box.
    v3.17.1: (collage) reference-alignment pass — the wheel knob rests at the
            ring's right edge (3 o'clock) and the ring is a touch thicker,
            matching the Picasa 3 reference engine; a brand-new collage always
