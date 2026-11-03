@@ -1,44 +1,36 @@
-/* SHIVAM PIXA — collage.js  (v3.17.1 "Picasa 3 replica" engine)
-   Free-form Picasa-style picture pile + interactive HTML5-canvas renderer.
+/* SHIVAM PIXA — collage.js  (v3.19.0 "PicasaCollage" DOM engine)
+   100% Google Picasa 3 authentic collage engine — the user's reference
+   prototype, integrated 1:1: every photo is a REAL DOM element (absolute
+   positioned, CSS transform rotate+scale), Picasa's center round wheel +
+   knob is a real overlay element (donut ring + knob resting at 3 o'clock),
+   dragging is native pointer-dragging anywhere on a photo.
 
-   v3.17.1 — reference-alignment pass:
-   • the wheel knob now rests at the ring's RIGHT edge (3 o'clock) and the
-     donut ring is a touch thicker — matching the Picasa 3 reference engine
-     pixel for pixel.
-   • a brand-new collage always starts on Solid Color — the previous
-     collage's "Use Image" background no longer leaks into it.
-   v3.17.0 — full Picasa 3 replica pass:
-   • the blue dashed box + lollipop handle are GONE — selection is now
-     Picasa's iconic round wheel: a semi-transparent grey donut ring in the
-     photo's center with one small knob on its perimeter. Drag the photo /
-     inside the ring to move it, drag the knob to rotate AND resize at the
-     same time (angle = rotation, distance = scale), wheel = resize,
-     Shift+wheel = rotate. The wheel also appears faintly under the cursor
-     on hover, exactly like Picasa.
-   • right-click any photo for the Picasa context menu: Set as Background,
-     Bring to Top / Forward / Backward / Bottom, Rotate Right/Left,
-     View and Edit, Remove (back to the Clips tray). The sidebar
-     "Selected Photo" buttons are gone.
-   • the sidebar gained Picasa's two tabs — Settings | Clips (N). Clips
-     shows the Photo Tray; click a clip (or Add More Photos…) to drop
-     another photo onto the pile any time, natural aspect ratio kept.
-   • Collage Type is back: Picture Pile / Mosaic / Frame Mosaic / Grid /
-     Contact Sheet, with the Picasa 3 Page Format list (4:3, 16:9 HDTV,
-     3:2 35mm, Letter, 4x6, Square, Current Screen Resolution), Landscape/
-     Portrait icon toggle, Draw Shadows + Show Captions checkboxes and the
-     2x2 footer: Desktop Background | Create Collage | Reset | Close.
+   v3.19.0 — the DOM engine swap:
+   • the HTML5-canvas hit-scan renderer is GONE — photos are DOM items now:
+     free 60fps dragging, mouse-wheel zoom, Shift+wheel rotate, wheel-knob
+     rotate+resize at once (atan2 angle = rotation, distance = scale).
+   • the round wheel shows on hover (faint) and selection (strong) and
+     counter-rotates so its knob always rests at the ring's right edge
+     (3 o'clock, screen-space) — the v3.17.1 reference alignment is kept.
+   • right-click menu: Set as Background, Bring to Top / Forward /
+     Backward / Bottom, Rotate Right/Left (90°), View and Edit, Remove.
+   • Collage Type (Picture Pile / Mosaic / Frame Mosaic / Grid / Contact
+     Sheet) now ARRANGES the free items: the slotted types compute their
+     slot rectangles and drop every photo into its cell (cover-cropped),
+     after which photos stay freely movable — exactly like the prototype.
+   • Page Format list, Landscape/Portrait, Picture Borders (None / White /
+     Polaroid), Solid Color (+ presets + eyedropper) / Use Image background,
+     Draw Shadows, Show Captions, Desktop Background | Create Collage |
+     Reset | Close — all preserved.
+   • production wiring kept: Library open (tray/folder), IndexedDB
+     persistence ('pixsa' → 'collage' auto-save + 'collages' records),
+     double-click re-edit with positions, 4K / 300-DPI export, Clips tab
+     from the Photo Tray (+ Add Photos from PC), keyboard shortcuts,
+     power-cut restore.
 
-   v3.16.0 — collages live in the library: Create Collage saves the result
-   into a pinned "Collages" folder group (IndexedDB 'collages' store) and
-   double-clicking it reopens the editor with photos + positions.
-
-   Interactivity: click = select, drag = move (multi-select),
+   Interactivity: click = select, drag = move (every selected photo),
    wheel = resize, Shift+wheel = rotate, wheel knob = rotate+resize,
-   pinch = scale+rotate on touch, ]/[ = front/back, Delete = remove.
-
-   Rendering: one paint function renders BOTH the live preview and the
-   final export — exportDims() renders at 4K (screen) or true 300-DPI
-   print sizes, threaded through a scale factor. */
+   ]/[ = front/back, Delete = remove, Escape = deselect / close. */
 
 (() => {
   'use strict';
@@ -48,8 +40,8 @@
 
   const q = (s) => document.querySelector(s);
   const el = {
-    root: q('#collage'), canvas: q('#cCanvas'), overlay: q('#cOverlay'),
-    busy: q('#cBusy'), note: q('#cNote'), count: q('#cCount'), toolInfo: q('#cToolInfo'),
+    root: q('#collage'), wrap: q('#cWrap'), busy: q('#cBusy'), note: q('#cNote'),
+    count: q('#cCount'), toolInfo: q('#cToolInfo'),
     fmt: q('#cFormat'), custRow: q('#cCustomRow'), custW: q('#cCustW'), custH: q('#cCustH'),
     custApply: q('#cCustApply'),
     bg: q('#cBg'), bgSolid: q('#cBgSolid'), bgPhoto: q('#cBgPhoto'), eyedrop: q('#cEyedropper'),
@@ -60,36 +52,37 @@
     tabLib: q('#cTabLib'), tabCol: q('#cTabCol'),
     tabSettings: q('#cTabSettings'), tabClips: q('#cTabClips'),
     paneSettings: q('#cPaneSettings'), paneClips: q('#cPaneClips'),
-    clips: q('#cClips'), clipCount: q('#cClipCount'), addPhotos: q('#cAddPhotos'), fileAdd: null,
+    clips: q('#cClips'), clipCount: q('#cClipCount'), addPhotos: q('#cAddPhotos'),
     exportFmt: q('#cExportFmt'), resultBar: q('#cResultBar'), resultNote: q('#cResultNote'),
     menu: q('#cMenu'),
     cCreate: q('#cCreate'), cSaveDir: q('#cSaveDir'),
     cDownload: q('#cDownload'), cBack: q('#cBack')
   };
+  /* stage + wheel are built here (index.html only provides the shells) */
+  const stage = q('#cStage');
+  const wheelEl = q('#cWheel');
+  const knobEl = q('#cKnob');
 
   const SLOTTED = ['grid', 'sheet', 'mosaic', 'frame'];
   const ALL_TYPES = ['pile'].concat(SLOTTED);
   const DEG = Math.PI / 180;
+  const MAXP = 60;                       /* Picasa-era sanity cap */
+  const SCALE_MIN = 0.2, SCALE_MAX = 4.5;
 
-  const C = {
-    open: false, list: [], imgs: [], type: 'pile', bg: '#f5f2ec', seed: 7,
-    border: 'white', landscape: true, bgPhoto: false, bgIdx: 0,
-    shadows: true, captions: false, spacing: 8,
-    custW: 16, custH: 9,
-    alphaAny: false, restored: false, final: false, hoverI: -1,
-    /* per-photo manual transforms (Picture Pile):
-       pos[i] = { x, y (0..1 canvas-normalized center), rot (radians), scale }
-       layout = geometry of the last render (hit-testing), order = draw order */
-    pos: null, layout: null, order: null, sel: new Set(),
-    blob: null, url: null, noteBase: '',
-    editId: null, editName: '', outW: 0, outH: 0   /* v3.16.0 re-edit link */
+  const S = {
+    open: false, list: [], items: [], sel: new Set(), hover: null,
+    type: 'pile', bg: '#f5f2ec', bgImage: false, bgIdx: 0,
+    border: 'white', landscape: true, shadows: true, captions: false,
+    fmt: '4x3', custW: 16, custH: 9, seed: 7,
+    alphaAny: false, restored: false, final: false,
+    editId: null, editName: '', outW: 0, outH: 0,
+    blob: null, url: null, noteBase: '', savedProj: false
   };
-  let swapTarget = -1;   /* slotted drag: cell currently hovered as swap partner */
+  let zTop = 20;
 
   /* ================= small helpers ================= */
-  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   function rng() {
-    let s = C.seed % 2147483647;
+    let s = S.seed % 2147483647;
     if (s <= 0) s += 2147483646;
     return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
   }
@@ -103,42 +96,24 @@
     const sc = Math.min(dw / iw, dh / ih);
     x.drawImage(img, dx + (dw - iw * sc) / 2, dy + (dh - ih * sc) / 2, iw * sc, ih * sc);
   }
-  /* border styles for slotted cells: none | white | polaroid — every photo is
-     CLIPPED to its cell so a cover-crop can never spill over the neighbours */
-  function drawCellImg(x, img, dx, dy, dw, dh) {
-    x.save();
-    x.beginPath(); x.rect(dx, dy, dw, dh); x.clip();
-    drawCover(x, img, dx, dy, dw, dh);
-    x.restore();
-  }
-  function drawBordered(x, img, dx, dy, dw, dh) {
-    if (C.border === 'none') { drawCellImg(x, img, dx, dy, dw, dh); return; }
-    const u = Math.min(dw, dh);
-    const pad = C.border === 'polaroid' ? u * 0.055 : u * 0.035;
-    const bot = C.border === 'polaroid' ? u * 0.17 : pad;
-    x.fillStyle = '#ffffff';
-    x.fillRect(dx, dy, dw, dh);
-    drawCellImg(x, img, dx + pad, dy + pad, Math.max(4, dw - pad * 2), Math.max(4, dh - pad - bot));
-  }
-  /* blurred dominant-photo background: tiny downscale + smooth upscale
-     (= strong gaussian-ish blur everywhere) + one ctx.filter pass where
-     supported + a soft darkening so the photos read on top */
-  function drawBlurredBg(x, img, W, H) {
-    const tw = Math.max(16, Math.round(W / 28)), th = Math.max(16, Math.round(H / 28));
-    const t = document.createElement('canvas'); t.width = tw; t.height = th;
-    drawCover(t.getContext('2d'), img, 0, 0, tw, th);
-    x.save();
-    x.imageSmoothingQuality = 'high';
-    try { x.filter = `blur(${Math.max(6, Math.round(Math.min(W, H) * 0.012))}px)`; } catch (e) { /* old browsers: downscale blur is enough */ }
-    x.drawImage(t, 0, 0, W, H);
-    x.restore();
-    x.fillStyle = 'rgba(0,0,0,.22)';
-    x.fillRect(0, 0, W, H);
+  /* deterministic pile geometry — the SAME formula the canvas engine used,
+     so old saved collages reopen with their exact scatter (replay: photo i
+     consumes rng values i*4 .. i*4+3) */
+  function pileFrac(i, n) {
+    const cols = Math.max(1, Math.ceil(Math.sqrt(n)));
+    const rows = Math.max(1, Math.ceil(n / cols));
+    const cw = 1 / cols, ch = 1 / rows;
+    const rand = rng();
+    for (let k = 0; k < i * 4; k++) rand();
+    return {
+      wFrac: cw * (0.55 + rand() * 0.35),
+      x: (i % cols) * cw + cw / 2 + (rand() - 0.5) * cw * 0.3,
+      y: Math.floor(i / cols) * ch + ch / 2 + (rand() - 0.5) * ch * 0.3,
+      rot: (rand() - 0.5) * 30
+    };
   }
 
   /* ================= page geometry ================= */
-  /* v3.17.0: old releases offered print sizes the Picasa list no longer has —
-     saved projects normalize to the nearest format still on the list */
   const NORM_FMT = { a4: 'letter', '5x7': '4x6', '8x10': 'letter', '11x14': 'letter', '16x20': 'letter' };
   const fmtVal = () => {
     let v = el.fmt.value;
@@ -147,7 +122,7 @@
     return v;
   };
   const custR = () => {
-    const w = Math.max(1, C.custW || 16), h = Math.max(1, C.custH || 9);
+    const w = Math.max(1, S.custW || 16), h = Math.max(1, S.custH || 9);
     return clamp(w / h, 0.2, 5);
   };
   function screenDims() {
@@ -172,7 +147,7 @@
   }
   function dims() {
     const [W, H] = nativeDims(fmtVal());
-    return (C.landscape !== (W >= H)) ? [H, W] : [W, H];
+    return (S.landscape !== (W >= H)) ? [H, W] : [W, H];
   }
   /* hi-res export: screen formats at 4K class, print formats at true
      300 DPI (4x6 = 1800x1200 ... Letter = 2550x3300) */
@@ -199,124 +174,480 @@
       }
       default: W = 3200; H = 2400;
     }
-    if (C.landscape !== (W >= H)) { const t = W; W = H; H = t; }
+    if (S.landscape !== (W >= H)) { const t = W; W = H; H = t; }
     const mx = Math.max(W, H);
     if (mx > 6000) { const k = 6000 / mx; W = Math.round(W * k); H = Math.round(H * k); }
     return [W, H];
   }
 
-  /* ================= LAYOUT: Picture Pile ================= */
-  /* geometry for ONE photo — the random scatter values come from the photo's
-     own index (a deterministic rng is advanced 4 steps per earlier photo),
-     so drawing a single photo independently matches the full render */
-  function pileGeom(i, W, H) {
-    const n = C.imgs.length;
-    const cols = Math.max(1, Math.ceil(Math.sqrt(n)));
-    const rows = Math.max(1, Math.ceil(n / cols));
-    const cw = W / cols, ch = H / rows;
-    const rand = rng();
-    for (let k = 0; k < i * 4; k++) rand();   /* advance to this photo's values */
-    return {
-      jw0: cw * (0.55 + rand() * 0.35),      /* leaves air between photos */
-      px0: (i % cols) * cw + cw / 2 + (rand() - 0.5) * cw * 0.3,
-      py0: Math.floor(i / cols) * ch + ch / 2 + (rand() - 0.5) * ch * 0.3,
-      rot0: (rand() - 0.5) * 30 * DEG        /* -15deg .. +15deg */
-    };
-  }
-  /* draw ONE pile photo (used by the full render AND the smooth-drag overlay).
-     Returns the geometry so the caller can update the hit-test layout.
-     v3.17.0: Draw Shadows checkbox + Show Captions (name under the photo,
-     inside the Polaroid border when that border is active). */
-  function drawPilePhoto(x, i, W, H) {
-    const img = C.imgs[i];
-    if (!img) return null;
-    const g = pileGeom(i, W, H);
-    const man = C.pos && C.pos[i];
-    const scl = (man && man.scale) || 1;
-    const b = {
-      img, jw: g.jw0 * scl, jh: g.jw0 * (img.height / img.width) * scl,
-      px: man ? man.x * W : g.px0, py: man ? man.y * H : g.py0,
-      rot: man ? man.rot : g.rot0
-    };
-    const u = Math.min(b.jw, b.jh);
-    const pad = C.border === 'polaroid' ? u * 0.05 : (C.border === 'white' ? u * 0.032 : 0);
-    const bot = C.border === 'polaroid' ? u * 0.16 : pad;
-    const capH = C.captions ? u * 0.085 : 0;
-    x.save();
-    x.translate(b.px, b.py);
-    x.rotate(b.rot);
-    if (C.shadows) {
-      x.shadowColor = 'rgba(0,0,0,.38)';
-      x.shadowBlur = Math.min(W, H) * 0.022;
-      x.shadowOffsetY = Math.min(W, H) * 0.008;
-    }
-    if (C.border === 'none') {
-      x.drawImage(b.img, -b.jw / 2, -b.jh / 2, b.jw, b.jh);
-      if (C.captions) {
-        x.shadowColor = 'transparent';
-        x.fillStyle = '#ffffff';
-        x.fillRect(-b.jw / 2, b.jh / 2 + u * 0.015, b.jw, capH);
-        drawCaption(x, i, -b.jw / 2, b.jh / 2 + u * 0.015, b.jw, capH);
+  /* ================= engine styles (the reference prototype's) ================= */
+  function injectStyles() {
+    if (document.getElementById('picasa-collage-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'picasa-collage-styles';
+    style.textContent = `
+      /* the preview column centers its children — the stage must stretch */
+      .c-prev .c-stage { align-self: stretch; width: auto; }
+      #cStage {
+        position: relative; background-color: #f5f2ec; background-size: cover;
+        background-position: center; box-shadow: 0 5px 22px rgba(0,0,0,0.42);
+        overflow: visible; flex: none; touch-action: none;
       }
-    } else {
-      x.fillStyle = '#ffffff';
-      x.fillRect(-b.jw / 2 - pad, -b.jh / 2 - pad, b.jw + pad * 2, b.jh + pad + bot);
-      x.shadowColor = 'transparent';
-      x.drawImage(b.img, -b.jw / 2, -b.jh / 2, b.jw, b.jh);
-      if (C.captions) {
-        if (C.border === 'polaroid') {
-          drawCaption(x, i, -b.jw / 2, b.jh / 2, b.jw, bot, '#4a4a4a');
-        } else {
-          x.fillStyle = '#ffffff';
-          x.fillRect(-b.jw / 2 - pad, b.jh / 2 + pad + u * 0.012, b.jw + pad * 2, capH);
-          drawCaption(x, i, -b.jw / 2 - pad, b.jh / 2 + pad + u * 0.012, b.jw + pad * 2, capH);
-        }
+      .c-item {
+        position: absolute; box-sizing: border-box; cursor: grab; touch-action: none;
+        transform-origin: center center; line-height: 0;
       }
-    }
-    x.restore();
-    return b;
-  }
-  function drawCaption(x, i, rx, ry, rw, rh, color) {
-    const item = C.list && C.list[i];
-    let name = (item && item.name) || '';
-    if (!name) return;
-    x.save();
-    x.beginPath(); x.rect(rx, ry, rw, rh); x.clip();
-    x.fillStyle = color || '#5a5a5a';
-    x.font = `${Math.max(6, rh * 0.66).toFixed(1)}px 'Segoe UI', system-ui, sans-serif`;
-    x.textAlign = 'center'; x.textBaseline = 'middle';
-    let t = name;
-    while (t.length > 3 && x.measureText(t).width > rw * 0.94) t = t.slice(0, -2);
-    if (t !== name && t.length > 3) t = t.slice(0, -1) + '…';
-    x.fillText(t, rx + rw / 2, ry + rh * 0.56, rw * 0.94);
-    x.restore();
-  }
-  function paintPile(x, W, H, skip) {
-    if (!C.order || C.order.length !== C.imgs.length) C.order = C.imgs.map((_, i) => i);
-    const layout = [];
-    for (const i of C.order) {
-      if (skip && skip.has(i)) continue;   /* dragged photos are drawn on the overlay */
-      const b = drawPilePhoto(x, i, W, H);
-      if (b) layout[i] = { px: b.px, py: b.py, jw: b.jw, jh: b.jh, rot: b.rot, pile: true };
-    }
-    C.layout = layout;
+      .c-item:active { cursor: grabbing; }
+      .c-item img { display: block; width: 100%; height: 100%; pointer-events: none; }
+      .c-item.selected { outline: 2px solid rgba(255, 153, 0, 0.9); outline-offset: -1px; }
+      .c-cap {
+        position: absolute; left: 0; right: 0; bottom: 0; line-height: 1.1;
+        display: flex; align-items: center; justify-content: center;
+        overflow: hidden; white-space: nowrap; pointer-events: none;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+      }
+      /* PICASA 3 AUTHENTIC CENTER ROUND WHEEL + KNOB (counter-rotated so the
+         knob always rests at the ring's right edge — 3 o'clock) */
+      #cWheel {
+        position: absolute; border-radius: 50%;
+        border-style: solid; border-color: rgba(110, 120, 130, 0.55);
+        box-shadow: inset 0 0 2px rgba(255,255,255,0.85), 0 0 4px rgba(0,0,0,0.35);
+        cursor: move; z-index: 99998; box-sizing: border-box;
+      }
+      #cWheel.hov { border-color: rgba(110, 120, 130, 0.28); }
+      #cKnob {
+        position: absolute; right: 0; top: 50%; border-radius: 50%;
+        background: radial-gradient(circle at 35% 35%, #ffffff, #cfd5de);
+        border: 2px solid #333; cursor: ew-resize; box-sizing: border-box;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.65); touch-action: none;
+      }
+      #cKnob:hover { background: #ffffff; }
+    `;
+    document.head.appendChild(style);
   }
 
-  /* ================= LAYOUT: Mosaic (featured + tessellation) =================
-     1-2 photos are featured large; every remaining photo tessellates into
-     rows whose cell widths follow the photo aspect ratios — the rows and
-     columns always close up exactly (no gaps), each cell is smart
-     center-cropped. Landscape canvases feature on the left, portrait on top. */
-  function packRows(x, ox, oy, Rw, Rh, imgs, sp, layoutOut, off) {
-    const m = imgs.length;
-    if (!m || Rw <= 4 || Rh <= 4) return;
-    sp = Math.min(sp, Rw / 4, Rh / 4);          /* spacing can never eat the region */
-    const asp = imgs.map((im) => (im.width || 1) / (im.height || 1));
+  /* ================= stage geometry ================= */
+  function stageBox() {
+    const holder = el.wrap.parentElement || el.wrap;
+    const r = holder.getBoundingClientRect();
+    const cs = getComputedStyle(holder);
+    const availW = Math.max(120, r.width - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 16);
+    const availH = Math.max(90, r.height - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0) - 16);
+    let [W, H] = dims();
+    const target = W / H;
+    let sw = availW, sh = sw / target;
+    if (sh > availH) { sh = availH; sw = sh * target; }
+    return { w: Math.max(200, Math.round(sw)), h: Math.max(150, Math.round(sh)) };
+  }
+  function updateStageGeometry() {
+    if (!stage) return;
+    const b = stageBox();
+    stage.style.width = b.w + 'px';
+    stage.style.height = b.h + 'px';
+    refreshBackground();
+    S.items.forEach(renderItem);
+    positionWheel();
+  }
+
+  /* ================= background ================= */
+  function refreshBackground() {
+    if (!stage) return;
+    if (S.bgImage && S.items.length) {
+      const it = S.items[Math.min(S.bgIdx, S.items.length - 1)];
+      if (it && it.url) stage.style.backgroundImage = `url("${it.url}")`;
+    } else {
+      stage.style.backgroundImage = 'none';
+      stage.style.backgroundColor = S.bg;
+    }
+  }
+
+  /* ================= items ================= */
+  function renderItem(it) {
+    if (!it.el || !stage) return;
+    const sw = stage.clientWidth || 800, sh = stage.clientHeight || 600;
+    const bw = it.wFrac * sw, bh = it.hFrac * sh;
+    const u = Math.min(bw, bh);
+    const sheet = S.type === 'sheet';
+    let pad = 0, bot = 0;
+    if (sheet) { pad = bw * 0.045; bot = pad; }
+    else if (S.border === 'polaroid') { pad = u * 0.05; bot = u * 0.16; }
+    else if (S.border === 'white') { pad = S.type === 'pile' ? u * 0.032 : u * 0.035; bot = pad; }
+    it.el.style.width = bw + 'px';
+    it.el.style.height = bh + 'px';
+    it.el.style.left = (it.x * 100) + '%';
+    it.el.style.top = (it.y * 100) + '%';
+    it.el.style.zIndex = it.z;
+    it.el.style.transform = `translate(-50%, -50%) rotate(${it.rot}deg) scale(${it.scale})`;
+    it.el.style.background = (sheet || S.border !== 'none') ? '#ffffff' : 'transparent';
+    it.el.style.padding = `${pad}px ${pad}px ${bot}px ${pad}px`;
+    it.el.style.boxShadow = S.shadows ? '0 6px 16px rgba(0,0,0,0.38)' : 'none';
+    const img = it.el.firstChild;
+    if (img) {
+      img.style.objectFit = sheet ? 'contain' : (S.type === 'pile' ? 'fill' : 'cover');
+      /* cover/contain crop must clip to the padded box */
+      it.el.style.overflow = 'hidden';
+    }
+    /* caption: Picasa writes the name under the photo — inside the white
+       border when there is one, on a soft strip when there is none */
+    let cap = it.el.querySelector('.c-cap');
+    if (S.captions && S.type === 'pile' && it.name) {
+      if (!cap) { cap = document.createElement('div'); cap.className = 'c-cap'; it.el.appendChild(cap); }
+      const capH = Math.max(10, u * 0.085);
+      if (S.border === 'none') {
+        cap.style.background = 'rgba(0,0,0,0.45)';
+        cap.style.color = '#ffffff';
+        cap.style.height = capH + 'px';
+        cap.style.left = '0px'; cap.style.right = '0px';
+        cap.style.padding = '0 4px';
+      } else {
+        cap.style.background = 'transparent';
+        cap.style.color = '#4a4a4a';
+        cap.style.height = Math.max(capH, bot) + 'px';
+        cap.style.left = pad + 'px'; cap.style.right = pad + 'px';
+        cap.style.padding = '0';
+      }
+      cap.style.fontSize = Math.max(7, Math.min(capH * 0.66, 13)).toFixed(1) + 'px';
+      cap.textContent = it.name;
+      cap.style.display = 'flex';
+    } else if (cap) cap.style.display = 'none';
+  }
+  const renderAll = () => S.items.forEach(renderItem);
+
+  function makeItemEl(it) {
+    const d = document.createElement('div');
+    d.className = 'c-item';
+    d.dataset.id = it.id;
+    const img = document.createElement('img');
+    img.decoding = 'async';
+    img.alt = it.name || '';
+    img.draggable = false;
+    img.src = it.url;
+    d.appendChild(img);
+    stage.appendChild(d);
+    return d;
+  }
+  /* item factory — async because the blob URL must resolve first */
+  async function itemFrom(imgCanvas, name, st) {
+    const blob = await new Promise((r) => imgCanvas.toBlob(r, 'image/jpeg', 0.9));
+    const it = Object.assign({
+      id: 'pi_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: name || 'photo', img: imgCanvas,
+      natW: imgCanvas.width, natH: imgCanvas.height,
+      x: 0.5, y: 0.5, rot: 0, scale: 1, z: ++zTop, fit: 'fill',
+      url: URL.createObjectURL(blob)
+    }, st || {});
+    it.el = makeItemEl(it);
+    renderItem(it);
+    bindItem(it);
+    S.items.push(it);
+    return it;
+  }
+  function destroyItem(it) {
+    if (it.url) URL.revokeObjectURL(it.url);
+    if (it.el) it.el.remove();
+  }
+  function itemById(id) { return S.items.find((i) => i.id === id); }
+  const firstSel = () => { for (const id of S.sel) return itemById(id); return null; };
+
+  /* ================= selection ================= */
+  function select(it) {
+    S.sel = new Set([it.id]);
+    paintSel();
+  }
+  function selectAll() {
+    S.sel = new Set(S.items.map((i) => i.id));
+    if (S.items.length) zTopOf(S.items[S.items.length - 1]);
+    paintSel();
+  }
+  function selectNone() { S.sel.clear(); paintSel(); }
+  function paintSel() {
+    S.items.forEach((it) => it.el.classList.toggle('selected', S.sel.has(it.id)));
+    positionWheel();
+  }
+
+  /* ================= THE ROUND WHEEL (hover + selection) ================= */
+  function wheelTarget() {
+    if (S.final || !S.items.length) return null;
+    const selIt = firstSel();
+    return selIt || (S.hover && itemById(S.hover)) || null;
+  }
+  function positionWheel() {
+    const it = wheelTarget();
+    if (!it || !it.el || !wheelEl) { if (wheelEl) wheelEl.hidden = true; return; }
+    const sw = stage.clientWidth, sh = stage.clientHeight;
+    const bw = it.wFrac * sw * it.scale, bh = it.hFrac * sh * it.scale;
+    const R = clamp(Math.min(bw, bh) * 0.38, 20, Math.min(sw, sh) * 0.22);
+    const ringW = Math.max(5, R * 0.21);        /* v3.17.1: a touch thicker */
+    const knobR = Math.max(5.5, R * 0.2);
+    wheelEl.hidden = false;
+    wheelEl.style.width = (R * 2) + 'px';
+    wheelEl.style.height = (R * 2) + 'px';
+    wheelEl.style.borderWidth = ringW + 'px';
+    wheelEl.style.left = (it.x * sw - R) + 'px';
+    wheelEl.style.top = (it.y * sh - R) + 'px';
+    /* counter-rotate: the ring is symmetric, the knob must stay at 3 o'clock */
+    wheelEl.style.transform = `rotate(${-it.rot}deg)`;
+    wheelEl.classList.toggle('hov', !S.sel.has(it.id));
+    knobEl.style.width = (knobR * 2) + 'px';
+    knobEl.style.height = (knobR * 2) + 'px';
+    knobEl.style.right = (-knobR - 2) + 'px';
+    knobEl.style.marginTop = (-knobR) + 'px';
+    wheelEl.dataset.id = it.id;
+  }
+
+  /* ================= item interactions (the prototype's, 1:1) ================= */
+  function bindItem(it) {
+    /* 1. SMOOTH FREE DRAGGING (anywhere on the photo) — every selected
+          photo moves together, like Picasa's multi-drag */
+    it.el.addEventListener('pointerdown', (e) => {
+      if (e.button === 2) return;
+      e.stopPropagation();
+      if (S.final) return;
+      /* clicking an already-selected photo keeps the multi-selection */
+      if (!S.sel.has(it.id)) select(it);
+      const rect = stage.getBoundingClientRect();
+      const startX = e.clientX, startY = e.clientY;
+      const orig = S.items.filter((i) => S.sel.has(i.id)).map((i) => ({ i, x: i.x, y: i.y }));
+      const onMove = (ev) => {
+        const dx = (ev.clientX - startX) / rect.width;
+        const dy = (ev.clientY - startY) / rect.height;
+        for (const o of orig) {
+          o.i.x = clamp(o.x + dx, -0.5, 1.5);
+          o.i.y = clamp(o.y + dy, -0.5, 1.5);
+          renderItem(o.i);
+        }
+        positionWheel();
+      };
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        scheduleColSave();
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    });
+
+    /* 2. WHEEL KNOB: SIMULTANEOUS ROTATE + SCALE (angle + distance) */
+    knobEl.addEventListener('pointerdown', (e) => {
+      if (S.final) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const tgt = itemById(wheelEl.dataset.id);
+      if (!tgt) return;
+      select(tgt);
+      const sw = stage.clientWidth, sh = stage.clientHeight;
+      const rect = stage.getBoundingClientRect();
+      const cx = rect.left + tgt.x * sw, cy = rect.top + tgt.y * sh;
+      const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * (180 / Math.PI);
+      const startDist = Math.hypot(e.clientX - cx, e.clientY - cy);
+      const origRot = tgt.rot, origScale = tgt.scale;
+      const onMove = (ev) => {
+        const curAngle = Math.atan2(ev.clientY - cy, ev.clientX - cx) * (180 / Math.PI);
+        const curDist = Math.hypot(ev.clientX - cx, ev.clientY - cy);
+        tgt.rot = origRot + (curAngle - startAngle);
+        tgt.scale = clamp(origScale * (curDist / Math.max(20, startDist)), SCALE_MIN, SCALE_MAX);
+        renderItem(tgt);
+        positionWheel();
+      };
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        scheduleColSave();
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    });
+
+    /* wheel ring body = drag the photo too (Picasa: grab the ring to move) */
+    wheelEl.addEventListener('pointerdown', (e) => {
+      if (e.target === knobEl || e.button === 2) return;
+      const tgt = itemById(wheelEl.dataset.id);
+      if (!tgt || S.final) return;
+      e.stopPropagation();
+      select(tgt);
+      const rect = stage.getBoundingClientRect();
+      const startX = e.clientX, startY = e.clientY;
+      const ox = tgt.x, oy = tgt.y;
+      const onMove = (ev) => {
+        tgt.x = clamp(ox + (ev.clientX - startX) / rect.width, -0.5, 1.5);
+        tgt.y = clamp(oy + (ev.clientY - startY) / rect.height, -0.5, 1.5);
+        renderItem(tgt);
+        positionWheel();
+      };
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        scheduleColSave();
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    });
+
+    /* 3. MOUSE WHEEL ZOOM + SHIFT+WHEEL ROTATE */
+    it.el.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (S.final) return;
+      select(it);
+      if (e.shiftKey) it.rot += e.deltaY > 0 ? 5 : -5;
+      else it.scale = clamp(it.scale * (e.deltaY < 0 ? 1.07 : 0.93), SCALE_MIN, SCALE_MAX);
+      renderItem(it);
+      positionWheel();
+      scheduleColSave();
+    }, { passive: false });
+
+    /* 4. PICASA RIGHT-CLICK CONTEXT MENU */
+    it.el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      select(it);
+      openMenu(e.clientX, e.clientY, it);
+    });
+
+    /* 5. hover shows the faint wheel */
+    it.el.addEventListener('pointerenter', () => { S.hover = it.id; positionWheel(); });
+    it.el.addEventListener('pointerleave', () => { if (S.hover === it.id) { S.hover = null; positionWheel(); } });
+  }
+
+  /* ================= z-order (prototype semantics) ================= */
+  function changeZ(it, dir) {
+    if (dir === 'top') it.z = ++zTop;
+    else if (dir === 'forward') it.z += 2;
+    else if (dir === 'backward') it.z = Math.max(1, it.z - 2);
+    else if (dir === 'bottom') it.z = 1;
+    renderItem(it);
+    scheduleColSave();
+  }
+  function rotateOne(it, deg) {
+    it.rot += deg;
+    renderItem(it);
+    scheduleColSave();
+  }
+
+  /* ================= remove / background / view-edit ================= */
+  function removeSelected() {
+    const it = firstSel();
+    if (!it) return;
+    returnToClips(it);
+    destroyItem(it);
+    S.items.splice(S.items.indexOf(it), 1);
+    S.sel.delete(it.id);
+    S.hover = null;
+    if (S.bgImage && S.bgIdx >= S.items.length) S.bgIdx = 0;
+    syncClips();
+    noteCount();
+    refreshBackground();
+    positionWheel();
+    scheduleColSave();
+  }
+  /* removed photos drop back into the Clips tray (the Photo Tray) */
+  function returnToClips(it) {
+    if (!P.state) return;
+    const item = S.list[S.items.indexOf(it)];
+    if (!item) return;
+    const k = photoKey(item);
+    const lib = P.state.photos || [];
+    const lp = lib.find((p) => photoKey(p) === k) ||
+               lib.find((p) => p.name === item.name);   /* re-edited records */
+    if (lp && !P.state.selArr.some((x) => photoKey(x) === photoKey(lp))) {
+      P.state.selArr.push(lp);
+      if (P.renderTray) P.renderTray();
+    }
+  }
+  function setAsBackground() {
+    const it = firstSel();
+    if (!it) return;
+    S.bgIdx = S.items.indexOf(it);
+    S.bgImage = true;
+    el.bgPhoto.checked = true;
+    el.bgSolid.checked = false;
+    refreshBackground();
+    scheduleColSave();
+  }
+  function viewAndEdit() {
+    const it = firstSel();
+    if (!it) { toast('Select a photo first, then press View and Edit', 'err'); return; }
+    const item = S.list[S.items.indexOf(it)];
+    const k = item ? photoKey(item) : null;
+    const idx = k != null ? state.photos.findIndex((p) => photoKey(p) === k) : -1;
+    if (idx < 0) { toast('This photo is not in the library — View and Edit works with library photos', 'err', 4500); return; }
+    close();
+    if (window.PixsaEditor) window.PixsaEditor.open(idx);
+  }
+
+  /* ================= v3.19.0: context menu ================= */
+  function openMenu(cx, cy, it) {
+    const m = el.menu;
+    m.innerHTML = '';
+    const add = (label, cmd, dis) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = label; b.disabled = !!dis;
+      b.addEventListener('click', () => { m.hidden = true; menuCmd(cmd, it); });
+      m.appendChild(b);
+    };
+    const sep = () => { const s = document.createElement('div'); s.className = 'csep'; m.appendChild(s); };
+    add('Set as Background', 'setbg');
+    sep();
+    add('Bring to Top', 'top');
+    add('Bring Forward', 'fwd');
+    add('Send Backward', 'back1');
+    add('Send to Bottom', 'bottom');
+    sep();
+    add('Rotate Right (90\u00b0)', 'rotR');
+    add('Rotate Left (-90\u00b0)', 'rotL');
+    sep();
+    add('View and Edit', 'view');
+    add('Remove', 'remove');
+    m.hidden = false;
+    m.style.left = '0px'; m.style.top = '0px';
+    const r = m.getBoundingClientRect();
+    m.style.left = Math.max(6, Math.min(cx, window.innerWidth - r.width - 8)) + 'px';
+    m.style.top = Math.max(6, Math.min(cy, window.innerHeight - r.height - 8)) + 'px';
+  }
+  function menuCmd(cmd, it) {
+    if (!it || S.final) return;
+    select(it);
+    switch (cmd) {
+      case 'setbg': setAsBackground(); break;
+      case 'top': changeZ(it, 'top'); break;
+      case 'fwd': changeZ(it, 'forward'); break;
+      case 'back1': changeZ(it, 'backward'); break;
+      case 'bottom': changeZ(it, 'bottom'); break;
+      case 'rotR': rotateOne(it, 90); break;
+      case 'rotL': rotateOne(it, -90); break;
+      case 'view': viewAndEdit(); break;
+      case 'remove': removeSelected(); break;
+    }
+  }
+
+  /* ================= LAYOUTS — slotted types arrange the free items ================= */
+  /* every layout returns slot rects {x,y,w,h} in 0..1 stage fractions; the
+     items are dropped into the cells (cover-cropped), then stay draggable */
+  /* all slot functions work in STAGE PIXELS (W × H with the page ratio);
+     applyLayout converts each rect to per-axis fractions */
+  function slotCells(n, W, H, sheet) {
+    const sp = sheet ? 16 : 8;
+    const marg = sheet ? 34 : 14;
+    const cols = Math.max(1, Math.ceil(Math.sqrt(n * (W / H))));
+    const rows = Math.max(1, Math.ceil(n / cols));
+    const cw = (W - marg * 2 - sp * (cols - 1)) / cols;
+    const ch = (H - marg * 2 - sp * (rows - 1)) / rows;
+    const out = [];
+    let i = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols && i < n; c++, i++) {
+        out.push({ x: marg + c * (cw + sp), y: marg + r * (ch + sp), w: cw, h: ch });
+      }
+    }
+    return out;
+  }
+  function packRowsSlots(ox, oy, Rw, Rh, imgs, sp) {
+    /* justified tessellation: R rows close up exactly (no gaps) */
+    const m = imgs.length, out = new Array(m);
+    if (!m || Rw <= 4 || Rh <= 4) return out.fill({ x: ox, y: oy, w: Rw, h: Rh });
+    sp = Math.min(sp, Rw / 4, Rh / 4);
+    const asp = imgs.map((im) => (im.natW || 1) / (im.natH || 1));
     const totalA = asp.reduce((a, b) => a + b, 0);
-    /* R rows close up exactly when R^2 = totalA * Rh / Rw  (each row fills the
-       width at its own height; row heights then sum to the region height) */
     const R = clamp(Math.round(Math.sqrt(totalA * Rh / Rw)), 1, m);
-    /* partition into R rows balancing the aspect-sum of each row */
     const rows = [];
     let i = 0;
     for (let r = 0; r < R; r++) {
@@ -325,10 +656,9 @@
       const row = [];
       for (let k = 0; k < take && i < m; k++, i++) row.push(i);
       row.A = row.reduce((a, j) => a + asp[j], 0);
-      row.h = (Rw - sp * (row.length - 1)) / row.A;  /* exact width fill */
+      row.h = (Rw - sp * (row.length - 1)) / row.A;
       rows.push(row);
     }
-    /* normalize total height to the region */
     const hSum = rows.reduce((a, row) => a + row.h, 0);
     const sy = (Rh - sp * (rows.length - 1)) / hSum;
     let y = oy;
@@ -338,88 +668,66 @@
       let cx = ox;
       for (const j of row) {
         const w = wSum * (asp[j] / row.A);
-        drawBordered(x, imgs[j], cx, y, w, h);
-        layoutOut[off + j] = { x: cx, y, w, h };
+        out[j] = { x: cx, y, w, h };
         cx += w + sp;
       }
       y += h + sp;
     }
+    return out;
   }
-  function paintMosaic(x, W, H, sc) {
-    const n = C.imgs.length;
-    const sp = Math.max(C.spacing, 2) * sc;
-    C.layout = [];
+  function slotMosaic(W, H) {
+    const n = S.items.length;
+    const sp = 8;
     const land = W >= H;
-    if (n === 1) {
-      drawBordered(x, C.imgs[0], 0, 0, W, H);
-      C.layout[0] = { x: 0, y: 0, w: W, h: H };
-      return;
-    }
+    const out = new Array(n);
+    if (!n) return out;
+    if (n === 1) { out[0] = { x: 0, y: 0, w: W, h: H }; return out; }
     if (n === 2) {
       if (land) {
         const w2 = (W - sp) / 2;
-        drawBordered(x, C.imgs[0], 0, 0, w2, H);
-        drawBordered(x, C.imgs[1], w2 + sp, 0, w2, H);
-        C.layout[0] = { x: 0, y: 0, w: w2, h: H };
-        C.layout[1] = { x: w2 + sp, y: 0, w: w2, h: H };
+        out[0] = { x: 0, y: 0, w: w2, h: H };
+        out[1] = { x: w2 + sp, y: 0, w: w2, h: H };
       } else {
         const h2 = (H - sp) / 2;
-        drawBordered(x, C.imgs[0], 0, 0, W, h2);
-        drawBordered(x, C.imgs[1], 0, h2 + sp, W, h2);
-        C.layout[0] = { x: 0, y: 0, w: W, h: h2 };
-        C.layout[1] = { x: 0, y: h2 + sp, w: W, h: h2 };
+        out[0] = { x: 0, y: 0, w: W, h: h2 };
+        out[1] = { x: 0, y: h2 + sp, w: W, h: h2 };
       }
-      return;
+      return out;
     }
-    const f = n >= 6 ? 2 : 1;                 /* featured count: 1-2 */
+    const f = n >= 6 ? 2 : 1;
     const fw = land ? Math.round(W * 0.5) : W;
     const fh = land ? H : Math.round(H * 0.52);
     if (f === 1) {
-      drawBordered(x, C.imgs[0], 0, 0, fw, fh);
-      C.layout[0] = { x: 0, y: 0, w: fw, h: fh };
+      out[0] = { x: 0, y: 0, w: fw, h: fh };
+    } else if (land) {
+      const h2 = (fh - sp) / 2;
+      out[0] = { x: 0, y: 0, w: fw, h: h2 };
+      out[1] = { x: 0, y: h2 + sp, w: fw, h: h2 };
     } else {
-      /* two featured stacked (landscape) / side-by-side (portrait) */
-      if (land) {
-        const h2 = (fh - sp) / 2;
-        drawBordered(x, C.imgs[0], 0, 0, fw, h2);
-        drawBordered(x, C.imgs[1], 0, h2 + sp, fw, h2);
-        C.layout[0] = { x: 0, y: 0, w: fw, h: h2 };
-        C.layout[1] = { x: 0, y: h2 + sp, w: fw, h: h2 };
-      } else {
-        const w2 = (fw - sp) / 2;
-        drawBordered(x, C.imgs[0], 0, 0, w2, fh);
-        drawBordered(x, C.imgs[1], w2 + sp, 0, w2, fh);
-        C.layout[0] = { x: 0, y: 0, w: w2, h: fh };
-        C.layout[1] = { x: w2 + sp, y: 0, w: w2, h: fh };
-      }
+      const w2 = (fw - sp) / 2;
+      out[0] = { x: 0, y: 0, w: w2, h: fh };
+      out[1] = { x: w2 + sp, y: 0, w: w2, h: fh };
     }
     const tx = land ? fw + sp : 0;
     const ty = land ? 0 : fh + sp;
     const tw = land ? W - fw - sp : W;
     const th = land ? H : H - fh - sp;
-    packRows(x, tx, ty, tw, th, C.imgs.slice(f), sp, C.layout, f);
+    const rest = packRowsSlots(tx, ty, tw, th, S.items.slice(f), sp);
+    for (let k = 0; k < rest.length; k++) out[f + k] = rest[k];
+    return out;
   }
-
-  /* ================= LAYOUT: Frame Mosaic =================
-     One central photo framed by smaller tiles along the four edges.
-     Strip thicknesses adapt (shrinking until the ring can hold every
-     photo), then the ring photos are distributed over the strips by
-     length weight: top -> right -> bottom -> left (clockwise). */
-  function paintFrame(x, W, H, sc) {
-    const n = C.imgs.length;
-    const sp = Math.max(C.spacing, 4) * sc;
-    C.layout = [];
-    if (n <= 2) { paintMosaic(x, W, H, sc); return; }
+  function slotFrame(W, H) {
+    const n = S.items.length;
+    const sp = 8;
+    const out = new Array(n);
+    if (n <= 2) return slotMosaic(W, H);
     const m = n - 1;
     let kT, kB, kL, kR, tv, th;
     if (m < 4) {
-      /* tiny rings: top + bottom strips only */
       kT = Math.ceil(m / 2); kB = m - kT; kL = 0; kR = 0;
       tv = Math.min(H * clamp(0.16 + 0.07 * m, 0.22, 0.42), (H - 2 * sp) / 2);
       th = 0;
     } else {
-      /* strip thickness: start generous, shrink until the ring capacity
-         can hold every photo; side strips only when they physically fit */
       tv = clamp(H * 0.24, H * 0.08, Math.max(H * 0.08, (H - 3 * sp) / 2));
       th = clamp(W * 0.24, W * 0.08, Math.max(W * 0.08, (W - 3 * sp) / 2));
       const sideOK = () => th > sp && H - 2 * (tv + sp) > sp;
@@ -433,7 +741,6 @@
         tv = ntv; th = nth;
         cap = capOf();
       }
-      /* distribute the m ring photos over the strips by length weight */
       const bandH = H - 2 * (tv + sp);
       const sides = sideOK();
       const strips = [
@@ -459,720 +766,142 @@
       kR = sides ? strips.find((s) => s.key === 'R').k : 0;
       if (!kL) th = 0;
     }
-    /* center cell */
     const cx = kL > 0 ? th + sp : 0;
     const cy = kT > 0 ? tv + sp : 0;
     const cw2 = W - (kL > 0 ? 2 * (th + sp) : 0);
     const ch2 = H - (kT > 0 ? 2 * (tv + sp) : 0);
-    if (cw2 > 4 && ch2 > 4) {
-      drawBordered(x, C.imgs[0], cx, cy, cw2, ch2);
-      C.layout[0] = { x: cx, y: cy, w: cw2, h: ch2 };
-    }
-    /* edge tiles, clockwise: top -> right -> bottom -> left */
+    const put = (i, x, y, w, h) => { out[i] = { x, y, w, h }; };
+    if (cw2 > 4 && ch2 > 4) put(0, cx, cy, cw2, ch2);
     let idx = 1;
     if (kT > 0) {
       const w = (W - sp * (kT - 1)) / kT;
-      for (let k = 0; k < kT && idx < n; k++, idx++) {
-        drawBordered(x, C.imgs[idx], k * (w + sp), 0, w, tv);
-        C.layout[idx] = { x: k * (w + sp), y: 0, w, h: tv };
-      }
+      for (let k = 0; k < kT && idx < n; k++, idx++) put(idx, k * (w + sp), 0, w, tv);
     }
     if (kR > 0) {
       const bandY = tv + sp, bandH = H - 2 * (tv + sp);
       const h = (bandH - sp * (kR - 1)) / kR;
-      for (let k = 0; k < kR && idx < n; k++, idx++) {
-        drawBordered(x, C.imgs[idx], W - th, bandY + k * (h + sp), th, h);
-        C.layout[idx] = { x: W - th, y: bandY + k * (h + sp), w: th, h };
-      }
+      for (let k = 0; k < kR && idx < n; k++, idx++) put(idx, W - th, bandY + k * (h + sp), th, h);
     }
     if (kB > 0) {
       const w = (W - sp * (kB - 1)) / kB;
-      for (let k = 0; k < kB && idx < n; k++, idx++) {
-        drawBordered(x, C.imgs[idx], k * (w + sp), H - tv, w, tv);
-        C.layout[idx] = { x: k * (w + sp), y: H - tv, w, h: tv };
-      }
+      for (let k = 0; k < kB && idx < n; k++, idx++) put(idx, k * (w + sp), H - tv, w, tv);
     }
     if (kL > 0) {
       const bandY = tv + sp, bandH = H - 2 * (tv + sp);
       const h = (bandH - sp * (kL - 1)) / kL;
-      for (let k = 0; k < kL && idx < n; k++, idx++) {
-        drawBordered(x, C.imgs[idx], 0, bandY + k * (h + sp), th, h);
-        C.layout[idx] = { x: 0, y: bandY + k * (h + sp), w: th, h };
-      }
+      for (let k = 0; k < kL && idx < n; k++, idx++) put(idx, 0, bandY + k * (h + sp), th, h);
     }
+    return out;
   }
-
-  /* ================= LAYOUT: Grid / Contact Sheet ================= */
-  function paintCells(x, W, H, sc, sheet) {
-    const n = C.imgs.length;
-    const sp = (sheet ? Math.max(C.spacing, 16) : C.spacing) * sc;
-    const marg = (sheet ? Math.max(34, C.spacing + 20) : C.spacing + 6) * sc;
-    const cols = Math.max(1, Math.ceil(Math.sqrt(n * (W / H))));
-    const rows = Math.max(1, Math.ceil(n / cols));
-    const cw = (W - marg * 2 - sp * (cols - 1)) / cols;
-    const ch = (H - marg * 2 - sp * (rows - 1)) / rows;
-    C.layout = [];
-    let i = 0;
-    for (let r = 0; r < rows; r++) {
-      for (let c2 = 0; c2 < cols && i < n; c2++, i++) {
-        const px = marg + c2 * (cw + sp), py = marg + r * (ch + sp);
-        if (sheet) {
-          x.fillStyle = '#ffffff';
-          x.fillRect(px, py, cw, ch);
-          drawContain(x, C.imgs[i], px + cw * 0.045, py + cw * 0.045, cw * 0.91, ch - cw * 0.09);
-        } else {
-          drawBordered(x, C.imgs[i], px, py, cw, ch);
-        }
-        C.layout[i] = { x: px, y: py, w: cw, h: ch };
-      }
-    }
-  }
-
-  /* ================= master render ================= */
-  function renderCollage(W, H, sc, skip) {
-    const c = document.createElement('canvas');
-    c.width = Math.max(2, Math.round(W)); c.height = Math.max(2, Math.round(H));
-    W = c.width; H = c.height;
-    const x = c.getContext('2d');
-    x.fillStyle = C.bg;
-    x.fillRect(0, 0, W, H);
-    const n = C.imgs.length;
-    if (!n) return c;
-    const bi = Math.min(C.bgIdx || 0, n - 1);
-    if (C.bgPhoto && C.imgs[bi]) drawBlurredBg(x, C.imgs[bi], W, H);
-    /* v3.17.0: all five Picasa collage types are live again */
-    if (C.type === 'mosaic') paintMosaic(x, W, H, sc);
-    else if (C.type === 'frame') paintFrame(x, W, H, sc);
-    else if (C.type === 'grid') paintCells(x, W, H, sc, false);
-    else if (C.type === 'sheet') paintCells(x, W, H, sc, true);
-    else paintPile(x, W, H, skip);
-    return c;
-  }
-
-  function renderPreview() {
-    const [W0, H0] = dims();
-    const k = Math.min(1, 1500 / Math.max(W0, H0));
-    const c = renderCollage(W0 * k, H0 * k, (W0 * k) / W0);
-    el.canvas.width = c.width;
-    el.canvas.height = c.height;
-    el.canvas.getContext('2d').drawImage(c, 0, 0);
-  }
-
-  let rafPend = false;
-  function scheduleRedraw(saveToo) {
-    if (rafPend) return;
-    rafPend = true;
-    requestAnimationFrame(() => {
-      rafPend = false;
-      renderPreview();
-      paintOverlay();
-      if (saveToo) scheduleColSave();
-    });
-  }
-
-  /* ================= selection overlay (never exported) =================
-     v3.17.0: Picasa's iconic ROUND WHEEL replaces the old dashed box +
-     lollipop handle. A semi-transparent grey donut ring sits in the exact
-     center of the photo, with one small knob on its perimeter (fixed at the
-     ring's RIGHT edge — 3 o'clock, screen-space — it never spins with the
-     photo). The wheel shows strongly on the selected photo and faintly on
-     the hovered one, exactly like Picasa 3. */
-  function handleSize() { return Math.max(9, el.canvas.width * 0.011); }
-  function wheelGeom(i) {
-    const L = C.layout && C.layout[i];
-    if (!L || !L.pile) return null;
-    const R = clamp(Math.min(L.jw, L.jh) * 0.38, 20, Math.min(el.canvas.width, el.canvas.height) * 0.22);
-    const ringW = Math.max(5, R * 0.21);   /* v3.17.1: a touch thicker, like Picasa's wheel */
-    const knobR = Math.max(5.5, R * 0.2);
-    const ang = 0;   /* v3.17.1: knob rests at the ring's RIGHT edge (3 o'clock) */
-    return {
-      cx: L.px, cy: L.py, R, ringW, knobR, ang,
-      kx: L.px + R * Math.cos(ang), ky: L.py + R * Math.sin(ang)
-    };
-  }
-  function drawWheel(x, g, strong) {
-    x.save();
-    x.lineCap = 'round';
-    /* donut ring */
-    x.beginPath();
-    x.arc(g.cx, g.cy, g.R, 0, Math.PI * 2);
-    x.strokeStyle = strong ? 'rgba(96,104,112,.60)' : 'rgba(96,104,112,.26)';
-    x.lineWidth = g.ringW;
-    x.stroke();
-    /* tiny hub dot in the exact center */
-    x.beginPath(); x.arc(g.cx, g.cy, Math.max(2.4, g.R * 0.055), 0, Math.PI * 2);
-    x.fillStyle = strong ? 'rgba(70,78,86,.6)' : 'rgba(70,78,86,.3)';
-    x.fill();
-    /* the small perimeter knob */
-    x.beginPath(); x.arc(g.kx, g.ky, g.knobR, 0, Math.PI * 2);
-    x.fillStyle = '#f4f5f6';
-    x.fill();
-    x.lineWidth = Math.max(1.4, g.knobR * 0.26);
-    x.strokeStyle = 'rgba(90,98,106,.82)';
-    x.stroke();
-    x.restore();
-  }
-  function paintOverlay(keepBase) {
-    const ov = el.overlay;
-    if (ov.width !== el.canvas.width || ov.height !== el.canvas.height) {
-      ov.width = el.canvas.width; ov.height = el.canvas.height;
-    }
-    const x = ov.getContext('2d');
-    if (!keepBase) x.clearRect(0, 0, ov.width, ov.height);
-    if (!C.open || !C.layout) return;
-    const lw = Math.max(1.5, el.canvas.width * 0.0032);
-    const hs = handleSize();
-    const pile = C.type === 'pile';
-    for (const i of C.sel) {
-      const L = C.layout[i]; if (!L) continue;
-      x.save();
-      x.lineWidth = lw;
-      /* v3.17.0: solid thin outline (the dashed border is retired) */
-      x.strokeStyle = 'rgba(43,124,211,.85)';
-      x.translate(L.px, L.py);
-      x.rotate(L.rot);
-      const m = hs * 0.9;
-      if (pile) x.strokeRect(-L.jw / 2 - m, -L.jh / 2 - m, L.jw + m * 2, L.jh + m * 2);
-      else x.strokeRect(L.x - lw, L.y - lw, L.w + lw * 2, L.h + lw * 2);
-      x.restore();
-      if (!pile) {
-        x.fillStyle = '#2b7cd3';
-        const d = Math.max(3, hs * 0.34);
-        for (const [hx, hy] of [[L.x, L.y], [L.x + L.w, L.y], [L.x, L.y + L.h], [L.x + L.w, L.y + L.h]]) {
-          x.fillRect(hx - d, hy - d, d * 2, d * 2);
-        }
-      }
-    }
-    /* the wheel: strong on the single selection, faint on the hovered photo */
-    if (pile && !finalized()) {
-      if (C.sel.size === 1) {
-        const g = wheelGeom([...C.sel][0]);
-        if (g) drawWheel(x, g, true);
-      } else if (C.sel.size === 0 && C.hoverI >= 0 && !drag && C.layout[C.hoverI]) {
-        const g = wheelGeom(C.hoverI);
-        if (g) drawWheel(x, g, false);
-      }
-    }
-    /* swap target highlight while dragging in slotted modes */
-    if (swapTarget >= 0 && C.layout[swapTarget] && C.layout[swapTarget].w) {
-      const L = C.layout[swapTarget];
-      x.save();
-      x.fillStyle = 'rgba(43,124,211,.20)';
-      x.fillRect(L.x, L.y, L.w, L.h);
-      x.lineWidth = lw * 1.6;
-      x.strokeStyle = '#2b7cd3';
-      x.strokeRect(L.x, L.y, L.w, L.h);
-      x.restore();
-    }
-  }
-
-  /* ================= hit testing ================= */
-  function canvasPt(e) {
-    const r = el.canvas.getBoundingClientRect();
-    return { x: (e.clientX - r.left) * (el.canvas.width / r.width),
-             y: (e.clientY - r.top) * (el.canvas.height / r.height) };
-  }
-  function hitPhoto(pt) {
-    if (!C.layout || !C.order || C.type !== 'pile') return -1;
-    for (let k = C.order.length - 1; k >= 0; k--) {
-      const L = C.layout[C.order[k]]; if (!L) continue;
-      const dx = pt.x - L.px, dy = pt.y - L.py;
-      const cos = Math.cos(-L.rot), sin = Math.sin(-L.rot);
-      const lx = dx * cos - dy * sin, ly = dx * sin + dy * cos;
-      if (Math.abs(lx) <= L.jw / 2 && Math.abs(ly) <= L.jh / 2) return C.order[k];
-    }
-    return -1;
-  }
-  function hitCell(pt) {
-    if (!C.layout) return -1;
-    for (let i = 0; i < C.layout.length; i++) {
-      const L = C.layout[i];
-      if (!L || L.pile || L.w == null) continue;
-      if (pt.x >= L.x && pt.x <= L.x + L.w && pt.y >= L.y && pt.y <= L.y + L.h) return i;
-    }
-    return -1;
-  }
-  function bringToFront(i) {
-    if (!C.order) return;
-    const k = C.order.indexOf(i);
-    if (k >= 0) { C.order.splice(k, 1); C.order.push(i); }
-  }
-  function sendToBack(i) {
-    if (!C.order) return;
-    const k = C.order.indexOf(i);
-    if (k >= 0) { C.order.splice(k, 1); C.order.unshift(i); }
-  }
-  function getPos(i) {
-    C.pos = C.pos || [];
-    const p = C.pos[i];
-    if (p) return { x: p.x, y: p.y, rot: p.rot || 0, scale: p.scale || 1 };
-    const L = C.layout[i];
-    return L ? { x: L.px / el.canvas.width, y: L.py / el.canvas.height, rot: L.rot, scale: 1 }
-             : { x: 0.5, y: 0.5, rot: 0, scale: 1 };
-  }
-  const finalized = () => C.final;   /* after "Create Collage" the result is final */
-
-  /* ================= interactive transforms ================= */
-  const ptrs = new Map();
-  let drag = null;
-
-  /* ---- v3.15.0 Picasa-smooth dragging ----
-     While a gesture is active the collage is NOT re-rendered every frame.
-     renderCollage() runs ONCE at gesture start WITHOUT the dragged photos
-     (baseSnap); every pointermove then just recomposites that snapshot plus
-     the moved photos onto the overlay canvas — a ~60fps operation instead of
-     a full re-render (background + blurred photo + every photo). */
-  let baseSnap = null;
-  let dragSet = null;
-  let wheelT = null;
-  function buildBase() {
-    dragSet = (drag.mode === 'move' || drag.mode === 'pinch') ? new Set(C.sel)
-            : new Set([drag.i]);
-    if (!dragSet.size) { baseSnap = null; dragSet = null; return; }
-    baseSnap = renderCollage(el.canvas.width, el.canvas.height, 1, dragSet);
-  }
-  function dragPaint() {
-    if (!baseSnap || !dragSet) return;
-    const ov = el.overlay;
-    if (ov.width !== el.canvas.width || ov.height !== el.canvas.height) {
-      ov.width = el.canvas.width; ov.height = el.canvas.height;
-    }
-    const x = ov.getContext('2d');
-    x.clearRect(0, 0, ov.width, ov.height);
-    x.drawImage(baseSnap, 0, 0);
-    for (const j of dragSet) {
-      const b = drawPilePhoto(x, j, el.canvas.width, el.canvas.height);
-      if (b) C.layout[j] = { px: b.px, py: b.py, jw: b.jw, jh: b.jh, rot: b.rot, pile: true };
-    }
-    paintOverlay(true);   /* outlines + handles on top (no clear) */
-  }
-  function endGesture() { baseSnap = null; dragSet = null; }
-
-  function startPinch() {
-    const [p1, p2] = [...ptrs.values()];
-    let i = hitPhoto(p1);
-    if (i < 0 && C.sel.size === 1) i = [...C.sel][0];
-    if (i < 0) { drag = null; return; }
-    if (!C.sel.has(i)) C.sel = new Set([i]);
-    bringToFront(i);
-    drag = {
-      mode: 'pinch', i,
-      d0: Math.max(8, dist(p1, p2)),
-      ang0: Math.atan2(p2.y - p1.y, p2.x - p1.x),
-      c0: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 },
-      start: getPos(i)
-    };
-    buildBase();
-    el.canvas.style.cursor = 'grabbing';
-    paintOverlay();
-  }
-  function pinchUpdate() {
-    const [p1, p2] = [...ptrs.values()];
-    if (!p1 || !p2 || !drag) return;
-    const d = Math.max(8, dist(p1, p2));
-    const ang = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-    const c = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-    const s = drag.start;
-    C.pos = C.pos || [];
-    C.pos[drag.i] = {
-      x: clamp(s.x + (c.x - drag.c0.x) / el.canvas.width, -0.5, 1.5),
-      y: clamp(s.y + (c.y - drag.c0.y) / el.canvas.height, -0.5, 1.5),
-      rot: s.rot + (ang - drag.ang0),
-      scale: clamp(s.scale * d / drag.d0, 0.2, 4)
-    };
-    dragPaint();
-  }
-
-  function wireInteractions() {
-    const cv = el.canvas;
-    /* v3.15.2 FIX — "drag to move is dead": pointermove/pointerup used to sit
-       on the CANVAS only. One missed pointerup (a touch contact the browser
-       cancelled elsewhere, a capture that silently failed, releasing the
-       mouse over another element) left a GHOST pointer inside `ptrs`
-       forever — the next pointerdown then looked like a 2-finger pinch,
-       startPinch() bailed out, and every drag stayed dead (photos were still
-       selectable, but nothing ever moved) until the page was reloaded.
-       Now: move/up/cancel live on WINDOW (the whole gesture is always seen),
-       and a mouse pointerdown flushes stale entries, so the trap can never
-       re-arm. */
-    const onMove = (e) => {
-      if (!C.open || el.root.hidden) return;
-      const pt = canvasPt(e);
-      if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, pt);
-      if (drag && drag.mode === 'pinch') { pinchUpdate(); return; }
-      if (!drag) {
-        const r = cv.getBoundingClientRect();
-        if (e.clientX < r.left || e.clientX >= r.right || e.clientY < r.top || e.clientY >= r.bottom) {
-          if (C.hoverI !== -1) { C.hoverI = -1; if (!finalized()) paintOverlay(); }
-          return;
-        }
-        if (finalized()) { cv.style.cursor = 'default'; return; }
-        const hit = C.type === 'pile' ? hitPhoto(pt) : (SLOTTED.includes(C.type) ? hitCell(pt) : -1);
-        cv.style.cursor = hit >= 0 ? 'grab' : 'default';
-        /* v3.17.0: the wheel faintly appears under the cursor (Picasa hover) */
-        if (hit !== C.hoverI) { C.hoverI = hit; paintOverlay(); }
-        return;
-      }
-      switch (drag.mode) {
-        case 'move': {
-          const dx = (pt.x - drag.pt.x) / el.canvas.width;
-          const dy = (pt.y - drag.pt.y) / el.canvas.height;
-          C.pos = C.pos || [];
-          for (const j of C.sel) {
-            const s = drag.snap[j]; if (!s) continue;
-            C.pos[j] = { x: clamp(s.x + dx, -0.5, 1.5), y: clamp(s.y + dy, -0.5, 1.5), rot: s.rot, scale: s.scale };
-          }
-          drag.pt = pt;
-          dragPaint();
-          break;
-        }
-        case 'knob': {
-          /* v3.17.0 Picasa wheel knob: the ANGLE around the captured wheel
-             center sets the rotation, the DISTANCE sets the scale — both at
-             once. The center is fixed at gesture start (see pointerdown). */
-          const ang = Math.atan2(pt.y - drag.c.y, pt.x - drag.c.x);
-          const d = dist(pt, drag.c);
-          let rot = drag.start.rot + (ang - drag.a0);
-          const snap90 = Math.round(rot / (Math.PI / 2)) * (Math.PI / 2);
-          if (Math.abs(rot - snap90) < 3 * DEG) rot = snap90;   /* magnetic 0/90/180/270 */
-          C.pos = C.pos || [];
-          C.pos[drag.i] = { x: drag.start.x, y: drag.start.y, rot, scale: clamp(drag.start.scale * d / drag.d0, 0.2, 4) };
-          dragPaint();
-          break;
-        }
-        case 'swap': {
-          const over = hitCell(pt);
-          if (over !== swapTarget) { swapTarget = over; paintOverlay(); }
-          break;
-        }
-      }
-    };
-    const onUp = (e) => {
-      if (!C.open) return;
-      const known = e && ptrs.has(e.pointerId);
-      if (e && !drag && !known) return;   /* an ordinary click elsewhere in the app */
-      if (known) ptrs.delete(e.pointerId);
-      if (drag && drag.mode === 'pinch' && ptrs.size >= 2) return;  /* still pinching */
-      if (drag && drag.mode === 'swap') {
-        if (swapTarget >= 0 && swapTarget !== drag.from) {
-          const a = drag.from, b = swapTarget;
-          [C.imgs[a], C.imgs[b]] = [C.imgs[b], C.imgs[a]];
-          if (C.list && C.list[a] && C.list[b]) { const t = C.list[a]; C.list[a] = C.list[b]; C.list[b] = t; }
-          C.sel = new Set([a]);
-          scheduleRedraw(true);
-        }
-      } else if (drag) {
-        scheduleColSave();
-      }
-      drag = null;
-      swapTarget = -1;
-      endGesture();
-      clearTimeout(wheelT);
-      el.canvas.style.cursor = 'default';
-      scheduleRedraw(true);
-    };
-    cv.addEventListener('pointerdown', (e) => {
-      if (!C.open || finalized() || el.root.hidden) return;
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
-      e.preventDefault();   /* no native text-selection / ghost image drag */
-      if (e.pointerType === 'mouse') ptrs.clear();   /* a mouse is one pointer: flush ghosts */
-      if (drag && drag.mode === 'wheel') { drag = null; endGesture(); clearTimeout(wheelT); }
-      const pt = canvasPt(e);
-      ptrs.set(e.pointerId, pt);
-      try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
-      if (C.type === 'pile') {
-        if (ptrs.size >= 2) { startPinch(); return; }
-        /* v3.17.0: the wheel knob first — it sits on the perimeter of the
-           wheel of the selected (or hovered) photo; grabbing it rotates AND
-           resizes in a single gesture, exactly like Picasa 3 */
-        const knobOwner = C.sel.size === 1 ? [...C.sel][0] : C.hoverI;
-        if (knobOwner >= 0) {
-          const g = wheelGeom(knobOwner);
-          if (g && dist(pt, { x: g.kx, y: g.ky }) <= Math.max(14, g.knobR * 2.2)) {
-            if (!C.sel.has(knobOwner)) C.sel = new Set([knobOwner]);
-            bringToFront(knobOwner);
-            const L = C.layout[knobOwner];
-            drag = {
-              mode: 'knob', i: knobOwner,
-              /* v3.17.0 FIX: buildBase() re-renders the pile WITHOUT the
-                 dragged photo, so C.layout[i] is a hole mid-gesture — the
-                 wheel center is captured here once and stays fixed while
-                 the knob turns (the photo rotates around its own center) */
-              c: { x: L.px, y: L.py },
-              a0: Math.atan2(pt.y - L.py, pt.x - L.px),
-              d0: Math.max(12, dist(pt, { x: L.px, y: L.py })),
-              start: getPos(knobOwner)
-            };
-            buildBase();
-            cv.style.cursor = 'grabbing';
-            paintOverlay();
-            return;
-          }
-        }
-        const i = hitPhoto(pt);
-        if (i >= 0) {
-          if (e.ctrlKey || e.metaKey) {
-            if (C.sel.has(i)) C.sel.delete(i); else C.sel.add(i);
-          } else if (!C.sel.has(i)) {
-            C.sel = new Set([i]);
-          }
-          bringToFront(i);   /* Picasa: the photo you grab jumps on top */
-          const snap = {};
-          for (const j of C.sel) snap[j] = getPos(j);
-          drag = { mode: 'move', pt, snap };
-          buildBase();
-          cv.style.cursor = 'grabbing';
-        } else {
-          C.sel.clear();
-          C.hoverI = -1;
-          drag = null;
-        }
-        paintOverlay();
-      } else if (SLOTTED.includes(C.type)) {
-        const i = hitCell(pt);
-        if (i >= 0) {
-          if (!C.sel.has(i)) C.sel = new Set([i]);
-          drag = { mode: 'swap', from: i, pt };
-          cv.style.cursor = 'grabbing';
-        } else {
-          C.sel.clear();
-          C.hoverI = -1;
-          drag = null;
-        }
-        paintOverlay();
-      }
-    });
-
-    window.addEventListener('pointermove', onMove, { passive: true });
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
-    window.addEventListener('blur', () => {
-      ptrs.clear();   /* alt-tab / window switch: every pointer is gone */
-      drag = null;
-      swapTarget = -1;
-      endGesture();
-      clearTimeout(wheelT);
-      if (C.open) cv.style.cursor = 'default';
-    });
-
-    cv.addEventListener('wheel', (e) => {
-      if (!C.open || finalized() || C.type !== 'pile') return;
-      const pt = canvasPt(e);
-      let i = hitPhoto(pt);
-      if (i < 0 && C.sel.size === 1) i = [...C.sel][0];
-      if (i < 0) return;
-      e.preventDefault();
-      if (!drag) { drag = { mode: 'wheel', i }; buildBase(); }
-      const pos = getPos(i);
-      if (e.shiftKey) pos.rot += (e.deltaY < 0 ? 1 : -1) * 5 * DEG;
-      else pos.scale = clamp(pos.scale * (e.deltaY < 0 ? 1.07 : 0.93), 0.2, 4);
-      C.pos = C.pos || [];
-      C.pos[i] = pos;
-      dragPaint();
-      clearTimeout(wheelT);
-      wheelT = setTimeout(() => {
-        if (drag && drag.mode === 'wheel') {
-          drag = null; endGesture();
-          scheduleRedraw(true);
-        }
-      }, 350);
-    }, { passive: false });
-
-    /* v3.17.0: Picasa right-click menu on any collage photo */
-    cv.addEventListener('contextmenu', (e) => {
-      if (!C.open || el.root.hidden) return;
-      e.preventDefault();
-      el.menu.hidden = true;
-      if (finalized()) return;
-      const pt = canvasPt(e);
-      const i = C.type === 'pile' ? hitPhoto(pt) : (SLOTTED.includes(C.type) ? hitCell(pt) : -1);
-      if (i < 0) return;
-      if (!C.sel.has(i)) C.sel = new Set([i]);
-      paintOverlay();
-      openMenu(e.clientX, e.clientY, i);
-    });
-    document.addEventListener('pointerdown', (e) => {
-      if (!el.menu.hidden && !e.target.closest('#cMenu')) el.menu.hidden = true;
-    }, true);
-    window.addEventListener('blur', () => { el.menu.hidden = true; });
-  }
-
-  /* ================= selection actions ================= */
-  function firstSel() { return C.sel.size ? [...C.sel][0] : -1; }
-  function selectAll() {
-    C.sel = new Set(C.imgs.map((_, i) => i));
-    paintOverlay();
-  }
-  function selectNone() { C.sel.clear(); paintOverlay(); }
-  function removeSelected() {
-    if (!C.sel.size || !C.imgs.length) return;
-    if (C.sel.size >= C.imgs.length) { toast('Keep at least one photo in the collage', 'err'); return; }
-    returnToClips();   /* v3.17.0: removed photos fall back into the Clips tray */
-    const keep = [];
-    for (let i = 0; i < C.imgs.length; i++) if (!C.sel.has(i)) keep.push(i);
-    C.imgs = keep.map((i) => C.imgs[i]);
-    C.list = keep.map((i) => C.list[i]);
-    C.pos = C.pos ? keep.map((i) => (C.pos && C.pos[i]) || null) : null;
-    if (C.order) {
-      const remap = new Map(keep.map((old, nw) => [old, nw]));
-      C.order = C.order.filter((i) => remap.has(i)).map((i) => remap.get(i));
-    }
-    C.bgIdx = remapIdx(C.bgIdx, keep);
-    C.sel.clear();
-    noteCount();
-    scheduleRedraw(true);
-  }
-  function remapIdx(old, keep) {
-    if (old == null) return 0;
-    const nw = keep.indexOf(old);
-    return nw >= 0 ? nw : 0;
-  }
-  function zOrder(dir) {
-    if (C.type !== 'pile' || !C.sel.size) return;
-    C.order = C.order && C.order.length === C.imgs.length ? C.order : C.imgs.map((_, i) => i);
-    const front = C.order.filter((i) => C.sel.has(i));
-    const rest = C.order.filter((i) => !C.sel.has(i));
-    C.order = dir === 1 ? rest.concat(front) : front.concat(rest);
-    scheduleRedraw(true);
-  }
-  function rotateSel(dir) {
-    if (C.type !== 'pile' || !C.sel.size) return;
-    C.pos = C.pos || [];
-    for (const j of C.sel) {
-      const p = getPos(j);
-      p.rot = ((p.rot + dir * Math.PI / 2 + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
-      C.pos[j] = p;
-    }
-    scheduleRedraw(true);
-  }
-  function scaleSel(mult) {
-    if (C.type !== 'pile' || !C.sel.size) return;
-    C.pos = C.pos || [];
-    for (const j of C.sel) {
-      const p = getPos(j);
-      p.scale = clamp(p.scale * mult, 0.2, 4);
-      C.pos[j] = p;
-    }
-    scheduleRedraw(true);
-  }
-  function shufflePics() {
-    if (C.imgs.length < 2) return;
-    for (let i = C.imgs.length - 1; i > 0; i--) {
-      const j = (Math.random() * (i + 1)) | 0;
-      const a = C.imgs[i]; C.imgs[i] = C.imgs[j]; C.imgs[j] = a;
-      if (C.list && C.list.length === C.imgs.length) { const b = C.list[i]; C.list[i] = C.list[j]; C.list[j] = b; }
-    }
-    C.sel.clear();
-    scheduleRedraw(true);
-  }
-  function scramble() {
-    if (C.type === 'pile') {
-      C.seed = (Math.random() * 2147483646) | 0;
-      C.pos = null;
-      C.order = null;
+  /* apply the current type's arrangement to the free items */
+  function applyLayout(save) {
+    const n = S.items.length;
+    if (!n) return;
+    const [W, H] = dims();
+    if (S.type === 'pile') {
+      /* back to the automatic Picasa scatter */
+      S.items.forEach((it, i) => {
+        const g = pileFrac(i, n);
+        it.x = g.x; it.y = g.y; it.rot = g.rot;
+        it.wFrac = g.wFrac; it.hFrac = g.wFrac * (it.natH / it.natW) * (W / H);
+        it.scale = 1; it.fit = 'fill';
+      });
     } else {
-      shufflePics();
-      return;
+      let slots;
+      if (S.type === 'mosaic') slots = slotMosaic(W, H);
+      else if (S.type === 'frame') slots = slotFrame(W, H);
+      else slots = slotCells(n, W, H, S.type === 'sheet');
+      /* slots are stage-pixel rects (W × H with the page ratio) —
+         convert to per-axis fractions of the live stage */
+      S.items.forEach((it, i) => {
+        const s = slots[i] || { x: 0, y: 0, w: W, h: H };
+        it.x = (s.x + s.w / 2) / W;
+        it.y = (s.y + s.h / 2) / H;
+        it.wFrac = s.w / W;        /* fraction of stage width */
+        it.hFrac = s.h / H;        /* fraction of stage height */
+        it.rot = 0; it.scale = 1;
+        it.fit = S.type === 'sheet' ? 'contain' : 'cover';
+      });
     }
-    C.sel.clear();
-    scheduleRedraw(true);
-  }
-  function setAsBackground() {
-    if (!C.imgs.length) return;
-    const i = firstSel();
-    C.bgIdx = i >= 0 ? i : 0;
-    C.bgPhoto = true;
-    el.bgPhoto.checked = true;
-    scheduleRedraw(true);
-  }
-  function viewAndEdit() {
-    const i = firstSel();
-    if (i < 0) { toast('Select a photo first, then press View and Edit', 'err'); return; }
-    const item = C.list[i];
-    const k = item ? photoKey(item) : null;
-    const idx = k != null ? state.photos.findIndex((p) => photoKey(p) === k) : -1;
-    if (idx < 0) { toast('This photo is not in the library — View and Edit works with library photos', 'err', 4500); return; }
-    close();
-    if (window.PixsaEditor) window.PixsaEditor.open(idx);
+    /* draw order follows list order after an auto-layout */
+    S.items.forEach((it, i) => { it.z = i + 1; });
+    zTop = n + 20;
+    renderAll();
+    positionWheel();
+    refreshBackground();
+    if (save) scheduleColSave();
   }
 
-  /* ================= v3.17.0: Picasa right-click context menu ================= */
-  function openMenu(cx, cy, i) {
-    const m = el.menu;
-    m.innerHTML = '';
-    const pile = C.type === 'pile';
-    const add = (label, cmd, dis) => {
-      const b = document.createElement('button');
-      b.type = 'button'; b.textContent = label; b.disabled = !!dis;
-      b.addEventListener('click', () => { m.hidden = true; menuCmd(cmd, i); });
-      m.appendChild(b);
-    };
-    const sep = () => { const s = document.createElement('div'); s.className = 'csep'; m.appendChild(s); };
-    add('Set as Background', 'setbg');
-    sep();
-    add('Bring to Top', 'top', !pile);
-    add('Bring Forward', 'fwd', !pile);
-    add('Send Backward', 'back1', !pile);
-    add('Send to Bottom', 'bottom', !pile);
-    sep();
-    add('Rotate Right (90\u00b0)', 'rotR', !pile);
-    add('Rotate Left (-90\u00b0)', 'rotL', !pile);
-    sep();
-    add('View and Edit', 'view');
-    add('Remove', 'remove');
-    m.hidden = false;
-    m.style.left = '0px'; m.style.top = '0px';
-    const r = m.getBoundingClientRect();
-    m.style.left = Math.max(6, Math.min(cx, window.innerWidth - r.width - 8)) + 'px';
-    m.style.top = Math.max(6, Math.min(cy, window.innerHeight - r.height - 8)) + 'px';
+  /* ================= scramble / shuffle ================= */
+  function scramble() {
+    if (S.final || !S.items.length) return;
+    S.type = 'pile';
+    el.type.value = 'pile';
+    S.items.forEach((it) => {
+      it.x = 0.2 + Math.random() * 0.6;
+      it.y = 0.2 + Math.random() * 0.6;
+      it.rot = (Math.random() - 0.5) * 32;
+      it.scale = 1;
+    });
+    renderAll();
+    positionWheel();
+    scheduleColSave();
   }
-  function menuCmd(cmd, i) {
-    if (finalized()) return;
-    C.sel = new Set([i]);
-    switch (cmd) {
-      case 'setbg': setAsBackground(); break;
-      case 'top':
-        C.order = C.order && C.order.length === C.imgs.length ? C.order : C.imgs.map((_, k) => k);
-        bringToFront(i); scheduleRedraw(true); break;
-      case 'fwd': zStep(i, 1); break;
-      case 'back1': zStep(i, -1); break;
-      case 'bottom':
-        C.order = C.order && C.order.length === C.imgs.length ? C.order : C.imgs.map((_, k) => k);
-        sendToBack(i); scheduleRedraw(true); break;
-      case 'rotR': rotateSel(1); break;
-      case 'rotL': rotateSel(-1); break;
-      case 'view': viewAndEdit(); break;
-      case 'remove': removeSelected(); break;
-    }
-  }
-  /* one-step z-order: swap the photo with its neighbour in the draw order */
-  function zStep(i, dir) {
-    if (C.type !== 'pile') return;
-    C.order = C.order && C.order.length === C.imgs.length ? C.order : C.imgs.map((_, k) => k);
-    const k = C.order.indexOf(i), t = k + dir;
-    if (k < 0 || t < 0 || t >= C.order.length) return;
-    const tmp = C.order[k]; C.order[k] = C.order[t]; C.order[t] = tmp;
-    scheduleRedraw(true);
-  }
-  /* removed photos drop back into the Clips tray (the Photo Tray) */
-  function returnToClips() {
-    const item = firstSel() >= 0 ? C.list[firstSel()] : null;
-    if (!item || !P.state) return;
-    const k = photoKey(item);
-    const lp = (P.state.photos || []).find((p) => photoKey(p) === k);
-    if (lp && !P.state.selArr.some((x) => photoKey(x) === k)) {
-      P.state.selArr.push(lp);
-      if (P.renderTray) P.renderTray();
-    }
+  function shufflePictures() {
+    if (S.final || S.items.length < 2) return;
+    const states = S.items.map((i) => ({ x: i.x, y: i.y, rot: i.rot }));
+    states.sort(() => Math.random() - 0.5);
+    S.items.forEach((it, idx) => {
+      it.x = states[idx].x; it.y = states[idx].y; it.rot = states[idx].rot;
+      renderItem(it);
+    });
+    positionWheel();
+    scheduleColSave();
   }
 
-  /* ================= v3.17.0: Clips tab — add photos any time ================= */
+  /* ================= photo decoding ================= */
+  async function decodeToCanvas(src) {
+    let bmp;
+    try { bmp = await createImageBitmap(src, { imageOrientation: 'from-image' }); }
+    catch (e) { bmp = await createImageBitmap(src); }
+    /* always land on a real <canvas> — items need toBlob + drawImage */
+    const t = document.createElement('canvas');
+    if (Math.max(bmp.width, bmp.height) > 1400) {
+      const sc = 1400 / Math.max(bmp.width, bmp.height);
+      t.width = Math.round(bmp.width * sc);
+      t.height = Math.round(bmp.height * sc);
+    } else {
+      t.width = bmp.width; t.height = bmp.height;
+    }
+    t.getContext('2d').drawImage(bmp, 0, 0, t.width, t.height);
+    if (bmp.close) bmp.close();
+    return t;
+  }
+  async function loadImgs(list) {
+    el.busy.hidden = false;
+    const out = [];
+    S.alphaAny = list.some((p) => /\.(png|webp|gif)$/i.test(p.name || ''));
+    for (const p of list) {
+      try {
+        const file = await getFile(p);
+        out.push(await decodeToCanvas(file));
+      } catch (e) { /* skip unreadable */ }
+    }
+    el.busy.hidden = true;
+    return out;
+  }
+  /* place a freshly added photo in the middle, on top, selected */
+  function freshState() {
+    return { x: 0.5, y: 0.5, rot: 0, scale: 1, z: ++zTop, fit: 'fill' };
+  }
+
+  /* ================= Clips tab (Photo Tray + PC files) ================= */
   const clipThumbs = new Map();
   function syncClips() {
     if (!el.clips) return;
     const tray = (P.state && P.state.selArr) || [];
     if (el.clipCount) el.clipCount.textContent = String(tray.length);
-    if (!C.open || el.root.hidden) return;
+    if (!S.open || el.root.hidden) return;
     const box = el.clips;
     box.innerHTML = '';
     if (!tray.length) {
@@ -1182,18 +911,18 @@
       box.appendChild(tip);
       return;
     }
-    const inCol = new Set(C.list.map((x) => photoKey(x)));
+    const inCol = new Set(S.list.map((x) => photoKey(x)));
     for (const p of tray) {
       const k = photoKey(p);
       const used = inCol.has(k);
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'clip';
-      b.title = used ? `${p.name} — already in the collage` : `Add ${p.name} to the collage`;
+      b.title = used ? `${p.name} — in the collage; click to drop another copy` : `Add ${p.name} to the collage`;
       const img = document.createElement('img');
       img.decoding = 'async'; img.alt = '';
       b.appendChild(img);
       if (used) { const t = document.createElement('span'); t.className = 'inuse'; t.textContent = 'in collage'; b.appendChild(t); }
-      b.addEventListener('click', () => { if (!used) addClipPhoto(p); });
+      b.addEventListener('click', () => addClipPhoto(p));
       box.appendChild(b);
       if (clipThumbs.has(k)) img.src = clipThumbs.get(k);
       else clipThumb(p, img, k);
@@ -1202,89 +931,71 @@
   async function clipThumb(p, imgEl, k) {
     try {
       const file = await getFile(p);
-      let bmp;
-      try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
-      catch (e) { bmp = await createImageBitmap(file); }
+      const bmp = await decodeToCanvas(file);
       const c = document.createElement('canvas');
       const sc = Math.min(1, 240 / Math.max(bmp.width, bmp.height));
       c.width = Math.max(1, Math.round(bmp.width * sc));
       c.height = Math.max(1, Math.round(bmp.height * sc));
       c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-      if (bmp.close) bmp.close();
       const url = c.toDataURL('image/jpeg', 0.78);
       clipThumbs.set(k, url);
       if (imgEl.isConnected) imgEl.src = url;
     } catch (e) { /* unreadable clip — leave blank */ }
   }
-  /* place a freshly added photo in the middle, on top, selected */
-  function appendAtTop() {
-    const idx = C.imgs.length - 1;
-    C.pos = C.pos || [];
-    C.pos[idx] = { x: 0.5, y: 0.5, rot: 0, scale: 1 };
-    if (C.order && C.order.length === C.imgs.length - 1) C.order.push(idx);
-    else C.order = C.imgs.map((_, k) => k);
-    C.sel = new Set([idx]);
-    noteCount();
-  }
   async function addClipPhoto(p) {
-    if (C.list.some((x) => photoKey(x) === photoKey(p))) { toast('That photo is already in the collage', 'ok', 2500); return; }
-    if (C.imgs.length >= 60) { toast('The collage is full (60 photos max)', 'err'); return; }
+    if (S.items.length >= MAXP) { toast('The collage is full (60 photos max)', 'err'); return; }
     el.busy.hidden = false;
     try {
       const file = await getFile(p);
-      let bmp;
-      try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
-      catch (e) { bmp = await createImageBitmap(file); }
-      if (Math.max(bmp.width, bmp.height) > 1400) {
-        const sc = 1400 / Math.max(bmp.width, bmp.height);
-        const t = document.createElement('canvas');
-        t.width = Math.round(bmp.width * sc); t.height = Math.round(bmp.height * sc);
-        t.getContext('2d').drawImage(bmp, 0, 0, t.width, t.height);
-        if (bmp.close) bmp.close();
-        bmp = t;
-      }
-      C.imgs.push(bmp);
-      C.list.push(p);
-      if (/\.(png|webp|gif)$/i.test(p.name || '')) C.alphaAny = true;
-      appendAtTop();
+      const canvas = await decodeToCanvas(file);
+      const st = freshState();
+      const [W, H] = dims();
+      const n = S.items.length;
+      const g = pileFrac(n, n + 1);
+      st.wFrac = g.wFrac;
+      st.hFrac = g.wFrac * (canvas.height / canvas.width) * (W / H);
+      S.list.push(p);
+      if (/\.(png|webp|gif)$/i.test(p.name || '')) S.alphaAny = true;
+      const it = await itemFrom(canvas, p.name || 'photo', st);
+      select(it);
       syncClips();
-      renderPreview(); paintOverlay(); scheduleColSave();
-      toast(`${p.name || 'Photo'} added to the collage — drag it anywhere`, 'ok', 2600);
+      noteCount();
+      refreshBackground();
+      scheduleColSave();
+      toast(`${it.name} added to the collage — drag it anywhere`, 'ok', 2600);
     } catch (e) { toast('That photo could not be added', 'err'); }
     el.busy.hidden = true;
   }
   async function addFileToCollage(f) {
     if (!f) return;
     if (!/^image\//.test(f.type || '') && !/\.(jpe?g|png|gif|webp|bmp|avif)$/i.test(f.name || '')) return;
-    if (C.imgs.length >= 60) { toast('The collage is full (60 photos max)', 'err'); return; }
+    if (S.items.length >= MAXP) { toast('The collage is full (60 photos max)', 'err'); return; }
     el.busy.hidden = false;
     try {
-      let bmp;
-      try { bmp = await createImageBitmap(f, { imageOrientation: 'from-image' }); }
-      catch (e) { bmp = await createImageBitmap(f); }
-      if (Math.max(bmp.width, bmp.height) > 1400) {
-        const sc = 1400 / Math.max(bmp.width, bmp.height);
-        const t = document.createElement('canvas');
-        t.width = Math.round(bmp.width * sc); t.height = Math.round(bmp.height * sc);
-        t.getContext('2d').drawImage(bmp, 0, 0, t.width, t.height);
-        if (bmp.close) bmp.close();
-        bmp = t;
-      }
-      C.imgs.push(bmp);
-      C.list.push({ name: f.name || 'photo', size: f.size || 0, lastModified: f.lastModified || 0, handle: null, file: f });
-      if (/\.(png|webp|gif)$/i.test(f.name || '') || f.type === 'image/png') C.alphaAny = true;
-      appendAtTop();
+      const canvas = await decodeToCanvas(f);
+      const st = freshState();
+      const [W, H] = dims();
+      const n = S.items.length;
+      const g = pileFrac(n, n + 1);
+      st.wFrac = g.wFrac;
+      st.hFrac = g.wFrac * (canvas.height / canvas.width) * (W / H);
+      S.list.push({ name: f.name || 'photo', size: f.size || 0, lastModified: f.lastModified || 0, handle: null, file: f });
+      if (/\.(png|webp|gif)$/i.test(f.name || '') || f.type === 'image/png') S.alphaAny = true;
+      const it = await itemFrom(canvas, f.name || 'photo', st);
+      select(it);
       syncClips();
-      renderPreview(); paintOverlay(); scheduleColSave();
-      toast(`${f.name || 'Photo'} added to the collage — drag it anywhere`, 'ok', 2600);
+      noteCount();
+      refreshBackground();
+      scheduleColSave();
+      toast(`${it.name} added to the collage — drag it anywhere`, 'ok', 2600);
     } catch (e) { toast('That photo could not be added', 'err'); }
     el.busy.hidden = true;
   }
 
-  /* ================= power-cut safe project auto-save ================= */
+  /* ================= persistence (IndexedDB, Picasa-style re-edit) ======= */
   let colSaveT = null;
   function scheduleColSave() {
-    if (!C.open) return;
+    if (!S.open) return;
     clearTimeout(colSaveT);
     colSaveT = setTimeout(saveCollageProject, 1200);
   }
@@ -1295,67 +1006,72 @@
     const alpha = window.PixsaFX ? window.PixsaFX.hasAlpha(c) : false;
     return await new Promise((r) => c.toBlob(r, alpha ? 'image/png' : 'image/jpeg', 0.88));
   }
-  /* v3.16.0: one shared compressed-photos builder (power-cut save + collage record) */
   async function collectPhotoBlobs() {
     const photos = [];
-    for (let i = 0; i < C.imgs.length && i < 40; i++) {
-      const b = await imgToBlob(C.imgs[i]);
-      if (b) photos.push({ name: (C.list[i] && C.list[i].name) || ('photo-' + (i + 1)), blob: b });
+    for (let i = 0; i < S.items.length && i < 40; i++) {
+      const b = await imgToBlob(S.items[i].img);
+      if (!b) continue;
+      const li = S.list[i] || {};
+      photos.push({
+        name: S.items[i].name || ('photo-' + (i + 1)),
+        size: li.size || 0, lastModified: li.lastModified || 0,
+        blob: b
+      });
     }
     return photos;
   }
+  /* the shared state snapshot — pos/geo are resolution-independent */
+  function stateSnapshot() {
+    return {
+      type: S.type, bg: S.bg, bgImage: S.bgImage, border: S.border,
+      landscape: S.landscape, bgIdx: S.bgIdx, seed: S.seed, fmt: fmtVal(),
+      custW: S.custW, custH: S.custH, shadows: S.shadows, captions: S.captions,
+      exportFmt: el.exportFmt.value,
+      pos: S.items.map((it) => ({ x: it.x, y: it.y, rot: it.rot * DEG, scale: it.scale })),
+      geo: S.items.map((it) => ({ w: it.wFrac, h: it.hFrac })),
+      zarr: S.items.map((it) => it.z)
+    };
+  }
   async function saveCollageProject() {
-    if (!C.open || !C.imgs.length) return;
+    if (!S.open || !S.items.length) return;
     try {
       const photos = await collectPhotoBlobs();
       if (!photos.length) return;
-      const previewBlob = await new Promise((r) => el.canvas.toBlob(r, C.alphaAny ? 'image/png' : 'image/jpeg', 0.9));
-      const proj = {
-        type: C.type, bg: C.bg, border: C.border,
-        landscape: C.landscape, bgPhoto: C.bgPhoto, bgIdx: C.bgIdx, seed: C.seed, fmt: fmtVal(),
-        custW: C.custW, custH: C.custH,
-        shadows: C.shadows, captions: C.captions,
-        exportFmt: el.exportFmt.value,
-        pos: C.pos, photos, previewBlob, ts: Date.now(),
-        editId: C.editId, editName: C.editName   /* v3.16.0: an interrupted re-edit reopens linked */
-      };
+      const [pw, ph] = dims();
+      const k = Math.min(1, 1400 / Math.max(pw, ph));
+      const pv = renderExport(Math.round(pw * k), Math.round(ph * k));
+      const previewBlob = await new Promise((r) => pv.toBlob(r, S.alphaAny ? 'image/png' : 'image/jpeg', 0.9));
+      const proj = Object.assign(stateSnapshot(), {
+        photos, previewBlob, ts: Date.now(),
+        editId: S.editId, editName: S.editName   /* an interrupted re-edit reopens linked */
+      });
       await P.idbSet('collage', 'current', proj);
-      C.savedProj = true;
+      S.savedProj = true;
     } catch (e) { /* storage full — Create/Download still work */ }
   }
-  /* ================= v3.16.0: finished collages live in the library =================
-     Every Create Collage stores a full record (result + photos + positions) in
-     the 'collages' store and drops the result into the library's pinned
-     "Collages" folder — the Picasa way. Because the record keeps everything,
-     double-clicking that collage in the grid reopens it here for changes. */
+  /* every Create Collage stores a full record (result + photos + positions)
+     in the 'collages' store — double-clicking it in the library reopens it */
   async function saveCollage() {
-    if (!C.blob) return;
+    if (!S.blob) return;
     try {
       const photos = await collectPhotoBlobs();
       if (!photos.length) return;
-      const id = C.editId || ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
-      let name = C.editName;
+      const id = S.editId || ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
+      let name = S.editName;
       if (!name) {
         const d = new Date();
         const p2 = (n) => String(n).padStart(2, '0');
         name = `Collage ${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}-${p2(d.getMinutes())}.jpg`;
       }
-      const rec = {
-        id, name, ts: Date.now(), blob: C.blob, w: C.outW || 0, h: C.outH || 0,
-        photos, pos: C.pos, seed: C.seed, fmt: fmtVal(),
-        type: C.type, custW: C.custW, custH: C.custH, bg: C.bg, border: C.border,
-        landscape: C.landscape, bgPhoto: C.bgPhoto, bgIdx: C.bgIdx,
-        shadows: C.shadows, captions: C.captions,
-        exportFmt: el.exportFmt.value
-      };
+      const rec = Object.assign(stateSnapshot(), {
+        id, name, ts: Date.now(), blob: S.blob, w: S.outW || 0, h: S.outH || 0, photos
+      });
       await P.idbSet('collages', id, rec);
       if (P.addCollageItem) P.addCollageItem(rec);
-      C.editId = id; C.editName = name;
+      S.editId = id; S.editName = name;
       toast('Collage saved to the Collages folder', 'ok', 3500);
     } catch (e) { /* storage full — Download still works */ }
   }
-  /* Picasa-style re-edit: open a finished collage from the library with its
-     photos and positions exactly as they were left */
   async function editCollage(id) {
     try {
       const rec = await P.idbGet('collages', id);
@@ -1363,173 +1079,263 @@
       await openRestored(Object.assign({}, rec, { editId: id, previewBlob: rec.blob }));
     } catch (e) { toast('This collage could not be opened', 'err'); }
   }
+
+  /* ================= export (one renderer: preview + 4K / 300 DPI) ======= */
+  function renderExport(W, H) {
+    const c = document.createElement('canvas');
+    c.width = Math.max(2, Math.round(W)); c.height = Math.max(2, Math.round(H));
+    W = c.width; H = c.height;
+    const x = c.getContext('2d');
+    x.fillStyle = S.bg;
+    x.fillRect(0, 0, W, H);
+    const n = S.items.length;
+    if (!n) return c;
+    /* Use Image background: the chosen photo, cover-fitted (the prototype's way) */
+    if (S.bgImage) {
+      const bi = S.items[Math.min(S.bgIdx, n - 1)];
+      if (bi && bi.img) drawCover(x, bi.img, 0, 0, W, H);
+    }
+    const k = W;   /* slots are proportional — fractions map straight over */
+    const sorted = [...S.items].sort((a, b) => a.z - b.z);
+    const sheet = S.type === 'sheet';
+    for (const it of sorted) {
+      const bw = it.wFrac * k * it.scale;
+      const bh = it.hFrac * H * it.scale;
+      const cx = it.x * W, cy = it.y * H;
+      const u = Math.min(bw, bh);
+      let pad = 0, bot = 0;
+      if (sheet) { pad = bw * 0.045; bot = pad; }
+      else if (S.border === 'polaroid') { pad = u * 0.05; bot = u * 0.16; }
+      else if (S.border === 'white') { pad = S.type === 'pile' ? u * 0.032 : u * 0.035; bot = pad; }
+      x.save();
+      x.translate(cx, cy);
+      x.rotate(it.rot * DEG);
+      if (S.shadows) {
+        x.shadowColor = 'rgba(0,0,0,0.38)';
+        x.shadowBlur = Math.min(W, H) * 0.006 * it.scale;
+        x.shadowOffsetY = Math.min(W, H) * 0.002 * it.scale;
+      }
+      if (sheet || S.border !== 'none') {
+        x.fillStyle = '#ffffff';
+        x.fillRect(-bw / 2, -bh / 2, bw, bh);
+      }
+      x.shadowColor = 'transparent';
+      const ix = -bw / 2 + pad, iy = -bh / 2 + pad;
+      const iw = Math.max(4, bw - pad * 2), ih = Math.max(4, bh - pad - bot);
+      if (sheet) drawContain(x, it.img, ix, iy, iw, ih);
+      else if (S.type === 'pile') x.drawImage(it.img, ix, iy, iw, ih);
+      else drawCover(x, it.img, ix, iy, iw, ih);
+      /* captions: pile photos get the Picasa name strip */
+      if (S.captions && S.type === 'pile' && it.name) {
+        const capH = Math.max(10, u * 0.085);
+        let cn = it.name;
+        x.save();
+        x.beginPath();
+        if (S.border === 'none') {
+          x.rect(-bw / 2, bh / 2 - capH, bw, capH);
+          x.fillStyle = 'rgba(0,0,0,0.45)';
+        } else {
+          x.rect(-bw / 2 + pad, bh / 2 - Math.max(capH, bot), bw - pad * 2, Math.max(capH, bot));
+          x.fillStyle = '#4a4a4a';
+        }
+        x.clip();
+        x.fill();
+        x.fillStyle = S.border === 'none' ? '#ffffff' : '#4a4a4a';
+        x.font = `${Math.max(7, Math.min(capH * 0.66, 18)).toFixed(1)}px 'Segoe UI', system-ui, sans-serif`;
+        x.textAlign = 'center'; x.textBaseline = 'middle';
+        const rw = S.border === 'none' ? bw : bw - pad * 2;
+        while (cn.length > 3 && x.measureText(cn).width > rw * 0.94) cn = cn.slice(0, -2);
+        if (cn !== it.name && cn.length > 3) cn = cn.slice(0, -1) + '\u2026';
+        const ty = bh / 2 - (S.border === 'none' ? capH / 2 : Math.max(capH, bot) / 2);
+        x.fillText(cn, 0, ty, rw * 0.94);
+        x.restore();
+      }
+      x.restore();
+    }
+    return c;
+  }
+
+  /* ================= open / close / create ================= */
+  function noteCount() {
+    el.count.textContent = S.items.length
+      ? `${S.items.length} photo${S.items.length !== 1 ? 's' : ''} in the collage`
+      : '';
+  }
+  function updateUI() {
+    el.orientL.classList.toggle('on', S.landscape);
+    el.orientP.classList.toggle('on', !S.landscape);
+    for (const b of el.borders.querySelectorAll('button')) b.classList.toggle('on', b.dataset.b === S.border);
+    el.type.value = ALL_TYPES.includes(S.type) ? S.type : 'pile';
+    el.shadows.checked = S.shadows;
+    el.captions.checked = S.captions;
+    el.bgPhoto.checked = S.bgImage;
+    el.bgSolid.checked = !S.bgImage;
+    el.bg.value = S.bg;
+    el.cDesktop.disabled = el.cCreate.disabled = S.final;
+    el.toolInfo.textContent = 'Drag to move \u2022 drag the wheel knob to rotate + resize \u2022 wheel resizes \u2022 Shift+wheel rotates \u2022 right-click for more';
+    noteCount();
+    if (S.noteBase && !S.final) {
+      el.note.textContent = S.noteBase +
+        ' \u2022 Drag the wheel knob to rotate + resize \u2014 wheel resizes, Shift+wheel rotates, right-click for more';
+    }
+  }
+  async function open(list) {
+    if (!list || !list.length) return;
+    S.list = list.slice(0, MAXP);
+    S.open = true;
+    S.blob = null;
+    S.restored = false;
+    S.type = 'pile';
+    S.sel.clear(); S.hover = null;
+    S.editId = null; S.editName = '';
+    S.bgIdx = 0;
+    /* a brand-new collage always starts on Solid Color */
+    S.bgImage = false;
+    S.final = false;
+    clearTimeout(colSaveT);
+    if (S.url) { URL.revokeObjectURL(S.url); S.url = null; }
+    el.root.hidden = false;
+    el.resultBar.hidden = true;
+    el.custRow.hidden = fmtVal() !== 'custom';
+    clearItems();
+    updateUI();
+    const canvases = await loadImgs(S.list);
+    const [W, H] = dims();
+    for (let i = 0; i < canvases.length; i++) {
+      const g = pileFrac(i, canvases.length);
+      await itemFrom(canvases[i], S.list[i] ? S.list[i].name : 'photo', {
+        x: g.x, y: g.y, rot: g.rot,
+        wFrac: g.wFrac, hFrac: g.wFrac * (canvases[i].height / canvases[i].width) * (W / H),
+        fit: 'fill', z: i + 1
+      });
+    }
+    zTop = canvases.length + 20;
+    updateStageGeometry();
+    syncClips();
+    noteCount();
+    refreshBackground();
+    positionWheel();
+    scheduleColSave();
+  }
+  function clearItems() {
+    S.items.forEach(destroyItem);
+    S.items = [];
+    S.sel.clear();
+    S.hover = null;
+  }
+  function close() {
+    S.open = false;
+    el.root.hidden = true;
+    S.sel.clear();
+    S.editId = null; S.editName = '';
+    S.hover = null; S.final = false;
+    el.resultBar.hidden = true;
+    el.menu.hidden = true;
+    clearTimeout(colSaveT);
+    if (wheelEl) wheelEl.hidden = true;
+    clearItems();
+    if (S.url) { URL.revokeObjectURL(S.url); S.url = null; }
+    S.blob = null;
+  }
   async function openRestored(proj) {
     if (!proj || !proj.photos || !proj.photos.length) { toast('The collage project is incomplete', 'err'); return; }
-    C.open = true; C.blob = null; C.restored = true;
-    /* v3.16.0: opened for RE-EDIT from the Collages folder? stay linked */
-    C.editId = proj.editId || null;
-    C.editName = C.editId ? (proj.name || '') : '';
-    C.list = proj.photos.map((ph) => ({ name: ph.name || 'photo', size: 0, lastModified: 0, handle: null, file: null }));
-    C.type = ALL_TYPES.includes(proj.type) ? proj.type : 'pile';
-    C.shadows = proj.shadows !== false;
-    C.captions = !!proj.captions;
-    C.bg = proj.bg || '#f5f2ec';
-    C.border = proj.border || 'white';
-    C.landscape = proj.landscape !== false;
-    C.bgPhoto = !!proj.bgPhoto;
-    C.bgIdx = proj.bgIdx || 0;
-    C.seed = proj.seed || 7;
-    C.pos = Array.isArray(proj.pos) ? proj.pos : null;
-    C.layout = null; C.order = null; C.sel = new Set();
-    C.hoverI = -1; C.final = false;
-    C.alphaAny = proj.photos.some((ph) => /\.(png|webp|gif)$/i.test(ph.name || '')) ||
-                 proj.photos.some((ph) => ph.blob && ph.blob.type === 'image/png');
-    C.custW = (proj.custW && isFinite(proj.custW)) ? proj.custW : 16;
-    C.custH = (proj.custH && isFinite(proj.custH)) ? proj.custH : 9;
+    S.open = true; S.blob = null; S.restored = true;
+    S.editId = proj.editId || null;
+    S.editName = S.editId ? (proj.name || '') : '';
+    S.type = ALL_TYPES.includes(proj.type) ? proj.type : 'pile';
+    S.shadows = proj.shadows !== false;
+    S.captions = !!proj.captions;
+    S.bg = proj.bg || '#f5f2ec';
+    /* old records used bgPhoto (blurred style); Use Image stays direct */
+    S.bgImage = proj.bgImage != null ? !!proj.bgImage : !!proj.bgPhoto;
+    S.border = proj.border || 'white';
+    S.landscape = proj.landscape !== false;
+    S.bgIdx = proj.bgIdx || 0;
+    S.seed = proj.seed || 7;
+    S.alphaAny = (proj.photos || []).some((ph) => /\.(png|webp|gif)$/i.test(ph.name || '')) ||
+                 (proj.photos || []).some((ph) => ph.blob && ph.blob.type === 'image/png');
+    S.custW = (proj.custW && isFinite(proj.custW)) ? proj.custW : 16;
+    S.custH = (proj.custH && isFinite(proj.custH)) ? proj.custH : 9;
+    S.final = false;
     el.root.hidden = false;
     el.fmt.value = NORM_FMT[proj.fmt] || proj.fmt || '4x3';
     if (el.fmt.selectedIndex < 0) el.fmt.value = '4x3';
     el.custRow.hidden = fmtVal() !== 'custom';
-    el.custW.value = C.custW; el.custH.value = C.custH;
+    el.custW.value = S.custW; el.custH.value = S.custH;
     if (proj.exportFmt) el.exportFmt.value = proj.exportFmt;
     el.resultBar.hidden = true;
+    clearItems();
     updateUI();
-    el.note.textContent = C.editId
-      ? `Editing "${C.editName || 'collage'}" — press Create Collage to update it`
+    el.note.textContent = S.editId
+      ? `Editing "${S.editName || 'collage'}" — press Create Collage to update it`
       : `Auto-saved collage reopened (${proj.photos.length} photos)`;
-    C.noteBase = el.note.textContent;
+    S.noteBase = el.note.textContent;
     noteCount();
-    updateUI();
     el.busy.hidden = false;
-    const out = [];
+    const canvases = [];
+    S.list = [];
     for (const ph of proj.photos) {
-      try { out.push(await createImageBitmap(ph.blob)); } catch (e) { /* skip */ }
-    }
-    C.imgs = out;
-    el.busy.hidden = true;
-    renderPreview();
-    paintOverlay();
-    if (proj.previewBlob) {
-      C.blob = proj.previewBlob;
-      if (C.url) URL.revokeObjectURL(C.url);
-      C.url = URL.createObjectURL(C.blob);
-    }
-    toast(C.editId ? 'Collage opened for editing' : 'Previous collage restored', 'ok', 3000);
-  }
-
-  /* ================= open / close / create ================= */
-  async function loadImgs() {
-    el.busy.hidden = false;
-    const out = [];
-    C.alphaAny = C.list.some((p) => /\.(png|webp|gif)$/i.test(p.name || ''));
-    for (const p of C.list) {
       try {
-        const file = await getFile(p);
-        let bmp;
-        try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
-        catch (e) { bmp = await createImageBitmap(file); }
-        if (Math.max(bmp.width, bmp.height) > 1400) {
-          const sc = 1400 / Math.max(bmp.width, bmp.height);
-          const t = document.createElement('canvas');
-          t.width = Math.round(bmp.width * sc);
-          t.height = Math.round(bmp.height * sc);
-          t.getContext('2d').drawImage(bmp, 0, 0, t.width, t.height);
-          if (bmp.close) bmp.close();
-          out.push(t);
-        } else {
-          out.push(bmp);
-        }
-      } catch (e) { /* skip unreadable */ }
+        canvases.push(await decodeToCanvas(ph.blob));
+        S.list.push({ name: ph.name || 'photo', size: ph.size || 0, lastModified: ph.lastModified || 0, handle: null, file: null });
+      } catch (e) { /* skip */ }
     }
-    C.imgs = out;
     el.busy.hidden = true;
-  }
-
-  function noteCount() {
-    el.count.textContent = C.imgs.length
-      ? `${C.imgs.length} photo${C.imgs.length !== 1 ? 's' : ''} in the collage`
-      : '';
-  }
-
-  function updateUI() {
-    el.orientL.classList.toggle('on', C.landscape);
-    el.orientP.classList.toggle('on', !C.landscape);
-    for (const b of el.borders.querySelectorAll('button')) b.classList.toggle('on', b.dataset.b === C.border);
-    el.type.value = ALL_TYPES.includes(C.type) ? C.type : 'pile';
-    el.shadows.checked = C.shadows;
-    el.captions.checked = C.captions;
-    el.bgPhoto.checked = C.bgPhoto;
-    el.bgSolid.checked = !C.bgPhoto;
-    el.bg.value = C.bg;
-    el.cDesktop.disabled = el.cCreate.disabled = C.final;
-    el.toolInfo.textContent = 'Drag to move \u2022 drag the wheel knob to rotate + resize \u2022 wheel resizes \u2022 Shift+wheel rotates \u2022 right-click for more';
-    noteCount();
-    if (C.noteBase && !C.final) {
-      el.note.textContent = C.noteBase +
-        ' \u2022 Drag the wheel knob to rotate + resize \u2014 wheel resizes, Shift+wheel rotates, right-click for more';
+    const [W, H] = dims();
+    for (let i = 0; i < canvases.length; i++) {
+      const st = { fit: 'fill', z: i + 1 };
+      if (S.type === 'pile') {
+        const man = proj.pos && proj.pos[i];
+        const g = pileFrac(i, canvases.length);
+        if (man) {
+          st.x = man.x; st.y = man.y;
+          st.rot = man.rot / DEG;
+          st.scale = clamp(man.scale || 1, SCALE_MIN, SCALE_MAX);
+        } else { st.x = g.x; st.y = g.y; st.rot = g.rot; st.scale = 1; }
+        const geo = proj.geo && proj.geo[i];
+        if (geo && geo.w > 0) { st.wFrac = geo.w; st.hFrac = geo.h; }
+        else st.wFrac = g.wFrac, st.hFrac = g.wFrac * (canvases[i].height / canvases[i].width) * (W / H);
+      } else {
+        st.x = 0.5; st.y = 0.5; st.rot = 0; st.scale = 1;
+        st.wFrac = 0.3; st.hFrac = 0.3;
+      }
+      await itemFrom(canvases[i], S.list[i] ? S.list[i].name : 'photo', st);
     }
-  }
-
-  async function open(list) {
-    if (!list || !list.length) return;
-    C.list = list.slice(0, 60);
-    C.open = true;
-    C.blob = null;
-    C.restored = false;
-    C.type = 'pile';
-    C.pos = null; C.layout = null; C.order = null; C.sel = new Set();
-    C.editId = null; C.editName = '';   /* v3.16.0: a fresh collage is a new record */
-    C.bgIdx = 0;
-    /* v3.17.1 FIX: a brand-new collage always starts on Solid Color — the
-       "Use Image" background of the previous collage must not leak in
-       (re-edited collages keep their own setting via openRestored) */
-    C.bgPhoto = false;
-    C.hoverI = -1; C.final = false;
-    endGesture(); clearTimeout(wheelT);
-    if (C.url) { URL.revokeObjectURL(C.url); C.url = null; }
-    el.root.hidden = false;
-    el.resultBar.hidden = true;
-    el.custRow.hidden = fmtVal() !== 'custom';
-    updateUI();
-    await loadImgs();
-    noteCount();
+    if (S.type !== 'pile') applyLayout(false);
+    if (proj.zarr && proj.zarr.length === S.items.length) {
+      S.items.forEach((it, i) => { it.z = proj.zarr[i]; });
+      zTop = Math.max(...proj.zarr, 20);
+      renderAll();
+    }
+    updateStageGeometry();
     syncClips();
-    renderPreview();
-    paintOverlay();
+    noteCount();
+    refreshBackground();
+    positionWheel();
+    if (proj.previewBlob) {
+      S.blob = proj.previewBlob;
+      if (S.url) URL.revokeObjectURL(S.url);
+      S.url = URL.createObjectURL(S.blob);
+    }
     scheduleColSave();
+    toast(S.editId ? 'Collage opened for editing' : 'Previous collage restored', 'ok', 3000);
   }
-  function close() {
-    C.open = false;
-    el.root.hidden = true;
-    C.sel.clear();
-    C.editId = null; C.editName = '';
-    C.hoverI = -1; C.final = false;
-    el.resultBar.hidden = true;
-    el.menu.hidden = true;
-    endGesture(); clearTimeout(wheelT);
-    if (C.url) { URL.revokeObjectURL(C.url); C.url = null; }
-    C.blob = null;
-  }
-
   async function create() {
     el.busy.hidden = false;
     await new Promise((r) => setTimeout(r, 40));
     try {
-      const [W0] = dims();
       const [W, H] = exportDims();
-      C.outW = W; C.outH = H;
-      const c = renderCollage(W, H, W / W0);
+      S.outW = W; S.outH = H;
+      const c = renderExport(W, H);
       const want = el.exportFmt.value;
-      const type = want === 'png' || (want === 'auto' && C.alphaAny) ? 'image/png' : 'image/jpeg';
-      C.blob = await new Promise((r) => c.toBlob(r, type, 0.92));
-      if (!C.blob) { toast('The collage could not be created — please try again', 'err'); return; }
-      if (C.url) URL.revokeObjectURL(C.url);
-      C.url = URL.createObjectURL(C.blob);
-      renderPreview();
-      paintOverlay();
-      C.final = true;
+      const type = want === 'png' || (want === 'auto' && S.alphaAny) ? 'image/png' : 'image/jpeg';
+      S.blob = await new Promise((r) => c.toBlob(r, type, 0.92));
+      if (!S.blob) { toast('The collage could not be created — please try again', 'err'); return; }
+      if (S.url) URL.revokeObjectURL(S.url);
+      S.url = URL.createObjectURL(S.blob);
+      S.final = true;
       el.resultBar.hidden = false;
-      el.resultNote.textContent = `Collage ready — ${W} \u00D7 ${H}px (${C.blob.type === 'image/png' ? 'PNG' : 'JPEG'}) — saved to the Collages folder`;
+      el.resultNote.textContent = `Collage ready — ${W} \u00D7 ${H}px (${S.blob.type === 'image/png' ? 'PNG' : 'JPEG'}) — saved to the Collages folder`;
       el.note.textContent = 'Collage created — download it, save it to a folder, or go back to edit.';
       el.cDesktop.disabled = el.cCreate.disabled = true;
       saveCollage();
@@ -1538,97 +1344,102 @@
     }
   }
 
+  /* ================= wiring ================= */
   function wire() {
-    /* v3.17.0: hidden file input for "Add More Photos…" */
-    el.fileAdd = document.createElement('input');
-    el.fileAdd.type = 'file';
-    el.fileAdd.multiple = true;
-    el.fileAdd.accept = 'image/*';
-    el.fileAdd.hidden = true;
-    el.paneClips.appendChild(el.fileAdd);
+    injectStyles();
+    /* the context menu must sit above the round wheel overlay */
+    el.menu.style.zIndex = '100000';
+    /* hidden file input for "Add Photos from PC" */
+    const fileAdd = document.createElement('input');
+    fileAdd.type = 'file';
+    fileAdd.multiple = true;
+    fileAdd.accept = 'image/*';
+    fileAdd.hidden = true;
+    el.paneClips.appendChild(fileAdd);
 
     el.type.addEventListener('change', () => {
-      /* v3.17.0: all five Picasa types are live again */
-      C.type = ALL_TYPES.includes(el.type.value) ? el.type.value : 'pile';
-      C.sel.clear();
-      C.hoverI = -1;
+      S.type = ALL_TYPES.includes(el.type.value) ? el.type.value : 'pile';
+      S.sel.clear(); S.hover = null;
       updateUI();
-      scheduleRedraw(true);
-      scheduleColSave();
+      applyLayout(true);
     });
     el.fmt.addEventListener('change', () => {
       el.custRow.hidden = fmtVal() !== 'custom';
-      scheduleRedraw(true);   /* the stage snaps to the new ratio at once */
-      scheduleColSave();
+      updateStageGeometry();
+      if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
     });
     el.custApply.addEventListener('click', () => {
       const w = parseFloat(el.custW.value), h = parseFloat(el.custH.value);
       if (!(w > 0) || !(h > 0)) { toast('Ratio needs two numbers bigger than 0', 'err'); return; }
-      C.custW = clamp(w, 0.2, 60); C.custH = clamp(h, 0.2, 60);
-      scheduleRedraw(true);
-      scheduleColSave();
+      S.custW = clamp(w, 0.2, 60); S.custH = clamp(h, 0.2, 60);
+      updateStageGeometry();
+      if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
     });
     el.orientL.addEventListener('click', () => {
-      if (!C.landscape) { C.landscape = true; updateUI(); scheduleRedraw(true); scheduleColSave(); }
+      if (!S.landscape) { S.landscape = true; updateUI(); updateStageGeometry(); if (S.type !== 'pile') applyLayout(true); else scheduleColSave(); }
     });
     el.orientP.addEventListener('click', () => {
-      if (C.landscape) { C.landscape = false; updateUI(); scheduleRedraw(true); scheduleColSave(); }
+      if (S.landscape) { S.landscape = false; updateUI(); updateStageGeometry(); if (S.type !== 'pile') applyLayout(true); else scheduleColSave(); }
     });
     el.borders.addEventListener('click', (e) => {
       const b = e.target.closest('button[data-b]');
       if (!b) return;
-      C.border = b.dataset.b;
+      S.border = b.dataset.b;
       updateUI();
-      scheduleRedraw(true);
+      renderAll();
+      positionWheel();
       scheduleColSave();
     });
     el.bg.addEventListener('input', () => {
-      C.bg = el.bg.value;
-      C.bgPhoto = false; el.bgSolid.checked = true; el.bgPhoto.checked = false;
-      scheduleRedraw(true);
+      S.bg = el.bg.value;
+      S.bgImage = false; el.bgSolid.checked = true; el.bgPhoto.checked = false;
+      refreshBackground();
+      scheduleColSave();
     });
     el.bgSolid.addEventListener('change', () => {
-      if (el.bgSolid.checked) { C.bgPhoto = false; el.bgPhoto.checked = false; scheduleRedraw(true); }
+      if (el.bgSolid.checked) { S.bgImage = false; el.bgPhoto.checked = false; refreshBackground(); scheduleColSave(); }
     });
     el.bgPhoto.addEventListener('change', () => {
-      C.bgPhoto = el.bgPhoto.checked;
-      el.bgSolid.checked = !C.bgPhoto;
-      if (C.bgPhoto && !C.imgs.length) {
+      S.bgImage = el.bgPhoto.checked;
+      el.bgSolid.checked = !S.bgImage;
+      if (S.bgImage && !S.items.length) {
         toast('Add photos first — then one can become the background', 'err');
-        C.bgPhoto = false; el.bgPhoto.checked = false; el.bgSolid.checked = true;
+        S.bgImage = false; el.bgPhoto.checked = false; el.bgSolid.checked = true;
         return;
       }
-      scheduleRedraw(true);
+      refreshBackground();
+      scheduleColSave();
     });
     el.eyedrop.addEventListener('click', () => {
       if (!window.EyeDropper) { toast('The eyedropper needs Chrome or Edge', 'err', 4000); return; }
       new window.EyeDropper().open().then((r) => {
-        C.bg = r.sRGBHex; el.bg.value = C.bg;
-        C.bgPhoto = false; el.bgSolid.checked = true; el.bgPhoto.checked = false;
-        scheduleRedraw(true);
+        S.bg = r.sRGBHex; el.bg.value = S.bg;
+        S.bgImage = false; el.bgSolid.checked = true; el.bgPhoto.checked = false;
+        refreshBackground();
       }).catch(() => { /* user pressed Escape */ });
     });
     q('.c-side .presets').addEventListener('click', (e) => {
       const b = e.target.closest('button[data-bg]');
       if (!b) return;
-      C.bg = b.dataset.bg;
-      el.bg.value = C.bg;
-      C.bgPhoto = false; el.bgSolid.checked = true; el.bgPhoto.checked = false;
-      scheduleRedraw(true);
+      S.bg = b.dataset.bg;
+      el.bg.value = S.bg;
+      S.bgImage = false; el.bgSolid.checked = true; el.bgPhoto.checked = false;
+      refreshBackground();
+      scheduleColSave();
     });
-    el.shadows.addEventListener('change', () => { C.shadows = el.shadows.checked; scheduleRedraw(true); scheduleColSave(); });
-    el.captions.addEventListener('change', () => { C.captions = el.captions.checked; scheduleRedraw(true); scheduleColSave(); });
+    el.shadows.addEventListener('change', () => { S.shadows = el.shadows.checked; renderAll(); scheduleColSave(); });
+    el.captions.addEventListener('change', () => { S.captions = el.captions.checked; renderAll(); scheduleColSave(); });
     el.exportFmt.addEventListener('change', () => scheduleColSave());
 
-    /* canvas toolbar: Select All | Select None | Remove | Set as Background */
+    /* stage toolbar: Select All | Select None | Remove | Set as Background */
     q('#cSelAll').addEventListener('click', selectAll);
     q('#cSelNone').addEventListener('click', selectNone);
     q('#cRemove').addEventListener('click', removeSelected);
     q('#cSetBg').addEventListener('click', setAsBackground);
 
-    /* bottom bar, centered below the stage */
+    /* bottom bar */
     q('#cScramble').addEventListener('click', scramble);
-    q('#cShufflePics').addEventListener('click', shufflePics);
+    q('#cShufflePics').addEventListener('click', shufflePictures);
     q('#cViewEdit').addEventListener('click', viewAndEdit);
 
     /* header tabs: Library | Collage */
@@ -1645,12 +1456,11 @@
 
     /* sidebar 2x2: Desktop Background | Create Collage | Reset | Close */
     el.cDesktop.addEventListener('click', async () => {
-      if (!C.imgs.length) { toast('Add photos first', 'err'); return; }
+      if (!S.items.length) { toast('Add photos first', 'err'); return; }
       el.busy.hidden = false;
       try {
-        const [W0] = dims();
         const [W, H] = exportDims();
-        const c = renderCollage(W, H, W / W0);
+        const c = renderExport(W, H);
         const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.92));
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -1661,52 +1471,52 @@
       } finally { el.busy.hidden = true; }
     });
     el.cReset.addEventListener('click', () => {
-      C.pos = null; C.order = null; C.sel.clear(); C.hoverI = -1;
-      scheduleRedraw(true);
+      if (S.final) return;
+      S.sel.clear(); S.hover = null;
+      applyLayout(true);
       toast('Back to the automatic Picasa layout', 'ok', 2500);
     });
     el.cClose2.addEventListener('click', close);
 
     /* Clips: photos from the tray + files straight from the PC */
-    el.addPhotos.addEventListener('click', () => { el.fileAdd.click(); });
-    el.fileAdd.addEventListener('change', async () => {
-      const files = [...el.fileAdd.files];
-      el.fileAdd.value = '';
+    el.addPhotos.addEventListener('click', () => { fileAdd.click(); });
+    fileAdd.addEventListener('change', async () => {
+      const files = [...fileAdd.files];
+      fileAdd.value = '';
       for (const f of files) await addFileToCollage(f);
     });
 
     el.cCreate.addEventListener('click', create);
     q('#cClose').addEventListener('click', close);
     el.cBack.addEventListener('click', () => {
-      if (C.url) { URL.revokeObjectURL(C.url); C.url = null; }
-      C.blob = null;
-      C.final = false;
+      if (S.url) { URL.revokeObjectURL(S.url); S.url = null; }
+      S.blob = null;
+      S.final = false;
       el.resultBar.hidden = true;
       updateUI();
-      renderPreview();
-      paintOverlay();
+      positionWheel();
     });
     el.cDownload.addEventListener('click', () => {
-      if (!C.blob) return;
-      const ext = C.blob.type === 'image/png' ? 'png' : 'jpg';
+      if (!S.blob) return;
+      const ext = S.blob.type === 'image/png' ? 'png' : 'jpg';
       const a = document.createElement('a');
-      a.href = C.url;
+      a.href = S.url;
       a.download = `collage-${new Date().toISOString().slice(0, 10)}.${ext}`;
       a.click();
       toast(`Collage downloaded (${ext.toUpperCase()})`, 'ok', 3000);
     });
     el.cSaveDir.addEventListener('click', async () => {
-      if (!C.blob) return;
+      if (!S.blob) return;
       const dir = state.dirHandle;
-      const ext = C.blob.type === 'image/png' ? 'png' : 'jpg';
+      const ext = S.blob.type === 'image/png' ? 'png' : 'jpg';
       const nm = `collage-${Date.now().toString(36)}.${ext}`;
-      if (dir && await P.saveBlobToDir(dir, nm, C.blob)) {
+      if (dir && await P.saveBlobToDir(dir, nm, S.blob)) {
         toast(`Collage saved to folder: ${nm}`, 'ok', 4000);
         close();
         P.loadFolder(dir, true);
       } else {
         const a = document.createElement('a');
-        a.href = C.url;
+        a.href = S.url;
         a.download = nm;
         a.click();
         toast('No folder access — the collage was downloaded instead', 'ok', 4000);
@@ -1714,38 +1524,52 @@
       }
     });
 
+    /* blank stage click deselects (the prototype's way) */
+    stage.addEventListener('pointerdown', (e) => {
+      if (e.target === stage) selectNone();
+    });
+
     /* keyboard: Delete removes, arrows nudge, ]/[ z-order, Escape clears */
     document.addEventListener('keydown', (e) => {
-      if (!C.open || el.root.hidden) return;
+      if (!S.open || el.root.hidden) return;
       const t = e.target && e.target.tagName;
       if (t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') return;
       if (e.key === 'Escape') {
-        if (C.sel.size) { C.sel.clear(); paintOverlay(); } else close();
+        if (S.sel.size) { S.sel.clear(); paintSel(); } else close();
         return;
       }
-      if (finalized()) return;
+      if (S.final) return;
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeSelected(); return; }
-      if (e.key === ']') { zOrder(1); return; }
-      if (e.key === '[') { zOrder(-1); return; }
-      if (C.type !== 'pile' || !C.sel.size) return;
+      const it = firstSel();
+      if (!it) return;
+      if (e.key === ']') { changeZ(it, 'forward'); return; }
+      if (e.key === '[') { changeZ(it, 'backward'); return; }
+      if (S.type !== 'pile') return;
       const step = e.shiftKey ? 0.05 : 0.01;
       const mv = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
       if (mv) {
         e.preventDefault();
-        C.pos = C.pos || [];
-        for (const j of C.sel) {
-          const p = getPos(j);
-          p.x = clamp(p.x + mv[0], -0.5, 1.5);
-          p.y = clamp(p.y + mv[1], -0.5, 1.5);
-          C.pos[j] = p;
+        for (const id of S.sel) {
+          const j = itemById(id);
+          if (!j) continue;
+          j.x = clamp(j.x + mv[0], -0.5, 1.5);
+          j.y = clamp(j.y + mv[1], -0.5, 1.5);
+          renderItem(j);
         }
-        scheduleRedraw(true);
+        positionWheel();
+        scheduleColSave();
       }
     });
+
+    window.addEventListener('resize', () => { if (S.open && !el.root.hidden) updateStageGeometry(); });
+    document.addEventListener('pointerdown', (e) => {
+      if (!el.menu.hidden && !el.menu.contains(e.target)) el.menu.hidden = true;
+    }, true);
   }
 
   wire();
-  wireInteractions();
 
-  window.PixsaCollage = { open, close, openRestored, editCollage, isOpen: () => C.open, syncClips };
+  window.PixsaCollage = { open, close, openRestored, editCollage, isOpen: () => S.open, syncClips };
+  /* the reference prototype's global name also answers */
+  window.PicasaCollage = window.PixsaCollage;
 })();
