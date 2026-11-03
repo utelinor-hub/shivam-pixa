@@ -401,7 +401,6 @@
     tb.hidden = false;
     if (E.tool === 'crop') {
       tb.innerHTML = `
-        <h4>Drag a box on the photo — resize from the corners</h4>
         <div class="asprow">
           <button type="button" data-ar="0">Free</button>
           <button type="button" data-ar="1">1:1</button>
@@ -455,7 +454,6 @@
     } else if (E.tool === 'text') {
       const td = E.textDraft;
       tb.innerHTML = `
-        <h4>Click on the photo — the text will be placed there. Or simply press Add Text (center).</h4>
         <input id="txText" type="text" placeholder="Type text here... (use \\n for a new line)" maxlength="200"
                style="width:100%;padding:6px 8px;border:1px solid #bcbcbc;border-radius:4px;font-size:13px;outline:none" />
         <div class="trow" style="margin-top:8px"><label>Font</label><select id="txFont" style="flex:1;height:27px;min-width:0">${fontOptionsHTML(td.font)}</select></div>
@@ -518,15 +516,13 @@
       const rt = op ? op.rot : 0;
       const al = op ? Math.round((op.alpha == null ? 1 : op.alpha) * 100) : 100;
       tb.innerHTML = `
-        <h4><b>Drag</b> the sticker onto the photo. Transparent PNG works best.</h4>
         <div class="trow"><label>Size</label><input id="skScale" type="range" min="4" max="100" value="${sc}" /><span class="val" id="skScaleV">${sc}%</span></div>
         <div class="trow"><label>Rotate</label><input id="skRot" type="range" min="-180" max="180" value="${rt}" /><span class="val" id="skRotV">${rt}\u00B0</span></div>
         <div class="trow"><label>Opacity</label><input id="skAlpha" type="range" min="10" max="100" value="${al}" /><span class="val" id="skAlphaV">${al}%</span></div>
         <div class="mrow">
           <button id="skNew" class="btn" type="button">+ New Sticker</button>
           <button id="skDone" class="btn btn-accent" type="button">Done</button>
-        </div>
-        <p class="cnote">Sliders apply to the selected sticker. Press Undo to remove it. Stickers auto-save \u2014 they survive even after closing.</p>`;
+        </div>`;
       const selOp = () => E.ops.filter((o) => o.type === 'sticker' && o.sid === E.stkSel).pop();
       q('#skScale').addEventListener('input', (e) => { const o = selOp(); if (o) { o.scale = +e.target.value / 100; q('#skScaleV').textContent = e.target.value + '%'; renderPreview(); } });
       q('#skRot').addEventListener('input', (e) => { const o = selOp(); if (o) { o.rot = +e.target.value; q('#skRotV').textContent = e.target.value + '\u00B0'; renderPreview(); } });
@@ -538,7 +534,7 @@
       q('#skDone').addEventListener('click', () => setTool(null));
     } else if (E.tool === 'straighten') {
       tb.innerHTML = `
-        <h4>Straighten (rotate the photo)</h4>
+        <h4>Straighten</h4>
         <div class="trow"><label>Angle</label><input id="tbStr" type="range" min="-15" max="15" value="${E.draft ? E.draft.deg : 0}" /><span class="val" id="tbStrV">${E.draft ? E.draft.deg : 0}&deg;</span></div>
         <div class="mrow">
           <button id="tbApply" class="btn btn-accent" type="button">Apply</button>
@@ -683,7 +679,7 @@
     setTool('sticker');
     renderPreview();
     scheduleEditSave();
-    toast('Sticker added \u2014 drag to place it, use the sliders for size/rotation', 'ok', 3000);
+    toast('Sticker added', 'ok', 2000);
   }
   q('#stickerFile').addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
@@ -705,7 +701,7 @@
         x: clamp((e.clientX - r.left) / r.width, 0.02, 0.98),
         y: clamp((e.clientY - r.top) / r.height, 0.03, 0.97)
       };
-      toast(`Text position set: ${Math.round(E.pendText.x * 100)}%, ${Math.round(E.pendText.y * 100)}% — now press "Add Text"`, 'ok', 2200);
+      toast('Text position set — now press "Add Text"', 'ok', 2000);
     } else if (E.tool === 'sticker') {
       const cv = ed.canvas;
       const r = cv.getBoundingClientRect();
@@ -757,7 +753,7 @@
     E.ops.push({ type: 'autocontrast', lo, hi }, { type: 'autocolor', gr: wb.gr, gg: wb.gg, gb: wb.gb });
     updFxTiles(); updUndoBtns();
     renderPreview(); scheduleEditSave();
-    toast("I'm Feeling Lucky \u2014 contrast + color fixed in one click", 'ok', 1800);
+    toast("I'm Feeling Lucky", 'ok', 1500);
   }
 
   /* ---------- save ---------- */
@@ -823,11 +819,11 @@
       resetAdjUI(); updFxTiles(); updUndoBtns(); setTool(null);
       await renderPreview();
       ed.dims.textContent = `${E.src.width} \u00D7 ${E.src.height} px \u2022 ${fmtBytes(blob.size)}`;
-      toast('Saved \u2713 — this photo will now always look like this', 'ok', 4000);
+      toast('Saved \u2713', 'ok', 2500);
     } else {
       const ext = blob.type === 'image/png' ? '.png' : '.jpg';
       download(blob, baseName(p.name) + '-edited' + ext);
-      toast('The original file could not be edited directly — an edited copy was downloaded instead. (Re-import the folder to enable direct saving)', 'err', 8000);
+      toast('Direct save not possible — edited copy downloaded', 'err', 6000);
     }
   }
   async function doSaveCopy() {
@@ -907,7 +903,7 @@
     ed.dims.textContent = `${bmp.width} \u00D7 ${bmp.height} px \u2022 ${fmtBytes(photo.size)}`;
     setBusy(false);
     if (E.restored) {
-      toast('Previous edits auto-restored \u2713 (press Save to write them into the file)', 'ok', 5000);
+      toast('Previous edits auto-restored \u2713', 'ok', 3000);
       E.dirty = true;
     }
   }
