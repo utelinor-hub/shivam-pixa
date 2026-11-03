@@ -27,7 +27,8 @@
            rect / lasso / magic-wand selection by colour, copy, cut, delete
            = remove text & objects, paste as a draggable patch, drag-to-
            move). Selection edits commit as full-res 'patch' ops.
-   first (instant) and overwrites the same Drive file in the background. */
+   v3.14.1: (cloud) broken Cloud projects are caught at sign-in with the
+           exact fix shown in-app — see js/cloud.js header. */
 (() => {
   'use strict';
   const P = window.Pixsa;
