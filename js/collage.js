@@ -1,6 +1,11 @@
 /* SHIVAM PIXA — collage.js  (v3.15.0 "Picasa Picture Collage" engine)
    Free-form Picasa-style picture pile + interactive HTML5-canvas renderer.
 
+   v3.16.0 — collages live in the library: Create Collage saves the result
+   into a pinned "Collages" folder group (IndexedDB 'collages' store) and
+   double-clicking it reopens the editor with photos + positions for changes,
+   exactly like editing a collage again in Picasa.
+
    v3.15.2 FIX — drag-to-move could die completely on some machines: one
    missed pointerup left a ghost pointer in the pointer map, every later
    press looked like a 2-finger pinch and bailed out. Pointer move/up now
@@ -57,7 +62,8 @@
        pos[i] = { x, y (0..1 canvas-normalized center), rot (radians), scale }
        layout = geometry of the last render (hit-testing), order = draw order */
     pos: null, layout: null, order: null, sel: new Set(),
-    blob: null, url: null, noteBase: ''
+    blob: null, url: null, noteBase: '',
+    editId: null, editName: '', outW: 0, outH: 0   /* v3.16.0 re-edit link */
   };
   let swapTarget = -1;   /* slotted drag: cell currently hovered as swap partner */
 
@@ -997,14 +1003,19 @@
     const alpha = window.PixsaFX ? window.PixsaFX.hasAlpha(c) : false;
     return await new Promise((r) => c.toBlob(r, alpha ? 'image/png' : 'image/jpeg', 0.88));
   }
+  /* v3.16.0: one shared compressed-photos builder (power-cut save + collage record) */
+  async function collectPhotoBlobs() {
+    const photos = [];
+    for (let i = 0; i < C.imgs.length && i < 40; i++) {
+      const b = await imgToBlob(C.imgs[i]);
+      if (b) photos.push({ name: (C.list[i] && C.list[i].name) || ('photo-' + (i + 1)), blob: b });
+    }
+    return photos;
+  }
   async function saveCollageProject() {
     if (!C.open || !C.imgs.length) return;
     try {
-      const photos = [];
-      for (let i = 0; i < C.imgs.length && i < 40; i++) {
-        const b = await imgToBlob(C.imgs[i]);
-        if (b) photos.push({ name: (C.list[i] && C.list[i].name) || ('photo-' + (i + 1)), blob: b });
-      }
+      const photos = await collectPhotoBlobs();
       if (!photos.length) return;
       const previewBlob = await new Promise((r) => el.canvas.toBlob(r, C.alphaAny ? 'image/png' : 'image/jpeg', 0.9));
       const proj = {
@@ -1012,15 +1023,58 @@
         landscape: C.landscape, bgPhoto: C.bgPhoto, bgIdx: C.bgIdx, seed: C.seed, fmt: el.fmt.value,
         custW: C.custW, custH: C.custH,
         exportFmt: el.exportFmt.value,
-        pos: C.pos, photos, previewBlob, ts: Date.now()
+        pos: C.pos, photos, previewBlob, ts: Date.now(),
+        editId: C.editId, editName: C.editName   /* v3.16.0: an interrupted re-edit reopens linked */
       };
       await P.idbSet('collage', 'current', proj);
       C.savedProj = true;
     } catch (e) { /* storage full — Create/Download still work */ }
   }
+  /* ================= v3.16.0: finished collages live in the library =================
+     Every Create Collage stores a full record (result + photos + positions) in
+     the 'collages' store and drops the result into the library's pinned
+     "Collages" folder — the Picasa way. Because the record keeps everything,
+     double-clicking that collage in the grid reopens it here for changes. */
+  async function saveCollage() {
+    if (!C.blob) return;
+    try {
+      const photos = await collectPhotoBlobs();
+      if (!photos.length) return;
+      const id = C.editId || ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
+      let name = C.editName;
+      if (!name) {
+        const d = new Date();
+        const p2 = (n) => String(n).padStart(2, '0');
+        name = `Collage ${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}-${p2(d.getMinutes())}.jpg`;
+      }
+      const rec = {
+        id, name, ts: Date.now(), blob: C.blob, w: C.outW || 0, h: C.outH || 0,
+        photos, pos: C.pos, seed: C.seed, fmt: el.fmt.value,
+        custW: C.custW, custH: C.custH, bg: C.bg, border: C.border,
+        landscape: C.landscape, bgPhoto: C.bgPhoto, bgIdx: C.bgIdx,
+        exportFmt: el.exportFmt.value
+      };
+      await P.idbSet('collages', id, rec);
+      if (P.addCollageItem) P.addCollageItem(rec);
+      C.editId = id; C.editName = name;
+      toast('Collage saved to the Collages folder', 'ok', 3500);
+    } catch (e) { /* storage full — Download still works */ }
+  }
+  /* Picasa-style re-edit: open a finished collage from the library with its
+     photos and positions exactly as they were left */
+  async function editCollage(id) {
+    try {
+      const rec = await P.idbGet('collages', id);
+      if (!rec || !rec.photos || !rec.photos.length || !rec.blob) { toast('This collage could not be opened', 'err'); return; }
+      await openRestored(Object.assign({}, rec, { editId: id, previewBlob: rec.blob }));
+    } catch (e) { toast('This collage could not be opened', 'err'); }
+  }
   async function openRestored(proj) {
     if (!proj || !proj.photos || !proj.photos.length) { toast('The collage project is incomplete', 'err'); return; }
     C.open = true; C.blob = null; C.restored = true;
+    /* v3.16.0: opened for RE-EDIT from the Collages folder? stay linked */
+    C.editId = proj.editId || null;
+    C.editName = C.editId ? (proj.name || '') : '';
     C.list = proj.photos.map((ph) => ({ name: ph.name || 'photo', size: 0, lastModified: 0, handle: null, file: null }));
     C.type = 'pile';   /* v3.15.0: one free-form Picasa pile */
     C.bg = proj.bg || '#f5f2ec';
@@ -1044,7 +1098,9 @@
     el.bgPhoto.checked = C.bgPhoto;
     el.cCreate.hidden = false; el.cCancel.hidden = false;
     el.cSaveDir.hidden = true; el.cDownload.hidden = !proj.previewBlob; el.cBack.hidden = true;
-    el.note.textContent = `Auto-saved collage reopened (${proj.photos.length} photos)`;
+    el.note.textContent = C.editId
+      ? `Editing "${C.editName || 'collage'}" — press Create Collage to update it`
+      : `Auto-saved collage reopened (${proj.photos.length} photos)`;
     C.noteBase = el.note.textContent;
     noteCount();
     updateUI();
@@ -1062,7 +1118,7 @@
       if (C.url) URL.revokeObjectURL(C.url);
       C.url = URL.createObjectURL(C.blob);
     }
-    toast('Previous collage restored', 'ok', 3000);
+    toast(C.editId ? 'Collage opened for editing' : 'Previous collage restored', 'ok', 3000);
   }
 
   /* ================= open / close / create ================= */
@@ -1118,6 +1174,7 @@
     C.restored = false;
     C.type = 'pile';
     C.pos = null; C.layout = null; C.order = null; C.sel = new Set();
+    C.editId = null; C.editName = '';   /* v3.16.0: a fresh collage is a new record */
     C.bgIdx = 0;
     endGesture(); clearTimeout(wheelT);
     if (C.url) { URL.revokeObjectURL(C.url); C.url = null; }
@@ -1137,6 +1194,7 @@
     C.open = false;
     el.root.hidden = true;
     C.sel.clear();
+    C.editId = null; C.editName = '';
     endGesture(); clearTimeout(wheelT);
     if (C.url) { URL.revokeObjectURL(C.url); C.url = null; }
     C.blob = null;
@@ -1148,6 +1206,7 @@
     try {
       const [W0] = dims();
       const [W, H] = exportDims();
+      C.outW = W; C.outH = H;
       const c = renderCollage(W, H, W / W0);
       const want = el.exportFmt.value;
       const type = want === 'png' || (want === 'auto' && C.alphaAny) ? 'image/png' : 'image/jpeg';
@@ -1159,8 +1218,8 @@
       paintOverlay();
       el.cCreate.hidden = true; el.cCancel.hidden = true;
       el.cSaveDir.hidden = false; el.cDownload.hidden = false; el.cBack.hidden = false;
-      el.note.textContent = `Collage ready — ${W} \u00D7 ${H}px (${C.blob.type === 'image/png' ? 'PNG' : 'JPEG'})`;
-      saveCollageProject();
+      el.note.textContent = `Collage ready — ${W} \u00D7 ${H}px (${C.blob.type === 'image/png' ? 'PNG' : 'JPEG'}) — saved to the Collages folder`;
+      saveCollage();
     } finally {
       el.busy.hidden = true;
     }
@@ -1285,5 +1344,5 @@
   wire();
   wireInteractions();
 
-  window.PixsaCollage = { open, close, openRestored, isOpen: () => C.open };
+  window.PixsaCollage = { open, close, openRestored, editCollage, isOpen: () => C.open };
 })();
