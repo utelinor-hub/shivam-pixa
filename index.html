@@ -711,7 +711,7 @@
     .fxpager button:disabled { opacity: .4; cursor: default; }
     .c-prev { flex: 1; display: grid; place-items: center; background: #4d5055; padding: 14px; position: relative; overflow: auto; }
     .c-canvaswrap { position: relative; display: inline-block; line-height: 0; max-width: 100%; max-height: 100%; }
-    #cCanvas { max-width: 100%; max-height: 100%; box-shadow: 0 3px 18px rgba(0,0,0,.5); touch-action: none; }
+    #cCanvas { max-width: 100%; max-height: 100%; box-shadow: 0 3px 18px rgba(0,0,0,.5); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
     #cOverlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
     /* v3.12.0: Picasa "Picture Collage" engine — full-screen editor with a
        settings rail, a photo toolbar and an interactive live canvas */
@@ -954,7 +954,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.15.1</span>
+      <span class="ver">v3.15.2</span>
     </span>
   </footer>
 
@@ -2566,7 +2566,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.15.1', 'ok', 2500);
+          toast('S H I V A M PIXA v3.15.2', 'ok', 2500);
           break;
       }
     }
