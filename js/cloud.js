@@ -13,6 +13,10 @@
    (it kept showing a stale line while a failed popup sat behind the
    dialog), and a failed sign-in re-opens the dialog so the plain-language
    reason is on screen even on phones, where no hover tooltip exists.
+   v3.10.1 — Google's "Access blocked (Error 403: access_denied)" page is
+   now explained inside the app instead of a generic "window closed": the
+   message tells the owner exactly where to add the account as a test user
+   or to publish the app to Production (OAuth consent screen → Audience).
 
    How it works (design goals):
    • Sign in with Google → each user gets their own private folder
@@ -187,7 +191,8 @@
       tc.callback = (resp) => {
         restore();
         if (resp && resp.access_token) resolve(resp.access_token);
-        else reject(new Error((resp && resp.error) ? resp.error : 'Sign-in was cancelled'));
+        else if (resp && resp.error) reject(new Error(oauthErrText(resp.error)));
+        else reject(new Error('Sign-in was cancelled'));
       };
       tc.error_callback = (err) => {
         restore();
@@ -204,14 +209,30 @@
     const type = (err && err.type) || '';
     const map = {
       popup_failed_to_open: 'The Google window could not open — allow pop-ups for this site, then press “Sign in with Google” again',
-      popup_closed: 'The Google window closed before sign-in finished — if your browser shows a pop-up-blocker icon in the address bar, allow pop-ups and try again',
+      popup_closed: 'The Google window closed before sign-in finished — allow pop-ups and try again. If the window showed “Access blocked” (Error 403), the app is in Testing mode: open console.cloud.google.com → APIs & Services → OAuth consent screen → Audience and add this Google account under “Test users” (or publish the app to Production)',
       popup_closed_by_user: 'Sign-in was cancelled — the Google window was closed before it finished',
       popup_closed_by_click_away: 'The Google window closed when you clicked elsewhere — press “Sign in with Google” and complete the window',
-      access_denied: 'Google refused this account — if this Google account is new to PIXA, first sign in once with the account that created the app, or add this account as a test user in Google Cloud Console (OAuth consent screen)',
+      access_denied: 'Google blocked this account (“Access blocked — Error 403: access_denied”). The app is in Testing mode, so only pre-approved accounts may sign in. Fix: open console.cloud.google.com → APIs & Services → OAuth consent screen (Google Auth Platform) → Audience, then either add this Google account under “Test users”, or set Publishing status to “In production” — then sign in again.',
       startup_failed: 'Google sign-in could not start (browser or network issue) — reload the page and try again'
     };
     if (type && map[type]) return map[type];
     return (err && (err.message || err.type)) || 'The Google window was closed or blocked';
+  }
+
+  /* v3.10.1: OAuth-level error codes that arrive through the token callback
+     (the popup redirected back with ?error=…). “access_denied” here means
+     the Google 403 testing-mode block page was shown; map the common codes
+     to their actual fixes instead of surfacing the raw code. */
+  function oauthErrText(code) {
+    const map = {
+      access_denied: gisErrText({ type: 'access_denied' }),
+      admin_policy_enforced: 'Your Google Workspace administrator does not allow signing in to this app — use a personal @gmail.com account',
+      invalid_client: 'The Client ID saved in Cloud Sync is wrong — paste it again and press Save',
+      unauthorized_client: 'This Client ID is not allowed for this site — in Google Cloud Console → Credentials, add “https://utelinor-hub.github.io/shivam-pixa” under Authorized JavaScript origins',
+      redirect_uri_mismatch: 'This site is not in the Client ID\u2019s Authorized JavaScript origins — fix it in Google Cloud Console → Credentials',
+      org_internal: 'This Client ID only allows accounts inside its organization — create a new OAuth Client ID with User type “External”'
+    };
+    return map[code] || ('Google sign-in failed (' + code + ') — try again, and if it repeats open the Cloud dialog diagnostics');
   }
 
   const hasToken = () => !!(C.token && Date.now() < C.tokenExp);
