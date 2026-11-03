@@ -769,8 +769,7 @@
     .fxpager button:disabled { opacity: .4; cursor: default; }
     .c-prev { flex: 1; display: grid; place-items: center; background: #4d5055; padding: 14px; position: relative; overflow: auto; }
     .c-canvaswrap { position: relative; display: inline-block; line-height: 0; max-width: 100%; max-height: 100%; }
-    #cCanvas { max-width: 100%; max-height: 100%; box-shadow: 0 3px 18px rgba(0,0,0,.5); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
-    #cOverlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    /* v3.19.0: the collage stage is DOM now — styles come from collage.js */
     /* v3.12.0: Picasa "Picture Collage" engine — full-screen editor with a
        settings rail, a photo toolbar and an interactive live canvas */
     #collage { padding: 0; place-items: stretch; }
@@ -1123,7 +1122,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.18.0</span>
+      <span class="ver">v3.19.0</span>
     </span>
   </footer>
 
@@ -1387,7 +1386,7 @@
     </footer>
   </div>
 
-  <!-- ===== Collage maker (Picasa 3 replica — v3.17.0) ===== -->
+  <!-- ===== Collage maker (PicasaCollage DOM engine — v3.19.0) ===== -->
   <div id="collage" class="modal" hidden role="dialog" aria-label="Collage maker">
     <div class="m-box">
       <header class="m-head">
@@ -1490,8 +1489,8 @@
           </div>
           <div class="c-stage">
             <div id="cWrap" class="c-canvaswrap">
-              <canvas id="cCanvas" width="640" height="480"></canvas>
-              <canvas id="cOverlay" width="640" height="480"></canvas>
+              <div id="cStage"></div>
+              <div id="cWheel" hidden><div id="cKnob"></div></div>
             </div>
           </div>
           <div class="c-below">
@@ -2972,7 +2971,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.18.0', 'ok', 2500);
+          toast('S H I V A M PIXA v3.19.0', 'ok', 2500);
           break;
       }
     }
