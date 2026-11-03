@@ -42,7 +42,7 @@
   const ADJ0 = { fill: 0, high: 0, shad: 0, temp: 0, tint: 0, sat: 0 };
   const TEXT0 = {
     size: 7, color: '#ffffff', font: '"Segoe UI", sans-serif', rot: 0, alpha: 100,
-    bold: false, italic: false, stroke: '#000000', strokeW: 0, shadow: true, align: 'center'
+    bold: false, italic: false, underline: false, stroke: '#000000', strokeW: 0, shadow: true, align: 'center'
   };
 
   const E = {
@@ -53,7 +53,9 @@
     fit: true, zoom: 100, fxPage: 1,
     /* v3.4.0: stickers + text draft + autosave state */
     stickers: [], stkSeq: 0, stkSel: null,
-    pendText: { x: 0.5, y: 0.5 }, textDraft: { ...TEXT0 },
+    /* v3.13.0 Picasa text tool: txtSel = selected committed text op,
+       txtEditing = { op, isNew } while the on-canvas editor is open */
+    txtSel: null, txtEditing: null,
     dirty: false, restored: false
   };
 
@@ -134,16 +136,21 @@
 
   /* ---------- preview ----------
      v3.4.0: the ops stack is rendered once into a cached "base" canvas;
-     slider drags only re-run the tuning pass on top — buttery smooth. */
+     slider drags only re-run the tuning pass on top — buttery smooth.
+     v3.13.0: TEXT ops are excluded from the cached base and painted on top
+     after tuning — moving/sizing text no longer rebuilds the whole stack and
+     text always sits above the photo adjustments, exactly like Picasa. */
   let rafPend = false;
   let baseCv = null, baseKey = '';
+  const nonTextOps = () => E.ops.filter((o) => o.type !== 'text');
   function opsKey() {
-    return JSON.stringify(E.ops) + (E.draft ? '|S' + E.draft.deg : '') + '|' + (E.src ? E.src.width + 'x' + E.src.height : '');
+    return JSON.stringify(nonTextOps()) + (E.draft ? '|S' + E.draft.deg : '') + '|' + (E.src ? E.src.width + 'x' + E.src.height : '');
   }
   function ensureBase() {
     const k = opsKey();
     if (!baseCv || baseKey !== k) {
-      baseCv = FX.renderOps(E.src, E.draft ? [...E.ops, E.draft] : E.ops, E.pmax || 1400, stickerMap());
+      const ops = E.draft ? [...nonTextOps(), E.draft] : nonTextOps();
+      baseCv = FX.renderOps(E.src, ops, E.pmax || 1400, stickerMap());
       baseKey = k;
     }
     return baseCv;
@@ -161,6 +168,9 @@
       cx.clearRect(0, 0, cv.width, cv.height);
       cx.drawImage(base, 0, 0);
       FX.applyAdjTo(cv, E.adj);
+      /* v3.13.0: paint committed text + the live draft on top of tuning */
+      for (const op of E.ops) if (op.type === 'text') FX.drawTextOp(cx, cv.width, cv.height, op);
+      if (E.txtEditing && E.txtEditing.isNew && E.txtEditing.op.text) FX.drawTextOp(cx, cv.width, cv.height, E.txtEditing.op);
       applyDisp();
       schedHist();
       res();
@@ -182,6 +192,7 @@
     const oc = q('#eOrig');
     if (oc && !oc.hidden) { oc.style.width = w; oc.style.height = h; }
     syncCropOverlay();
+    syncTextOverlay();
   }
 
   /* ---------- before / after compare (hold) ---------- */
@@ -191,6 +202,8 @@
     comparing = on;
     const oc = q('#eOrig'), tag = q('#eOrigTag'), btn = q('#eCompare');
     if (on) {
+      /* v3.13.0: hide the text wheel + typing layer while comparing */
+      gizCv.hidden = true; hideTxtEdit();
       const cv = ed.canvas;
       if (oc.width !== cv.width || oc.height !== cv.height) { oc.width = cv.width; oc.height = cv.height; }
       const ox = oc.getContext('2d');
@@ -258,6 +271,8 @@
     E.redo.push(snap());
     const s = JSON.parse(E.undo.pop());
     E.ops = s.ops; E.adj = s.adj; E.prevAdj = { ...E.adj };
+    if (E.txtEditing) discardEditing();
+    if (E.txtSel && !E.ops.includes(E.txtSel)) E.txtSel = null;
     resetAdjUI(); updFxTiles(); updUndoBtns(); setTool(null);
     renderPreview();
     scheduleEditSave();
@@ -267,6 +282,8 @@
     E.undo.push(snap());
     const s = JSON.parse(E.redo.pop());
     E.ops = s.ops; E.adj = s.adj; E.prevAdj = { ...E.adj };
+    if (E.txtEditing) discardEditing();
+    if (E.txtSel && !E.ops.includes(E.txtSel)) E.txtSel = null;
     resetAdjUI(); updFxTiles(); updUndoBtns(); setTool(null);
     renderPreview();
     scheduleEditSave();
@@ -278,7 +295,14 @@
 
   function commit(op) {
     pushUndo();
-    E.ops.push(op);
+    /* v3.13.0: keep text blocks LAST in the stack so a later crop/rotate/
+       straighten can never clip them in the export while the preview (which
+       paints text on top) stays identical */
+    if (op.type === 'crop' || op.type === 'rot' || op.type === 'straighten') {
+      E.ops = [...E.ops.filter((o) => o.type !== 'text'), op, ...E.ops.filter((o) => o.type === 'text')];
+    } else {
+      E.ops.push(op);
+    }
     updFxTiles(); updUndoBtns();
     renderPreview();
     scheduleEditSave();
@@ -458,11 +482,19 @@
     if ((E.tool === 'redeye' || E.tool === 'retouch') && t !== E.tool) E.pendPts = [];
     if (E.tool === 'crop' && t !== 'crop') { E.cropR = null; }
     if (E.tool === 'straighten' && t !== 'straighten' && E.draft) { E.draft = null; }
+    /* v3.13.0: leaving the text tool finishes (commits) or discards the draft,
+       drops the selection and hides the wheel + typing layer */
+    if (E.tool === 'text' && t !== 'text') {
+      commitEditing();
+      E.txtSel = null;
+    }
+    if (t === 'text' && !E.txtDraft) E.txtDraft = { ...TEXT0 };
     E.tool = t;
     ed.crop.hidden = !(t === 'crop' && E.cropR);
     qa('.fixbtn[data-fix]').forEach((b) => b.classList.toggle('on', b.dataset.fix === t));
     renderToolbox();
     if (E.tool === 'straighten' && E.draft) renderPreview();
+    syncTextOverlay();
   }
 
   function renderToolbox() {
@@ -522,63 +554,52 @@
       });
       q('#tbCancel').addEventListener('click', () => { E.pendPts = []; setTool(null); renderPreview(); });
     } else if (E.tool === 'text') {
-      const td = E.textDraft;
+      /* v3.13.0: Picasa text panel — click the photo & type directly on it.
+         Controls act on the selected text block (or set defaults for the next one). */
+      const td = E.txtDraft;
+      const op = textTarget();
       tb.innerHTML = `
-        <input id="txText" type="text" placeholder="Type text here... (use \\n for a new line)" maxlength="200"
-               style="width:100%;padding:6px 8px;border:1px solid #bcbcbc;border-radius:4px;font-size:13px;outline:none" />
-        <div class="trow" style="margin-top:8px"><label>Font</label><select id="txFont" style="flex:1;height:27px;min-width:0">${fontOptionsHTML(td.font)}</select></div>
+        <h4>Click on the photo &amp; type</h4>
+        <div class="trow"><label>Font</label><select id="txFont" style="flex:1;height:27px;min-width:0">${fontOptionsHTML(op.font)}</select></div>
         <button id="txAddFont" class="fixbtn" type="button" style="margin:5px 0 4px">+ Add Font from PC</button>
-        <div class="trow"><label>Size</label><input id="txSize" type="range" min="2" max="30" value="${td.size}" /><span class="val" id="txSizeV">${td.size}%</span></div>
         <div class="trow">
           <label>Style</label>
-          <button id="txBold" type="button" class="fixbtn" style="width:34px;margin:0;font-weight:900;${td.bold ? 'border-color:var(--accent);background:#dcebfb' : ''}">B</button>
-          <button id="txItalic" type="button" class="fixbtn" style="width:34px;margin:0;font-style:italic;${td.italic ? 'border-color:var(--accent);background:#dcebfb' : ''}">I</button>
+          <button id="txBold" type="button" class="fixbtn" style="width:32px;margin:0;font-weight:900">B</button>
+          <button id="txItalic" type="button" class="fixbtn" style="width:32px;margin:0;font-style:italic">I</button>
+          <button id="txUnder" type="button" class="fixbtn" style="width:32px;margin:0;text-decoration:underline">U</button>
           <select id="txAlign" style="flex:1;height:27px;min-width:0">
-            <option value="left"${td.align === 'left' ? ' selected' : ''}>Left</option>
-            <option value="center"${td.align === 'center' ? ' selected' : ''}>Center</option>
-            <option value="right"${td.align === 'right' ? ' selected' : ''}>Right</option>
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
           </select>
         </div>
-        <div class="trow"><label>Color</label><input id="txColor" type="color" value="${td.color}" style="height:27px;flex:1" /></div>
-        <div class="trow"><label>Outline</label><input id="txStrokeC" type="color" value="${td.stroke}" style="height:27px;width:36px;padding:0" /><input id="txStrokeW" type="range" min="0" max="12" value="${td.strokeW}" style="flex:1" /><span class="val" id="txStrokeWV">${td.strokeW}</span></div>
-        <label class="chkrow"><input type="checkbox" id="txShadow"${td.shadow ? ' checked' : ''} /> Shadow on/off</label>
-        <div class="trow"><label>Rotate</label><input id="txRot" type="range" min="-45" max="45" value="${td.rot}" /><span class="val" id="txRotV">${td.rot}\u00B0</span></div>
-        <div class="trow"><label>Opacity</label><input id="txAlpha" type="range" min="10" max="100" value="${td.alpha}" /><span class="val" id="txAlphaV">${td.alpha}%</span></div>
+        <div class="trow"><label>Fill</label><input id="txColor" type="color" value="${op.color}" style="height:27px;flex:1" /></div>
+        <div class="trow"><label>Outline</label><input id="txStrokeC" type="color" value="${op.stroke}" style="height:27px;width:34px;padding:0" /><input id="txStrokeW" type="range" min="0" max="12" value="${op.strokeW}" style="flex:1" /><span class="val" id="txStrokeWV">${op.strokeW}</span></div>
+        <div class="trow"><label>Opacity</label><input id="txAlpha" type="range" min="10" max="100" value="${Math.round(op.alpha * 100)}" /><span class="val" id="txAlphaV">${Math.round(op.alpha * 100)}%</span></div>
+        <label class="chkrow"><input type="checkbox" id="txShadow"${op.shadow ? ' checked' : ''} /> Drop shadow</label>
         <div class="mrow">
-          <button id="txAdd" class="btn btn-accent" type="button">Add Text</button>
-          <button id="txDone" class="btn" type="button">Done</button>
-        </div>`;
+          <button id="txApply" class="btn btn-accent" type="button">Apply</button>
+          <button id="txCancel" class="btn" type="button">Cancel</button>
+        </div>
+        <button id="txClear" class="fixbtn" type="button" style="margin-top:6px">Clear All Text</button>
+        <p style="font-size:11px;color:#71747a;margin:8px 0 0;line-height:1.5">Click photo = new text • drag the pin to move • drag the ring handle to rotate &amp; resize • Enter = new line • Esc = done • Delete key removes the selected text</p>`;
+      setTxUI(op);
       const grab = (id) => q(id);
-      grab('#txText').focus();
-      grab('#txFont').addEventListener('change', (e) => { td.font = e.target.value; });
-      grab('#txSize').addEventListener('input', (e) => { td.size = +e.target.value; grab('#txSizeV').textContent = e.target.value + '%'; });
-      grab('#txBold').addEventListener('click', (e) => { td.bold = !td.bold; e.target.style.borderColor = td.bold ? 'var(--accent)' : ''; e.target.style.background = td.bold ? '#dcebfb' : ''; });
-      grab('#txItalic').addEventListener('click', (e) => { td.italic = !td.italic; e.target.style.borderColor = td.italic ? 'var(--accent)' : ''; e.target.style.background = td.italic ? '#dcebfb' : ''; });
-      grab('#txAlign').addEventListener('change', (e) => { td.align = e.target.value; });
-      grab('#txColor').addEventListener('input', (e) => { td.color = e.target.value; });
-      grab('#txStrokeC').addEventListener('input', (e) => { td.stroke = e.target.value; });
-      grab('#txStrokeW').addEventListener('input', (e) => { td.strokeW = +e.target.value; grab('#txStrokeWV').textContent = e.target.value; });
-      grab('#txShadow').addEventListener('change', (e) => { td.shadow = e.target.checked; });
-      grab('#txRot').addEventListener('input', (e) => { td.rot = +e.target.value; grab('#txRotV').textContent = e.target.value + '\u00B0'; });
-      grab('#txAlpha').addEventListener('input', (e) => { td.alpha = +e.target.value; grab('#txAlphaV').textContent = e.target.value + '%'; });
+      grab('#txFont').addEventListener('change', (e) => { const o = textTarget(); o.font = e.target.value; afterTextChange(); });
       grab('#txAddFont').addEventListener('click', () => q('#fontFile').click());
-      grab('#txAdd').addEventListener('click', () => {
-        const txt = grab('#txText').value.trim();
-        if (!txt) { toast('Type some text first', 'err', 1800); return; }
-        commit({
-          type: 'text',
-          x: E.pendText.x, y: E.pendText.y,
-          text: txt, size: td.size, color: td.color, font: td.font,
-          rot: td.rot, alpha: td.alpha / 100,
-          bold: td.bold, italic: td.italic,
-          stroke: td.stroke, strokeW: td.strokeW,
-          shadow: td.shadow, align: td.align
-        });
-        grab('#txText').value = '';
-        E.pendText = { x: 0.5, y: 0.5 };
-        toast('Text applied \u2713', 'ok', 1500);
-      });
-      grab('#txDone').addEventListener('click', () => setTool(null));
+      const tg = (id, key) => grab(id).addEventListener('click', (e) => { const o = textTarget(); o[key] = !o[key]; e.currentTarget.style.borderColor = o[key] ? 'var(--accent)' : ''; e.currentTarget.style.background = o[key] ? '#dcebfb' : ''; afterTextChange(); });
+      tg('#txBold', 'bold'); tg('#txItalic', 'italic'); tg('#txUnder', 'underline');
+      grab('#txAlign').addEventListener('change', (e) => { const o = textTarget(); o.align = e.target.value; afterTextChange(); });
+      grab('#txColor').addEventListener('input', (e) => { const o = textTarget(); o.color = e.target.value; afterTextChange(false); });
+      grab('#txStrokeC').addEventListener('input', (e) => { const o = textTarget(); o.stroke = e.target.value; afterTextChange(false); });
+      grab('#txStrokeW').addEventListener('input', (e) => { const o = textTarget(); o.strokeW = +e.target.value; grab('#txStrokeWV').textContent = e.target.value; afterTextChange(false); });
+      grab('#txStrokeW').addEventListener('change', () => afterTextChange());
+      grab('#txAlpha').addEventListener('input', (e) => { const o = textTarget(); o.alpha = +e.target.value / 100; grab('#txAlphaV').textContent = e.target.value + '%'; afterTextChange(false); });
+      grab('#txAlpha').addEventListener('change', () => afterTextChange());
+      grab('#txShadow').addEventListener('change', (e) => { const o = textTarget(); o.shadow = e.target.checked; afterTextChange(); });
+      grab('#txApply').addEventListener('click', () => { commitEditing(); E.txtSel = null; setTool(null); });
+      grab('#txCancel').addEventListener('click', () => { if (E.txtEditing && E.txtEditing.isNew) discardEditing(); E.txtSel = null; setTool(null); });
+      grab('#txClear').addEventListener('click', clearAllText);
       document.addEventListener('pixa-fonts-updated', () => { if (E.tool === 'text') renderToolbox(); }, { once: true });
     } else if (E.tool === 'sticker') {
       const op = E.ops.filter((o) => o.type === 'sticker' && o.sid === E.stkSel).pop();
@@ -625,6 +646,362 @@
       q('#tbCancel').addEventListener('click', () => { E.draft = null; E.pmax = 1400; setTool(null); renderPreview(); });
     }
   }
+
+  /* ======================================================================
+     v3.13.0 — Picasa "Text" tool
+     • click the photo -> a text block opens right there and you type on it
+     • every block gets the Picasa manipulator wheel:
+         - centre pin  = drag to move the text
+         - ring handle = drag around the ring to rotate (0-360°),
+                         drag closer/farther to shrink/grow the font
+     • many independent blocks, each with its own style
+     • non-destructive: blocks live in E.ops like every other edit
+     ====================================================================== */
+  const gizCv = q('#eGiz'), txtTa = q('#eTxtEdit');
+  const measCv = FX.mkCanvas(8, 8);
+  const measCx = measCv.getContext('2d');
+  const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  function textFontStr(op, fs) {
+    return `${op.italic ? 'italic ' : ''}${op.bold ? '700' : '400'} ${fs}px ${op.font || '"Segoe UI", sans-serif'}`;
+  }
+  /* metrics in CANVAS pixel space (op.size is % of canvas height) */
+  function measureTextOp(op, H) {
+    const fs = Math.max(4, (op.size / 100) * H);
+    measCx.font = textFontStr(op, fs);
+    const lines = String(op.text || '').split('\n');
+    let w = 0;
+    for (const ln of lines) w = Math.max(w, measCx.measureText(ln || ' ').width);
+    const lh = fs * 1.22;
+    return { fs, lh, w, h: lines.length * lh, n: Math.max(1, lines.length) };
+  }
+  /* the op the side panel currently acts on: the block being typed, the
+     selected block, or the defaults for the NEXT block */
+  function textTarget() {
+    if (E.txtEditing) return E.txtEditing.op;
+    if (E.txtSel) return E.txtSel;
+    return E.txtDraft;
+  }
+  function afterTextChange(save) {
+    renderPreview();
+    if (save !== false && (E.txtEditing || E.txtSel)) scheduleEditSave();
+  }
+  function setTxUI(op) {
+    const g = (id) => q(id);
+    if (!g('#txFont')) return;
+    g('#txFont').value = op.font;
+    g('#txAlign').value = op.align || 'center';
+    g('#txColor').value = op.color;
+    g('#txStrokeC').value = op.stroke;
+    g('#txStrokeW').value = op.strokeW; g('#txStrokeWV').textContent = op.strokeW;
+    g('#txAlpha').value = Math.round((op.alpha == null ? 1 : op.alpha) * 100);
+    g('#txAlphaV').textContent = Math.round((op.alpha == null ? 1 : op.alpha) * 100) + '%';
+    g('#txShadow').checked = !!op.shadow;
+    const tog = (id, on) => { const b = g(id); if (b) { b.style.borderColor = on ? 'var(--accent)' : ''; b.style.background = on ? '#dcebfb' : ''; } };
+    tog('#txBold', op.bold); tog('#txItalic', op.italic); tog('#txUnder', op.underline);
+  }
+  function hideTxtEdit() { txtTa.hidden = true; }
+  function discardEditing() {
+    E.txtEditing = null;
+    hideTxtEdit();
+    renderPreview();
+  }
+  /* finish typing: empty new block = discarded, otherwise committed */
+  function commitEditing() {
+    const t = E.txtEditing;
+    if (!t) { hideTxtEdit(); return; }
+    E.txtEditing = null;
+    hideTxtEdit();
+    if (t.isNew) {
+      const txt = String(t.op.text || '').replace(/\s+$/, '');
+      if (txt.trim()) {
+        t.op.text = txt;
+        pushUndo();
+        E.ops.push(t.op);
+        updUndoBtns();
+        E.txtSel = t.op;
+        renderPreview();
+        scheduleEditSave();
+        toast('Text added \u2014 drag the wheel to place it', 'ok', 1700);
+      } else {
+        renderPreview();
+      }
+    } else {
+      if (!String(t.op.text || '').trim()) {
+        pushUndo();
+        E.ops = E.ops.filter((o) => o !== t.op);
+        E.txtSel = null;
+      }
+      renderPreview();
+      scheduleEditSave();
+    }
+  }
+  function startEditing(op, isNew) {
+    E.txtEditing = { op, isNew };
+    E.txtSel = isNew ? null : op;
+    txtTa.value = op.text || '';
+    txtTa.hidden = false;
+    syncTextOverlay();
+    renderPreview();
+    txtTa.focus();
+    if (!isNew) txtTa.setSelectionRange(txtTa.value.length, txtTa.value.length);
+    if (E.tool === 'text' && q('#txFont')) setTxUI(op);
+  }
+  function newDraftText(nx, ny) {
+    const d = E.txtDraft;
+    return {
+      type: 'text', x: clampN(nx, 0.03, 0.97), y: clampN(ny, 0.05, 0.95),
+      text: '', size: d.size, color: d.color, font: d.font, rot: 0,
+      alpha: d.alpha == null ? 1 : d.alpha, bold: !!d.bold, italic: !!d.italic,
+      underline: !!d.underline, stroke: d.stroke, strokeW: d.strokeW,
+      shadow: !!d.shadow, align: d.align || 'center'
+    };
+  }
+  function clearAllText() {
+    if (E.txtEditing) discardEditing();
+    if (!E.ops.some((o) => o.type === 'text')) { toast('No text on this photo', undefined, 1600); return; }
+    pushUndo();
+    E.ops = E.ops.filter((o) => o.type !== 'text');
+    E.txtSel = null;
+    updUndoBtns();
+    renderPreview();
+    scheduleEditSave();
+    toast('All text removed', 'ok', 1600);
+  }
+
+  /* ---------- geometry (DISPLAY space, i.e. what you see) ---------- */
+  function textDisplayGeom(op) {
+    const cv = ed.canvas;
+    const ds = cv.clientWidth / Math.max(1, cv.width);
+    const m = measureTextOp(op, cv.height);
+    return {
+      cx: cv.offsetLeft + op.x * cv.clientWidth,
+      cy: cv.offsetTop + op.y * cv.clientHeight,
+      w: Math.max(6, m.w * ds), h: Math.max(6, m.h * ds),
+      fs: m.fs * ds, lh: m.lh * ds, rot: op.rot || 0,
+      r: Math.max(44, (Math.hypot(m.w, m.h) * ds) / 2 + 26)
+    };
+  }
+  function pointInText(op, nx, ny) {
+    const cv = ed.canvas;
+    const m = measureTextOp(op, cv.height);
+    const dx = (nx * cv.clientWidth) - (op.x * cv.clientWidth);
+    const dy = (ny * cv.clientHeight) - (op.y * cv.clientHeight);
+    const a = -(op.rot || 0) * Math.PI / 180;
+    const lx = dx * Math.cos(a) - dy * Math.sin(a);
+    const ly = dx * Math.sin(a) + dy * Math.cos(a);
+    return Math.abs(lx) <= m.w / 2 + 10 && Math.abs(ly) <= m.h / 2 + 8;
+  }
+  function hitText(nx, ny) {
+    for (let i = E.ops.length - 1; i >= 0; i--) {
+      const op = E.ops[i];
+      if (op.type === 'text' && pointInText(op, nx, ny)) return op;
+    }
+    if (E.txtEditing && E.txtEditing.isNew && pointInText(E.txtEditing.op, nx, ny)) return E.txtEditing.op;
+    return null;
+  }
+
+  /* ---------- the manipulator wheel ---------- */
+  function drawGizmo() {
+    const st = ed.stage;
+    const dpr = window.devicePixelRatio || 1;
+    const W = st.clientWidth, H = st.clientHeight;
+    if (!W || !H) return;
+    if (gizCv.width !== Math.round(W * dpr) || gizCv.height !== Math.round(H * dpr)) {
+      gizCv.width = Math.round(W * dpr); gizCv.height = Math.round(H * dpr);
+    }
+    const g = gizCv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    const op = (E.txtEditing && E.txtEditing.op) || E.txtSel;
+    if (!op) return;
+    const gm = textDisplayGeom(op);
+    const rad = gm.rot * Math.PI / 180;
+    const hx = gm.cx + Math.cos(rad) * gm.r, hy = gm.cy + Math.sin(rad) * gm.r;
+    /* dashed bounding box (rotated) */
+    g.save();
+    g.translate(gm.cx, gm.cy); g.rotate(rad);
+    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 2;
+    g.setLineDash([5, 4]);
+    g.strokeRect(-gm.w / 2 - 4, -gm.h / 2 - 4, gm.w + 8, gm.h + 8);
+    g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 1.2;
+    g.strokeRect(-gm.w / 2 - 4, -gm.h / 2 - 4, gm.w + 8, gm.h + 8);
+    g.restore();
+    /* spoke from centre to the ring handle */
+    g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 1.2;
+    g.beginPath(); g.moveTo(gm.cx, gm.cy); g.lineTo(hx, hy); g.stroke();
+    /* outer ring — dark + light double stroke so it reads on any photo */
+    for (const [col, lw] of [['rgba(0,0,0,.4)', 3.4], ['rgba(255,255,255,.9)', 1.6]]) {
+      g.strokeStyle = col; g.lineWidth = lw;
+      g.beginPath(); g.arc(gm.cx, gm.cy, gm.r, 0, Math.PI * 2); g.stroke();
+    }
+    /* centre pin = move */
+    g.fillStyle = 'rgba(0,0,0,.45)';
+    g.beginPath(); g.arc(gm.cx, gm.cy, 7.5, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(gm.cx, gm.cy, 5.5, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#2f7fd1';
+    g.beginPath(); g.arc(gm.cx, gm.cy, 2.6, 0, Math.PI * 2); g.fill();
+    /* ring handle = rotate + scale */
+    g.fillStyle = 'rgba(0,0,0,.45)';
+    g.beginPath(); g.arc(hx, hy, 9.5, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(hx, hy, 7.5, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#2f7fd1';
+    g.beginPath(); g.arc(hx, hy, 4, 0, Math.PI * 2); g.fill();
+  }
+  /* position the wheel canvas + the on-canvas typing box */
+  function syncTextOverlay() {
+    const active = E.open && E.tool === 'text' && !comparing;
+    gizCv.classList.toggle('live', active);
+    if (!active) { gizCv.hidden = true; hideTxtEdit(); return; }
+    gizCv.hidden = false;
+    gizCv.style.left = '0px'; gizCv.style.top = '0px';
+    gizCv.style.width = ed.stage.clientWidth + 'px';
+    gizCv.style.height = ed.stage.clientHeight + 'px';
+    drawGizmo();
+    if (E.txtEditing) {
+      const op = E.txtEditing.op;
+      const m = measureTextOp(op, ed.canvas.height);
+      const ds = ed.canvas.clientWidth / Math.max(1, ed.canvas.width);
+      const gm = textDisplayGeom(op);
+      txtTa.style.left = gm.cx + 'px';
+      txtTa.style.top = gm.cy + 'px';
+      txtTa.style.width = Math.max(130, m.w * ds + 22) + 'px';
+      txtTa.style.height = Math.max(m.lh * ds, m.h * ds + 4) + 'px';
+      txtTa.style.transform = `translate(-50%,-50%) rotate(${gm.rot}deg)`;
+      txtTa.style.font = textFontStr(op, m.fs * ds);
+      txtTa.style.lineHeight = '1.22';
+      txtTa.style.textAlign = op.align || 'center';
+      txtTa.style.caretColor = op.color || '#fff';
+    } else {
+      hideTxtEdit();
+    }
+  }
+
+  /* ---------- gestures on the wheel ---------- */
+  let txG = null; /* { mode:'move'|'wheel', op, ox, oy, rot0, size0, ang0, dist0, committed } */
+  function gizPt(e) {
+    const r = gizCv.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  function normPt(p) {
+    const cv = ed.canvas;
+    return {
+      nx: clampN((p.x - cv.offsetLeft) / Math.max(1, cv.clientWidth), 0, 1),
+      ny: clampN((p.y - cv.offsetTop) / Math.max(1, cv.clientHeight), 0, 1)
+    };
+  }
+  gizCv.addEventListener('pointerdown', (e) => {
+    if (!E.open || E.tool !== 'text' || comparing) return;
+    e.preventDefault();
+    try { gizCv.setPointerCapture(e.pointerId); } catch (err) {}
+    const p = gizPt(e);
+    /* typing? clicking anywhere else finishes the current block first */
+    if (E.txtEditing) commitEditing();
+    const cur = (E.txtEditing && E.txtEditing.op) || E.txtSel;
+    if (cur) {
+      const gm = textDisplayGeom(cur);
+      const rad = gm.rot * Math.PI / 180;
+      const hx = gm.cx + Math.cos(rad) * gm.r, hy = gm.cy + Math.sin(rad) * gm.r;
+      if (Math.hypot(p.x - hx, p.y - hy) < 17) {
+        /* ring handle: angle rotates, radial distance scales the font */
+        pushUndo();
+        txG = { mode: 'wheel', op: cur, committed: E.ops.includes(cur), rot0: cur.rot || 0, size0: cur.size, ang0: Math.atan2(p.y - gm.cy, p.x - gm.cx), dist0: Math.max(8, Math.hypot(p.x - gm.cx, p.y - gm.cy)) };
+        return;
+      }
+      if (Math.hypot(p.x - gm.cx, p.y - gm.cy) < 20) {
+        pushUndo();
+        const { nx, ny } = normPt(p);
+        txG = { mode: 'move', op: cur, committed: E.ops.includes(cur), ox: nx - cur.x, oy: ny - cur.y };
+        return;
+      }
+    }
+    const { nx, ny } = normPt(p);
+    const hit = hitText(nx, ny);
+    if (hit) {
+      E.txtSel = hit;
+      if (E.tool === 'text' && q('#txFont')) setTxUI(hit);
+      pushUndo();
+      txG = { mode: 'move', op: hit, committed: E.ops.includes(hit), ox: nx - hit.x, oy: ny - hit.y };
+      drawGizmo();
+      return;
+    }
+    /* empty spot -> a brand-new block opens right there, ready to type */
+    const op = newDraftText(nx, ny);
+    startEditing(op, true);
+  });
+  gizCv.addEventListener('pointermove', (e) => {
+    if (!txG) return;
+    e.preventDefault();
+    const p = gizPt(e);
+    if (txG.mode === 'move') {
+      const { nx, ny } = normPt(p);
+      txG.op.x = clampN(nx - txG.ox, 0.02, 0.98);
+      txG.op.y = clampN(ny - txG.oy, 0.04, 0.96);
+      renderPreview();
+      drawGizmo();
+    } else {
+      const gm = textDisplayGeom(txG.op);
+      const ang = Math.atan2(p.y - gm.cy, p.x - gm.cx);
+      const dist = Math.max(8, Math.hypot(p.x - gm.cx, p.y - gm.cy));
+      let rot = txG.rot0 + ((ang - txG.ang0) * 180) / Math.PI;
+      rot = ((rot + 540) % 360) - 180;
+      txG.op.rot = Math.round(rot * 10) / 10;
+      txG.op.size = clampN((txG.size0 * dist) / txG.dist0, 1.5, 60);
+      renderPreview();
+      drawGizmo();
+    }
+  });
+  ['pointerup', 'pointercancel'].forEach((ev) => gizCv.addEventListener(ev, () => {
+    if (!txG) return;
+    const wasCommitted = txG.committed;
+    txG = null;
+    renderPreview();
+    if (wasCommitted) scheduleEditSave();
+  }));
+  /* wheel over the selected block nudges the size too */
+  gizCv.addEventListener('wheel', (e) => {
+    if (!E.open || E.tool !== 'text') return;
+    const op = (E.txtEditing && E.txtEditing.op) || E.txtSel;
+    if (!op) return;
+    e.preventDefault();
+    op.size = clampN(op.size * (e.deltaY < 0 ? 1.07 : 0.935), 1.5, 60);
+    renderPreview();
+    syncTextOverlay();
+    scheduleEditSave();
+  }, { passive: false });
+  /* double-click an existing block to re-edit its words */
+  gizCv.addEventListener('dblclick', (e) => {
+    if (!E.open || E.tool !== 'text' || comparing) return;
+    const { nx, ny } = normPt(gizPt(e));
+    const hit = hitText(nx, ny);
+    if (hit && !E.txtEditing) {
+      pushUndo();
+      startEditing(hit, false);
+    }
+  });
+
+  /* ---------- on-canvas typing ---------- */
+  txtTa.addEventListener('input', () => {
+    if (!E.txtEditing) return;
+    E.txtEditing.op.text = txtTa.value;
+    renderPreview();
+    syncTextOverlay();
+  });
+  txtTa.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Escape') { e.preventDefault(); commitEditing(); }
+    else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); commitEditing(); }
+  });
+  txtTa.addEventListener('blur', (e) => {
+    if (!E.txtEditing) return;
+    /* clicking the side panel keeps the editor open so styles can be
+       changed while typing — clicking anywhere else commits */
+    const to = e.relatedTarget;
+    if (to && ed.toolBox.contains(to)) return;
+    commitEditing();
+  });
 
   /* ---------- crop ---------- */
   function startCrop() {
@@ -764,14 +1141,6 @@
       stroking = true;
       try { ed.canvas.setPointerCapture(e.pointerId); } catch (err) {}
       strokeAt(e);
-    } else if (E.tool === 'text') {
-      const cv = ed.canvas;
-      const r = cv.getBoundingClientRect();
-      E.pendText = {
-        x: clamp((e.clientX - r.left) / r.width, 0.02, 0.98),
-        y: clamp((e.clientY - r.top) / r.height, 0.03, 0.97)
-      };
-      toast('Text position set — now press "Add Text"', 'ok', 2000);
     } else if (E.tool === 'sticker') {
       const cv = ed.canvas;
       const r = cv.getBoundingClientRect();
@@ -886,6 +1255,8 @@
       E.src = await createImageBitmap(blob).catch(() => E.src);
       E.ops = []; E.adj = { ...ADJ0 }; E.prevAdj = { ...E.adj };
       E.undo = []; E.redo = []; E.stickers = []; E.stkSel = null;
+      E.txtSel = null; E.txtEditing = null; E.txtDraft = { ...TEXT0, alpha: 1 };
+      hideTxtEdit();
       resetAdjUI(); updFxTiles(); updUndoBtns(); setTool(null);
       await renderPreview();
       ed.dims.textContent = `${E.src.width} \u00D7 ${E.src.height} px \u2022 ${fmtBytes(blob.size)}`;
@@ -943,7 +1314,8 @@
     E.undo = []; E.redo = [];
     E.tool = null; E.cropR = null; E.aspect = 0; E.pendPts = []; E.draft = null;
     E.stickers = []; E.stkSeq = 0; E.stkSel = null;
-    E.pendText = { x: 0.5, y: 0.5 }; E.textDraft = { ...TEXT0 };
+    E.txtSel = null; E.txtEditing = null; E.txtDraft = { ...TEXT0, alpha: 1 };
+    hideTxtEdit();
     E.dirty = false; E.restored = false;
     E.fit = true; E.zoom = 100; ed.zoom.value = 100;
     baseCv = null; baseKey = '';
@@ -983,10 +1355,12 @@
   }
   function close() {
     if (!E.open) return;
+    if (E.txtEditing) commitEditing();
     E.open = false;
     E.tool = null;
     comparing = false;
     q('#eOrig').hidden = true; q('#eOrigTag').hidden = true;
+    gizCv.hidden = true; hideTxtEdit();
     baseCv = null; baseKey = '';
     if (E.dirty) saveEditSession();
     ed.root.hidden = true;
@@ -1056,6 +1430,17 @@
       return;
     }
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    /* v3.13.0: Delete removes the selected text block */
+    if (E.tool === 'text' && E.txtSel && !E.txtEditing && (e.key === 'Delete' || e.key === 'Backspace')) {
+      e.preventDefault();
+      pushUndo();
+      E.ops = E.ops.filter((o) => o !== E.txtSel);
+      E.txtSel = null;
+      updUndoBtns();
+      renderPreview();
+      scheduleEditSave();
+      return;
+    }
     if (e.key === 'ArrowRight') { e.preventDefault(); nav(1); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); nav(-1); }
     else if (e.key === 'b' || e.key === 'B') { if (!e.repeat) setCompare(true); }
@@ -1068,5 +1453,20 @@
   wireSliders();
   wireFxStr();
 
-  window.PixsaEditor = { open, close, isOpen: () => E.open };
+  window.PixsaEditor = {
+    open, close, isOpen: () => E.open,
+    /* test hook */
+    _dbg: () => {
+      const op = (E.txtEditing && E.txtEditing.op) || E.txtSel;
+      const gm = op ? textDisplayGeom(op) : null;
+      const gr = gizCv.getBoundingClientRect();
+      return {
+        tool: E.tool, ops: E.ops.length,
+        text: E.ops.filter((o) => o.type === 'text').map((o) => ({ t: o.text, x: +o.x.toFixed(3), y: +o.y.toFixed(3), size: +o.size.toFixed(1), rot: o.rot || 0 })),
+        sel: !!E.txtSel, editing: !!(E.txtEditing && E.txtEditing.op.text),
+        geom: gm ? { cx: Math.round(gm.cx), cy: Math.round(gm.cy), r: Math.round(gm.r), rot: gm.rot, w: Math.round(gm.w), h: Math.round(gm.h) } : null,
+        giz: { x: Math.round(gr.x), y: Math.round(gr.y), w: Math.round(gr.width), h: Math.round(gr.height) }
+      };
+    }
+  };
 })();

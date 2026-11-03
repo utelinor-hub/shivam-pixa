@@ -704,6 +704,54 @@
     });
   }
 
+  /* ---------- v3.13.0 text renderer (shared) ----------
+     One routine paints text for the preview canvas, the Picasa-style live
+     draft while typing, and the full-resolution export — so what you see
+     while editing is EXACTLY what gets saved. */
+  function drawTextOp(cx, W, H, op) {
+    cx.save();
+    cx.globalAlpha = op.alpha == null ? 1 : Math.max(0.05, Math.min(1, op.alpha));
+    cx.translate(op.x * W, op.y * H);
+    if (op.rot) cx.rotate((op.rot * Math.PI) / 180);
+    const fs = Math.max(6, (op.size / 100) * H);
+    cx.font = `${op.italic ? 'italic ' : ''}${op.bold ? '700' : '400'} ${fs}px ${op.font || '"Segoe UI", sans-serif'}`;
+    cx.textBaseline = 'middle';
+    cx.textAlign = op.align || 'center';
+    if (op.shadow) {
+      cx.shadowColor = 'rgba(0,0,0,.55)';
+      cx.shadowBlur = H * 0.008;
+      cx.shadowOffsetY = H * 0.003;
+    }
+    cx.fillStyle = op.color || '#ffffff';
+    const lines = String(op.text || '').split('\n');
+    const lh = fs * 1.22;
+    const y0 = -((lines.length - 1) * lh) / 2;
+    lines.forEach((ln, li) => {
+      const y = y0 + li * lh;
+      if (op.strokeW > 0) {
+        cx.lineWidth = Math.max(1, op.strokeW * fs * 0.09);
+        cx.strokeStyle = op.stroke || '#000000';
+        cx.lineJoin = 'round';
+        cx.strokeText(ln, 0, y);
+      }
+      cx.fillText(ln, 0, y);
+      /* v3.13.0: underline — a stroke line just below the baseline */
+      if (op.underline && ln) {
+        const tw = cx.measureText(ln).width;
+        const x0 = op.align === 'left' ? 0 : op.align === 'right' ? -tw : -tw / 2;
+        cx.save();
+        cx.strokeStyle = op.color || '#ffffff';
+        cx.lineWidth = Math.max(1, fs * 0.07);
+        cx.beginPath();
+        cx.moveTo(x0, y + fs * 0.5);
+        cx.lineTo(x0 + tw, y + fs * 0.5);
+        cx.stroke();
+        cx.restore();
+      }
+    });
+    cx.restore();
+  }
+
   /* ---------- main renderer ----------
      stickers: optional Map(sid -> ImageBitmap/canvas) — for 'sticker' ops
      renderOps: src + ops only (no tuning adj) — the cacheable base for previews */
@@ -792,36 +840,10 @@
         case 'retouch':
           for (const p of op.pts) retouchPt(cx, acc.width, acc.height, p.x, p.y, p.r);
           break;
-        case 'text': {
-          cx.save();
-          cx.globalAlpha = op.alpha == null ? 1 : Math.max(0.05, Math.min(1, op.alpha));
-          cx.translate(op.x * acc.width, op.y * acc.height);
-          if (op.rot) cx.rotate((op.rot * Math.PI) / 180);
-          const fs = Math.max(6, (op.size / 100) * acc.height);
-          cx.font = `${op.italic ? 'italic ' : ''}${op.bold ? '700' : '400'} ${fs}px ${op.font || '"Segoe UI", sans-serif'}`;
-          cx.textBaseline = 'middle';
-          cx.textAlign = op.align || 'center';
-          if (op.shadow) {
-            cx.shadowColor = 'rgba(0,0,0,.55)';
-            cx.shadowBlur = acc.height * 0.008;
-            cx.shadowOffsetY = acc.height * 0.003;
-          }
-          cx.fillStyle = op.color || '#ffffff';
-          const lines = String(op.text || '').split('\n');
-          const lh = fs * 1.22;
-          const y0 = -((lines.length - 1) * lh) / 2;
-          lines.forEach((ln, li) => {
-            if (op.strokeW > 0) {
-              cx.lineWidth = Math.max(1, op.strokeW * fs * 0.09);
-              cx.strokeStyle = op.stroke || '#000000';
-              cx.lineJoin = 'round';
-              cx.strokeText(ln, 0, y0 + li * lh);
-            }
-            cx.fillText(ln, 0, y0 + li * lh);
-          });
-          cx.restore();
+        case 'text':
+          /* v3.13.0: shared renderer (preview, live draft and export all match) */
+          drawTextOp(cx, acc.width, acc.height, op);
           break;
-        }
         case 'sticker': {
           const bmp = stickers ? stickers.get(op.sid) : null;
           if (!bmp) break;
@@ -865,8 +887,16 @@
   }
 
   function renderStack(src, ops, adj, maxSide, stickers) {
-    const out = renderOps(src, ops, maxSide, stickers);
+    /* v3.13.0: text is painted AFTER tuning so the exported file matches the
+       editor preview exactly (the preview also paints text above adjustments);
+       text ops are additionally kept out of the auto-levels computation */
+    const tOps = (ops || []).filter((o) => o.type === 'text');
+    const out = renderOps(src, tOps.length ? ops.filter((o) => o.type !== 'text') : ops, maxSide, stickers);
     applyAdjTo(out, adj);
+    if (tOps.length) {
+      const cx = out.getContext('2d');
+      for (const op of tOps) drawTextOp(cx, out.width, out.height, op);
+    }
     return out;
   }
 
@@ -885,5 +915,5 @@
     return false;
   }
 
-  window.PixsaFX = { EFFECTS, renderStack, renderOps, applyAdjTo, computeLevels, computeWB, redeyePt, retouchPt, mkCanvas, hasAlpha };
+  window.PixsaFX = { EFFECTS, renderStack, renderOps, applyAdjTo, computeLevels, computeWB, redeyePt, retouchPt, mkCanvas, hasAlpha, drawTextOp };
 })();
