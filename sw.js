@@ -1,7 +1,7 @@
 /* SHIVAM PIXA — Service Worker
    Update rule: when a new version arrives, the old cache is deleted and the app refreshes itself. */
 
-const VERSION = 'v3.10.2';
+const VERSION = 'v3.11.0';
 const CACHE = `shivam-pixa-${VERSION}`;
 /* photos arriving from the Android "Share → PIXA" share target land here
    first; the page picks them up (see receiveShared in index.html) */
