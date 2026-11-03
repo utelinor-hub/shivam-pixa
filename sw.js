@@ -1,7 +1,10 @@
 /* SHIVAM PIXA — Service Worker
-   Update rule: when a new version arrives, the old cache is deleted and the app refreshes itself. */
+   Update rule: a new version INSTALLS and then WAITS — the page shows the
+   "new version ready" banner and restarts (user click or 9s auto-apply).
+   Only then SKIP_WAITING activates it and the page reloads once. The new
+   version never activates silently behind the user's back. */
 
-const VERSION = 'v3.16.1';
+const VERSION = 'v3.16.2';
 const CACHE = `shivam-pixa-${VERSION}`;
 /* photos arriving from the Android "Share → PIXA" share target land here
    first; the page picks them up (see receiveShared in index.html) */
@@ -23,9 +26,11 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())
-  );
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
+  /* NO skipWaiting here — the banner on the page decides when to restart.
+     Safety net: if the banner was missed entirely (stale page), activate
+     anyway after 25s so an update can never stall forever. */
+  setTimeout(() => self.skipWaiting(), 25000);
 });
 
 self.addEventListener('activate', (e) => {
