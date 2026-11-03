@@ -829,7 +829,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.7.1</span>
+      <span class="ver">v3.8.0</span>
     </span>
   </footer>
 
@@ -1381,6 +1381,67 @@
       applyFilter();
       toast(`${out.length} photos added from the drop`);
     });
+
+    /* ================= share target receiver (Android: Share → PIXA) =================
+       The service worker stashes shared photos in a cache queue; this side
+       pulls them into the library and cloud sync backs them up to Drive. */
+    const SHARE_QUEUE = `${location.origin}/__shared__/__queue__`;
+    let receivingShared = false;
+    async function addSharedFiles(files) {
+      const fresh = [];
+      const seen = new Set(state.photos.map((p) => `${p.name}|${p.size}`));
+      for (const f of files) {
+        if (UNSUPPORTED_EXT.test(f.name)) continue;
+        if (!IMG_EXT.test(f.name)) continue;
+        if (seen.has(`${f.name}|${f.size}`)) continue; /* already in the library */
+        seen.add(`${f.name}|${f.size}`);
+        fresh.push({ name: f.name, size: f.size, lastModified: f.lastModified || Date.now(), handle: null, file: f, folder: 'Shared from phone' });
+      }
+      if (!fresh.length) { toast('Those photos are already in PIXA', 'ok', 3000); return; }
+      state.photos = state.photos.concat(fresh);
+      if (!state.dirHandle && !state.folder) state.folder = 'Shared from phone';
+      clearSel();
+      buildTree();
+      applyFilter();
+      toast(`${fresh.length} photo${fresh.length > 1 ? 's' : ''} received — backing up to Google Drive…`, 'ok', 4500);
+      if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged(); /* → auto upload to Drive */
+    }
+    async function receiveShared(keysFromSw) {
+      if (receivingShared || !('caches' in window)) return;
+      receivingShared = true;
+      try {
+        const cache = await caches.open('shivam-pixa-shared-v1');
+        let keys = (keysFromSw || []).slice();
+        const q = await cache.match(SHARE_QUEUE);
+        if (q) { try { keys = keys.concat((await q.json()).keys || []); } catch (e) {} }
+        keys = [...new Set(keys)];
+        if (!keys.length) return;
+        const files = [];
+        for (const k of keys) {
+          const res = await cache.match(k);
+          if (!res) continue;
+          const blob = await res.blob();
+          const raw = k.split('/__shared__/')[1] || 'photo';
+          const name = decodeURIComponent(raw.replace(/^\d+-\d+-/, ''));
+          files.push(new File([blob], name, { type: blob.type || 'image/jpeg' }));
+          await cache.delete(k);
+        }
+        /* reset the queue so the same photos never arrive twice */
+        await cache.put(SHARE_QUEUE,
+          new Response(JSON.stringify({ keys: [], at: new Date().toISOString() }), { headers: { 'Content-Type': 'application/json' } }));
+        if (files.length) await addSharedFiles(files);
+      } catch (e) { /* best-effort */ } finally { receivingShared = false; }
+    }
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'SHARED_FILES') receiveShared(e.data.keys || []);
+      });
+    }
+    /* fresh app launch straight from a share — the URL carries ?shared=1 */
+    if (new URLSearchParams(location.search).has('shared')) {
+      try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      receiveShared();
+    }
 
     /* ================= demo photos ================= */
     async function makeDemoPhotos(n = 24) {
@@ -2107,7 +2168,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.7.1', 'ok', 2500);
+          toast('S H I V A M PIXA v3.8.0', 'ok', 2500);
           break;
       }
     }
