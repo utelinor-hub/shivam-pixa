@@ -57,6 +57,14 @@
            while an update waits, and the check names the waiting version),
            so an update can never be missed, dismissed into nowhere or left
            stuck again.
+   v3.20.0: (desktop) the Desktop Edition — a "Desktop App" button + Help →
+           "Get Desktop App (Windows)" download the SHIVAM-PIXA-Setup.zip:
+           one "Install SHIVAM PIXA" click creates a real Windows app — its
+           own window (no browser tab, no Chrome), Desktop + Start Menu
+           shortcuts with the app icon, an isolated profile, and Android-
+           style updates: the app keeps checking under Help, shows the new
+           version there, and one click on "Install Update" with internet
+           on updates and restarts it automatically.
    v3.19.0: (collage) the PicasaCollage DOM engine — the collage editor now
            runs on the reference prototype 1:1: every photo is a real DOM
            element you grab and drag anywhere at 60fps, Picasa's round wheel
