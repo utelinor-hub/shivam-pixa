@@ -308,6 +308,17 @@
     }
     .cell:hover .addbtn, .cell:focus-visible .addbtn { opacity: 1; }
     .cell.sel .addbtn { opacity: 1; background: var(--accent); color: #fff; border-color: var(--accent-deep); }
+    /* v3.16.0: collage badge on finished collages + foldable folder headers */
+    .cell .cbadge {
+      position: absolute; top: 6px; left: 6px; z-index: 3;
+      font-size: 10px; font-weight: 600; letter-spacing: .4px;
+      padding: 2px 8px; border-radius: 9px;
+      background: rgba(43,124,211,.92); color: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.35);
+    }
+    .fhead.foldable { cursor: pointer; user-select: none; }
+    .fhead .chev { display: inline-flex; margin-right: 2px; transition: transform .15s ease; color: #7d848d; }
+    .fhead.folded .chev { transform: rotate(-90deg); }
 
     /* ---------- empty state ---------- */
     .empty {
@@ -954,7 +965,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.15.2</span>
+      <span class="ver">v3.16.0</span>
     </span>
   </footer>
 
@@ -1401,13 +1412,14 @@
     let dbP = null;
     function db() {
       if (!dbP) dbP = new Promise((resolve, reject) => {
-        const rq = indexedDB.open('pixsa', 3);
+        const rq = indexedDB.open('pixsa', 4);
         rq.onupgradeneeded = () => {
           const d = rq.result;
           if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
           if (!d.objectStoreNames.contains('thumbs')) d.createObjectStore('thumbs');
           if (!d.objectStoreNames.contains('edits')) d.createObjectStore('edits');
           if (!d.objectStoreNames.contains('collage')) d.createObjectStore('collage');
+          if (!d.objectStoreNames.contains('collages')) d.createObjectStore('collages');
           if (!d.objectStoreNames.contains('fonts')) d.createObjectStore('fonts');
           if (!d.objectStoreNames.contains('cloudblobs')) d.createObjectStore('cloudblobs');
         };
@@ -1503,6 +1515,43 @@
       const kept = state.photos.filter((p) => (p.root || '') !== rootName);
       state.photos = kept.concat(files);
       hydrateDims(); /* v3.15.1: restore known ratios before the first paint */
+    }
+
+    /* ================= v3.16.0: collages live in the library =================
+       Every finished collage is stored in IndexedDB ('collages' store) and
+       appears in the library inside a pinned "Collages" folder group — the
+       way Picasa collected all collages in its own folder. The record keeps
+       the photos + positions, so double-clicking a collage reopens the
+       collage editor and every change can be made again (Picasa's Edit). */
+    function collageItemFrom(rec) {
+      const nm = rec.name || `Collage ${new Date(rec.ts || Date.now()).toLocaleString()}`;
+      const f = new File([rec.blob], nm, { type: rec.blob.type || 'image/jpeg' });
+      return {
+        name: nm, size: f.size, lastModified: rec.ts || Date.now(),
+        handle: null, file: f, folder: 'Collages', root: 'Collages',
+        collageId: rec.id, w: rec.w || 0, h: rec.h || 0
+      };
+    }
+    function addCollageItem(rec) {
+      const prev = state.photos.find((q) => q.collageId === rec.id);
+      if (prev) idbDel('thumbs', photoKey(prev)).catch(() => {});
+      const item = collageItemFrom(rec);
+      state.photos = state.photos.filter((q) => q.collageId !== rec.id).concat([item]);
+      hydrateDims();
+      buildTree();
+      applyFilter();
+      return item;
+    }
+    async function restoreCollageItems() {
+      try {
+        const recs = await idbGetAll('collages');
+        const items = (recs || []).filter((r) => r && r.blob && r.blob.size).map((r) => collageItemFrom(r));
+        if (!items.length) return;
+        state.photos = state.photos.concat(items);
+        hydrateDims();
+        buildTree();
+        applyFilter();
+      } catch (e) { /* corrupted records — skip */ }
     }
 
     async function loadFolder(dir, isRefresh = false, silent = false) {
@@ -1801,7 +1850,11 @@
         if (!map.has(k)) map.set(k, []);
         map.get(k).push({ p, idx });
       });
-      const keys = [...map.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      const keys = [...map.keys()].sort((a, b) => {
+        if (a === 'Collages') return -1;   /* v3.16.0: the Collages folder sits on top, Picasa-style */
+        if (b === 'Collages') return 1;
+        return a.localeCompare(b, undefined, { numeric: true });
+      });
       state.groups = keys.map((k) => ({ path: k, items: map.get(k) }));
     }
 
@@ -1963,6 +2016,10 @@
     }
 
     /* ================= grid (folder-grouped, Picasa style) ================= */
+    /* v3.16.0: folded folder headers are remembered across restarts */
+    const foldSet = new Set((() => {
+      try { return JSON.parse(localStorage.getItem('pixsa.folded') || '[]'); } catch (e) { return []; }
+    })());
     const thumbIO = new IntersectionObserver((ents) => {
       for (const en of ents) {
         if (!en.isIntersecting) continue;
@@ -2010,7 +2067,12 @@
       svg.innerHTML = '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>';
       const nm = document.createElement('span'); nm.className = 'fname'; nm.textContent = label || 'Photos';
       const cn = document.createElement('span'); cn.className = 'fcount'; cn.textContent = `${g.items.length} photos`;
-      head.appendChild(svg); head.appendChild(nm); head.appendChild(cn);
+      const chev = document.createElement('span'); chev.className = 'chev'; chev.textContent = '\u25BE';
+      head.appendChild(chev); head.appendChild(svg); head.appendChild(nm); head.appendChild(cn);
+      /* v3.16.0: Picasa-style — click a folder header to fold/unfold the group */
+      const foldKey = label || 'Photos';
+      head.classList.add('foldable');
+      head.title = 'Click to fold / unfold this folder';
 
       const row = document.createElement('div');
       row.className = 'row';
@@ -2018,6 +2080,19 @@
       frag.appendChild(head); frag.appendChild(row);
       for (const it of g.items) row.appendChild(makeCell(it));
       els.grid.appendChild(frag);
+
+      /* fold wiring stays AFTER `row` exists (applyFold touches row.style) */
+      const applyFold = () => {
+        const folded = foldSet.has(foldKey);
+        row.style.display = folded ? 'none' : '';
+        head.classList.toggle('folded', folded);
+      };
+      head.addEventListener('click', () => {
+        if (foldSet.has(foldKey)) foldSet.delete(foldKey); else foldSet.add(foldKey);
+        try { localStorage.setItem('pixsa.folded', JSON.stringify([...foldSet])); } catch (e) {}
+        applyFold();
+      });
+      applyFold();
     }
 
     /* double-click a photo -> its album loads (folder filter) + the editor opens
@@ -2025,6 +2100,12 @@
     function openEditorAt(idx) {
       const p = state.filtered[idx];
       if (!p) return;
+      /* v3.16.0: a finished collage reopens the COLLAGE editor (Picasa-style
+         "edit the collage again") instead of the photo editor */
+      if (p.collageId && window.PixsaCollage && window.PixsaCollage.editCollage) {
+        window.PixsaCollage.editCollage(p.collageId);
+        return;
+      }
       const f = p.folder || '';
       if (state.folderFilter !== f) {
         state.folderFilter = f;
@@ -2056,6 +2137,13 @@
       add.title = 'Add to Photo Tray';
       add.addEventListener('click', (e) => { e.stopPropagation(); toggleSel(entry.p); });
       btn.appendChild(ph); btn.appendChild(cap); btn.appendChild(chk); btn.appendChild(add);
+      /* v3.16.0: collages carry a small badge so they are easy to spot */
+      if (entry.p.collageId) {
+        btn.classList.add('is-collage');
+        const cb = document.createElement('span');
+        cb.className = 'cbadge'; cb.textContent = 'Collage';
+        btn.appendChild(cb);
+      }
       if (entry.p.w && entry.p.h) ph.style.aspectRatio = `${entry.p.w} / ${entry.p.h}`;
       /* single click = select (Photo Tray), double click = open the editor */
       btn.addEventListener('click', (e) => {
@@ -2494,7 +2582,8 @@
       state, els, toast, setStatus, applyFilter, renderGrid, buildTree, loadFolder,
       getFile, idbGet, idbSet, idbDel, fmtBytes, photoKey, toggleSel, clearSel, renderTray,
       canPicker, inIframe, invalidateThumb, saveBlobToDir, clamp, debounce,
-      IMG_EXT, UNSUPPORTED_EXT, idbGetAll
+      IMG_EXT, UNSUPPORTED_EXT, idbGetAll,
+      addCollageItem, restoreCollageItems
     };
 
     /* ================= toolbar events ================= */
@@ -2524,6 +2613,11 @@
       state.photos = state.photos.filter((p) => !gone.includes(p));
       clearSel();
       gone.forEach(invalidateThumb);
+      /* v3.16.0: removing a collage from the library forgets its record too,
+         so it never reappears after a restart */
+      for (const p of gone) {
+        if (p.collageId) { idbDel('collages', p.collageId).catch(() => {}); idbDel('collage', 'current').catch(() => {}); }
+      }
       buildTree(); applyFilter(); renderTray();
       if (cloudN && window.PixsaCloud) window.PixsaCloud.removePhotos(gone.filter((p) => p.cloud));
       toast(`${n} photo${n > 1 ? 's' : ''} removed${cloudN ? ` — ${cloudN} also deleted from Google Drive` : ''}`, 'ok', 5000);
@@ -2566,7 +2660,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.15.2', 'ok', 2500);
+          toast('S H I V A M PIXA v3.16.0', 'ok', 2500);
           break;
       }
     }
@@ -2610,6 +2704,12 @@
       if (!confirm('Clear the library? (Your photos stay safe on your PC — only the app list is removed)')) return;
       state.photos = []; state.filtered = []; state.groups = []; state.folder = ''; state.folderFilter = '';
       await idbDel('kv', 'lastFolder').catch(() => {});
+      /* v3.16.0: Clear also forgets the saved collages (files on the PC stay) */
+      await idbDel('collage', 'current').catch(() => {});
+      try {
+        const recs = await idbGetAll('collages');
+        for (const r of recs || []) if (r && r.id) await idbDel('collages', r.id);
+      } catch (e) {}
       els.restore.hidden = true;
       buildTree();
       applyFilter();
@@ -2752,6 +2852,7 @@
     /* ================= boot ================= */
     loadCustomFonts();
     initRestore();
+    restoreCollageItems();   /* v3.16.0: saved collages rejoin the library */
     initCollageRestore();
     if (window.innerWidth < 760) document.body.classList.add('side-off');
     if (new URLSearchParams(location.search).get('demo') === '1') loadDemo();
