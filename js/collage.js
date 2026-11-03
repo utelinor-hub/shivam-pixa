@@ -1,6 +1,12 @@
-/* SHIVAM PIXA — collage.js  (v3.17.0 "Picasa 3 replica" engine)
+/* SHIVAM PIXA — collage.js  (v3.17.1 "Picasa 3 replica" engine)
    Free-form Picasa-style picture pile + interactive HTML5-canvas renderer.
 
+   v3.17.1 — reference-alignment pass:
+   • the wheel knob now rests at the ring's RIGHT edge (3 o'clock) and the
+     donut ring is a touch thicker — matching the Picasa 3 reference engine
+     pixel for pixel.
+   • a brand-new collage always starts on Solid Color — the previous
+     collage's "Use Image" background no longer leaks into it.
    v3.17.0 — full Picasa 3 replica pass:
    • the blue dashed box + lollipop handle are GONE — selection is now
      Picasa's iconic round wheel: a semi-transparent grey donut ring in the
@@ -568,17 +574,17 @@
      v3.17.0: Picasa's iconic ROUND WHEEL replaces the old dashed box +
      lollipop handle. A semi-transparent grey donut ring sits in the exact
      center of the photo, with one small knob on its perimeter (fixed at the
-     ring's NE point, screen-space — it never spins with the photo). The
-     wheel shows strongly on the selected photo and faintly on the hovered
-     one, exactly like Picasa 3. */
+     ring's RIGHT edge — 3 o'clock, screen-space — it never spins with the
+     photo). The wheel shows strongly on the selected photo and faintly on
+     the hovered one, exactly like Picasa 3. */
   function handleSize() { return Math.max(9, el.canvas.width * 0.011); }
   function wheelGeom(i) {
     const L = C.layout && C.layout[i];
     if (!L || !L.pile) return null;
     const R = clamp(Math.min(L.jw, L.jh) * 0.38, 20, Math.min(el.canvas.width, el.canvas.height) * 0.22);
-    const ringW = Math.max(5, R * 0.17);
+    const ringW = Math.max(5, R * 0.21);   /* v3.17.1: a touch thicker, like Picasa's wheel */
     const knobR = Math.max(5.5, R * 0.2);
-    const ang = -Math.PI / 4;   /* knob rests at the ring's NE point */
+    const ang = 0;   /* v3.17.1: knob rests at the ring's RIGHT edge (3 o'clock) */
     return {
       cx: L.px, cy: L.py, R, ringW, knobR, ang,
       kx: L.px + R * Math.cos(ang), ky: L.py + R * Math.sin(ang)
@@ -1474,6 +1480,10 @@
     C.pos = null; C.layout = null; C.order = null; C.sel = new Set();
     C.editId = null; C.editName = '';   /* v3.16.0: a fresh collage is a new record */
     C.bgIdx = 0;
+    /* v3.17.1 FIX: a brand-new collage always starts on Solid Color — the
+       "Use Image" background of the previous collage must not leak in
+       (re-edited collages keep their own setting via openRestored) */
+    C.bgPhoto = false;
     C.hoverI = -1; C.final = false;
     endGesture(); clearTimeout(wheelT);
     if (C.url) { URL.revokeObjectURL(C.url); C.url = null; }
