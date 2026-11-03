@@ -617,6 +617,17 @@
 
     /* crop overlay */
     #eCrop { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); cursor: move; z-index: 5; }
+    /* v3.13.0 Picasa text tool */
+    #eGiz { position: absolute; left: 0; top: 0; z-index: 7; pointer-events: none; }
+    #eGiz.live { pointer-events: auto; cursor: crosshair; }
+    .txtEdit {
+      position: absolute; z-index: 8; margin: 0; padding: 0; border: none; outline: none;
+      background: transparent; color: transparent; caret-color: #fff; resize: none; overflow: hidden;
+      white-space: pre; text-decoration: underline; text-decoration-color: transparent;
+      transform-origin: center center; box-shadow: none;
+      pointer-events: none; /* v3.13.0: the wheel underneath must get every click */
+    }
+    .txtEdit::selection { background: rgba(64,132,220,.45); color: transparent; }
     #eCrop .h { position: absolute; width: 11px; height: 11px; background: #fff; border: 1px solid var(--accent); z-index: 6; }
     #eCrop .h.nw { left: -6px; top: -6px; cursor: nwse-resize; }
     #eCrop .h.n  { left: 50%; top: -6px; margin-left: -6px; cursor: ns-resize; }
@@ -912,7 +923,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.12.0</span>
+      <span class="ver">v3.13.0</span>
     </span>
   </footer>
 
@@ -1044,6 +1055,9 @@
           <div class="h e" data-h="e"></div><div class="h se" data-h="se"></div><div class="h s" data-h="s"></div>
           <div class="h sw" data-h="sw"></div><div class="h w" data-h="w"></div>
         </div>
+        <!-- v3.13.0 Picasa text tool: gizmo wheel + on-canvas typing layer -->
+        <canvas id="eGiz" hidden></canvas>
+        <textarea id="eTxtEdit" class="txtEdit" hidden spellcheck="false" wrap="off"></textarea>
         <div id="eBusy" class="e-busy" hidden><span class="spin big"></span></div>
       </div>
       <aside class="e-panel">
@@ -1833,7 +1847,20 @@
       els.grid.hidden = !has;
       els.grid.innerHTML = '';
       renderCursor = 0;
-      if (has) renderMore();
+      if (!has) return;
+      renderMore();
+      /* v3.12.1: the lazy-render sentinel only fires IntersectionObserver on a
+         VISIBLE→NOT-VISIBLE flip. When the whole library is short (small
+         folders, tall screen) the sentinel never leaves the 800px lookahead
+         zone, so groups after the first were silently never drawn — folders
+         appeared to "disappear". Render groups eagerly while it is near. */
+      const mainEl = document.querySelector('main');
+      while (renderCursor < state.groups.length) {
+        const sr = els.sentinel.getBoundingClientRect();
+        const mr = mainEl.getBoundingClientRect();
+        if (sr.top <= mr.bottom + 800 && sr.bottom >= mr.top - 800) renderMore();
+        else break;
+      }
     }
 
     function renderMore() {
@@ -2388,7 +2415,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.12.0', 'ok', 2500);
+          toast('S H I V A M PIXA v3.13.0', 'ok', 2500);
           break;
       }
     }
