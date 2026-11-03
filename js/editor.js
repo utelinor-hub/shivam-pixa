@@ -57,6 +57,15 @@
            while an update waits, and the check names the waiting version),
            so an update can never be missed, dismissed into nowhere or left
            stuck again.
+   v3.19.0: (collage) the PicasaCollage DOM engine — the collage editor now
+           runs on the reference prototype 1:1: every photo is a real DOM
+           element you grab and drag anywhere at 60fps, Picasa's round wheel
+           + knob is a real overlay (hover = faint, selected = strong, knob
+           always resting at 3 o'clock), the knob rotates AND resizes at
+           once, wheel resizes, Shift+wheel rotates, and the five Collage
+           Types arrange the free photos into their slots (cover-cropped
+           cells that stay draggable afterwards). Re-edit, auto-save,
+           4K/300-DPI export and the Clips tray all keep working.
    v3.18.0: (library) Picasa 3 Complete Edition pass — a real view tab strip
            under the menu bar (Library | Collage: the Collage tab appears with
            the first collage of the session and reopens the latest one with
