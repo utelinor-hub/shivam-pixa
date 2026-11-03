@@ -11,6 +11,9 @@
    v3.6.1: the tyre spin is now always on — it no longer switches off when
    Windows "Animation effects" (prefers-reduced-motion) are turned off.
    v3.7.0: Google Drive cloud sync — editing a synced photo saves locally
+   v3.7.1: QA hardening — cloud chip no longer sticks on “Syncing” after a
+           network drop, and sign-in is guarded to the official origin so a
+           blocked popup can never bounce the app to a Google error page.
    first (instant) and overwrites the same Drive file in the background. */
 (() => {
   'use strict';
