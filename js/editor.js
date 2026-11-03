@@ -39,7 +39,14 @@
    v3.16.0: (library) finished collages land in a pinned "Collages" folder
            group and stay re-editable — double-click a collage to reopen it
            with its photos and positions (Picasa-style Edit); folder group
-           headers fold/unfold like Picasa's folder tree. */
+           headers fold/unfold like Picasa's folder tree.
+   v3.16.1: (app) real Windows app — an in-app "Install App" button (own
+           window, Start menu + taskbar + desktop icon, uninstallable),
+           photos can be opened with PIXA straight from Explorer ("Open
+           with"), and updates work Android-style: a persistent
+           "new version ready" banner with Restart, plus update checks at
+           every launch / focus / 15 minutes so installed PCs never miss
+           a release. */
 (() => {
   'use strict';
   const P = window.Pixsa;
