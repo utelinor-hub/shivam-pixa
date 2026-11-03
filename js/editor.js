@@ -31,7 +31,11 @@
            exact fix shown in-app — see js/cloud.js header.
    v3.15.0: (collage) Picasa-style free pile only — Layout modes removed;
            Page Format gained a Custom ratio; dragging is smooth (overlay
-           compositing instead of full re-renders); handles stay on-page. */
+           compositing instead of full re-renders); handles stay on-page.
+   v3.15.2: (collage) drag-to-move could die completely after one missed
+           pointerup (ghost pointer → every press looked like a pinch) —
+           pointer move/up now live on the window and a mouse press flushes
+           stale pointers, so dragging always works again. */
 (() => {
   'use strict';
   const P = window.Pixsa;
