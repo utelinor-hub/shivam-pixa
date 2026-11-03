@@ -22,6 +22,20 @@
   },
   "display": "standalone",
   "orientation": "any",
+  "launch_handler": { "client_mode": "focus-existing" },
+  "file_handlers": [
+    {
+      "action": "./",
+      "accept": {
+        "image/jpeg": [".jpg", ".jpeg"],
+        "image/png": [".png"],
+        "image/webp": [".webp"],
+        "image/gif": [".gif"],
+        "image/bmp": [".bmp"],
+        "image/avif": [".avif"]
+      }
+    }
+  ],
   "background_color": "#0a1c3f",
   "theme_color": "#e8e8e8",
   "lang": "en-IN",
