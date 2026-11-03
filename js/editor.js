@@ -14,11 +14,9 @@
    v3.7.1: QA hardening — cloud chip no longer sticks on “Syncing” after a
            network drop, and sign-in is guarded to the official origin so a
            blocked popup can never bounce the app to a Google error page.
-   v3.9.0: Picasa layout — tool panel moved to the LEFT like Picasa 3; on
-           phones the photo now fills the whole screen and the tools slide
-           out from a “Tools” button (no more tiny photo box); new EXIF
-           camera info in the bottom bar (shutter • f-stop • ISO • focal •
-           flash) read straight from the JPEG, exactly like Picasa.
+   v3.7.2: real Drive errors surfaced (chip + Cloud Sync window show WHY sync
+           is off — e.g. Drive API disabled in the Cloud project, with a
+           one-click Enable link).
    first (instant) and overwrites the same Drive file in the background. */
 (() => {
   'use strict';
@@ -32,7 +30,7 @@
   const ed = {
     root: q('#editor'), stage: q('#eStage'), canvas: q('#eCanvas'), crop: q('#eCrop'),
     busy: q('#eBusy'), name: q('#eName'), count: q('#eCount'),
-    dims: q('#eDims'), exif: q('#eExif'), undoBtn: q('#eUndo'), redoBtn: q('#eRedo'),
+    dims: q('#eDims'), undoBtn: q('#eUndo'), redoBtn: q('#eRedo'),
     toolBox: q('#eToolBox'), zoom: q('#eZoom'), fxGrid: q('#fxGrid')
   };
 
@@ -59,71 +57,6 @@
 
   /* ---------- busy ---------- */
   const setBusy = (b) => { ed.busy.hidden = !b; };
-
-  /* ---------- tiny EXIF reader (JPEG) — Picasa-style camera info ----------
-     Reads the EXIF block from the first 128 KB of the file and formats
-     shutter speed, f-number, ISO, focal length and flash exactly like the
-     Picasa 3 bottom bar (e.g. “1/250 s • f/2.8 • ISO 320 • 78 mm • Flash off”). */
-  async function readExif(file) {
-    try {
-      const isJpg = (file && file.type === 'image/jpeg') || /\.jpe?g$/i.test((file && file.name) || '');
-      if (!isJpg || !file.slice) return '';
-      const head = new Uint8Array(await file.slice(0, 128 * 1024).arrayBuffer());
-      if (head.length < 12 || head[0] !== 0xFF || head[1] !== 0xD8) return '';
-      const dv = new DataView(head.buffer, head.byteOffset, head.byteLength);
-      let o = 2, tiff = -1;
-      while (o + 4 <= head.length) {
-        if (head[o] !== 0xFF) { o++; continue; }
-        const marker = head[o + 1];
-        if (marker === 0xD8 || (marker >= 0xD0 && marker <= 0xD9) || marker === 0x01) { o += 2; continue; }
-        if (marker === 0xDA) break; /* start of scan — no EXIF found */
-        const len = (head[o + 2] << 8) | head[o + 3];
-        if (len < 2) break;
-        if (marker === 0xE1 && o + 10 <= head.length &&
-            head[o + 4] === 0x45 && head[o + 5] === 0x78 && head[o + 6] === 0x69 &&
-            head[o + 7] === 0x66 && head[o + 8] === 0x00 && head[o + 9] === 0x00) { tiff = o + 10; break; }
-        o += 2 + len;
-      }
-      if (tiff < 0 || tiff + 8 > head.length) return '';
-      const big = head[tiff] === 0x4D; /* 'MM' = big-endian, 'II' = little-endian */
-      const u16 = (p) => dv.getUint16(p, !big);
-      const u32 = (p) => dv.getUint32(p, !big);
-      if (u16(tiff + 2) !== 0x2A) return '';
-      const ifd0 = tiff + u32(tiff + 4);
-      if (ifd0 + 2 > head.length) return '';
-      let exifIfd = -1;
-      const n0 = u16(ifd0);
-      for (let i = 0; i < n0; i++) {
-        const e = ifd0 + 2 + i * 12;
-        if (e + 12 > head.length) break;
-        if (u16(e) === 0x8769) exifIfd = tiff + u32(e + 8);
-      }
-      if (exifIfd < 0 || exifIfd + 2 > head.length) return '';
-      const rat = (p) => { const num = u32(p), den = u32(p + 4); return den ? num / den : 0; };
-      const out = {};
-      const en = u16(exifIfd);
-      for (let i = 0; i < en; i++) {
-        const e = exifIfd + 2 + i * 12;
-        if (e + 12 > head.length) break;
-        const tag = u16(e), typ = u16(e + 2), cnt = u32(e + 4);
-        const sz = ([0, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8])[typ] || 1;
-        const val = (sz * cnt <= 4) ? e + 8 : tiff + u32(e + 8);
-        if (val < 0 || val + sz * cnt > head.length) continue;
-        if (tag === 0x829A && typ === 5) out.exp = rat(val);
-        else if (tag === 0x829D && typ === 5) out.fn = rat(val);
-        else if (tag === 0x8827 && typ === 3) out.iso = u16(val);
-        else if (tag === 0x920A && typ === 5) out.focal = rat(val);
-        else if (tag === 0x9209 && typ === 3) out.flash = u16(val);
-      }
-      const parts = [];
-      if (out.exp > 0) parts.push(out.exp >= 1 ? `${Math.round(out.exp)} s` : `1/${Math.round(1 / out.exp)} s`);
-      if (out.fn > 0) parts.push(`f/${(Math.round(out.fn * 10) / 10).toFixed(1)}`);
-      if (out.iso) parts.push(`ISO ${out.iso}`);
-      if (out.focal > 0) parts.push(`${Math.round(out.focal)} mm`);
-      if (out.flash != null) parts.push((out.flash & 1) ? 'Flash on' : 'Flash off');
-      return parts.join(' \u2022 ');
-    } catch (e) { return ''; }
-  }
 
   /* ---------- sticker map (ops -> bitmaps) ---------- */
   function stickerMap() {
@@ -925,9 +858,8 @@
     ed.dims.textContent = '';
     setBusy(true);
     let bmp = null;
-    let file = null;
     try {
-      file = await getFile(photo);
+      const file = await getFile(photo);
       try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
       catch (e) { bmp = await createImageBitmap(file); }
     } catch (e) {
@@ -949,9 +881,6 @@
     baseCv = null; baseKey = '';
     comparing = false;
     q('#eOrig').hidden = true; q('#eOrigTag').hidden = true;
-    ed.root.classList.remove('tools-open');
-    ed.exif.textContent = '';
-    readExif(file).then((txt) => { if (E.open && E.photo === photo) ed.exif.textContent = txt; });
 
     /* power-cut safe: reload the previous auto-saved edits */
     try {
@@ -1002,14 +931,10 @@
   }
 
   /* ---------- wiring ---------- */
-  const toolsBtn = q('#eTools');
-  if (toolsBtn) toolsBtn.addEventListener('click', () => ed.root.classList.toggle('tools-open'));
-  const closeTools = () => { if (window.matchMedia && window.matchMedia('(max-width: 760px)').matches) ed.root.classList.remove('tools-open'); };
   qa('.e-tabs button').forEach((b) => {
     b.addEventListener('click', () => {
       qa('.e-tabs button').forEach((x) => x.classList.toggle('on', x === b));
       qa('.e-tab').forEach((t) => t.classList.toggle('on', t.id === 'tab-' + b.dataset.tab));
-      closeTools();
     });
   });
   qa('.fixbtn[data-fix]').forEach((b) => {
@@ -1024,7 +949,6 @@
       else if (E.tool === f) setTool(null);
       else if (f === 'crop') startCrop();
       else setTool(f);
-      closeTools();
     });
   });
   ed.undoBtn.addEventListener('click', doUndo);
