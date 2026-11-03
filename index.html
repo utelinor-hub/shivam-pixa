@@ -163,6 +163,30 @@
     @keyframes dotPulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
     .menu .dd button:disabled { color: #9aa1a9; cursor: default; }
     .menu .dd button:disabled:hover { background: none; color: #9aa1a9; }
+    /* ===== v3.18.0: Picasa view tabs (Library | Collage) ===== */
+    .toptabs {
+      height: 30px; flex: none;
+      background: linear-gradient(#eef1f6, #cfd6e0);
+      border-bottom: 1px solid #9aa4b2;
+      display: flex; align-items: flex-end;
+      padding: 0 10px; gap: 4px;
+      user-select: none;
+    }
+    .toptabs .nav-tab {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 18px;
+      background: linear-gradient(#e8edf4, #d5dce6);
+      border: 1px solid #9aa4b2; border-bottom: none;
+      border-radius: 5px 5px 0 0;
+      cursor: pointer; font-weight: 700; font-size: 12.5px; color: #44526a;
+    }
+    .toptabs .nav-tab svg { width: 14px; height: 14px; opacity: .8; }
+    .toptabs .nav-tab:hover { background: linear-gradient(#f4f7fb, #e3e9f2); color: #1c3b70; }
+    .toptabs .nav-tab.on {
+      background: #fbfbfa; color: #16202e; padding-bottom: 7px;
+      box-shadow: 0 1px 0 #fbfbfa;
+    }
+    .toptabs .nav-tab.on svg { opacity: 1; color: var(--accent); }
 
     .tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
     select {
@@ -533,7 +557,7 @@
     }
     .tray-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6d7076; white-space: nowrap; }
     .tray-count { font-size: 12px; color: #6d7076; white-space: nowrap; }
-    .tray-strip { display: flex; gap: 6px; overflow-x: auto; flex: 1; padding: 2px; min-height: 62px; align-items: center; }
+    .tray-strip { display: flex; gap: 6px; overflow-x: auto; flex: 1; padding: 3px; min-height: 64px; align-items: center; background: #edece8; border: 1px solid #cfccc5; border-radius: 3px; box-shadow: inset 0 1px 3px rgba(0,0,0,.08); }
     .tthumb { position: relative; flex: 0 0 auto; width: 58px; height: 58px; border-radius: 3px; background: #d9d7d2; box-shadow: 0 1px 2px rgba(0,0,0,.25); overflow: hidden; border: 2px solid #fff; }
     .tthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .tthumb .tx { position: absolute; top: 1px; right: 1px; z-index: 2; width: 16px; height: 16px; border-radius: 50%; background: rgba(20,20,20,.72); color: #fff; font-size: 10px; line-height: 15px; text-align: center; padding: 0; }
@@ -805,14 +829,18 @@
     .c-clips .clip .inuse { position: absolute; right: 3px; bottom: 3px; font-size: 9px; background: rgba(43,124,211,.92); color: #fff; padding: 1px 5px; border-radius: 3px; }
     .c-clips .cliptip { grid-column: 1 / -1; font-size: 11.5px; color: #6d7076; line-height: 1.5; padding: 6px 2px; }
     /* v3.17.0: Picasa tray pushpin (hold) + red clear circle */
-    .tray-pin, .tray-clear { width: 27px; height: 27px; border-radius: 50%; display: inline-grid; place-items: center; cursor: pointer; flex: none; }
-    .tray-pin { border: 1px solid #2f7d3b; background: linear-gradient(#f2faf3, #d3ecd8); color: #2f7d3b; }
+    /* v3.18.0: Picasa tray — solid green pin, solid red clear, big Create button */
+    .tray-pin, .tray-clear { width: 30px; height: 30px; border-radius: 50%; display: inline-grid; place-items: center; cursor: pointer; flex: none; }
+    .tray-pin { border: 1px solid #256f31; background: linear-gradient(#43b45a, #2f9e44); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 1px 2px rgba(0,0,0,.18); }
     .tray-pin svg { width: 15px; height: 15px; }
-    .tray-pin:hover { border-color: #1e5e29; }
-    .tray-pin.on { background: #2f9e44; border-color: #1e5e29; color: #fff; }
-    .tray-clear { border: 1px solid #b03a3a; background: linear-gradient(#fdf0ef, #f7d9d7); color: #b03a3a; }
+    .tray-pin:hover { background: linear-gradient(#4fc366, #35aa4a); }
+    .tray-pin.on { background: linear-gradient(#1f7a2e, #256f31); border-color: #17541f; box-shadow: inset 0 2px 4px rgba(0,0,0,.35); }
+    .tray-clear { border: 1px solid #a32e2e; background: linear-gradient(#e2574c, #c0392b); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 1px 2px rgba(0,0,0,.18); }
     .tray-clear svg { width: 13px; height: 13px; }
-    .tray-clear:hover { background: #f3c6c3; }
+    .tray-clear:hover { background: linear-gradient(#e96a5f, #cb4232); }
+    .tray-sep { width: 1px; height: 26px; background: #c2bfb8; margin: 0 4px; flex: none; }
+    .tray-create { height: 38px !important; padding: 0 18px !important; font-size: 13px !important; font-weight: 700; gap: 8px; white-space: nowrap; }
+    .tray-create svg { width: 16px; height: 16px; }
     .c-busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(30,32,36,.35); }
     .m-foot { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid #bdbab3; background: #e2e0da; justify-content: flex-end; align-items: center; }
     .presets { display: flex; gap: 5px; margin-top: 6px; }
@@ -948,12 +976,31 @@
         <button type="button" data-act="zout">Smaller Thumbnails</button>
       </div>
     </div>
-    <div class="menu" data-m="photo">
-      <button type="button">Photo</button>
+    <div class="menu" data-m="folder">
+      <button type="button">Folder</button>
       <div class="dd">
+        <button type="button" data-act="import">Import Folder&hellip;</button>
         <button type="button" data-act="all">Show Whole Library (clear filter)</button>
-        <button type="button" data-act="sizer">Sizer (Make Photos Smaller)&hellip;</button>
-        <button type="button" data-act="collage">Collage</button>
+        <div class="sep"></div>
+        <button type="button" data-act="refresh">Refresh Folders</button>
+      </div>
+    </div>
+    <div class="menu" data-m="picture">
+      <button type="button">Picture</button>
+      <div class="dd">
+        <button type="button" data-act="edit">View and Edit</button>
+        <div class="sep"></div>
+        <button type="button" data-act="export">Export Selected&hellip;</button>
+        <button type="button" data-act="sizer">Resize Photos (Sizer)&hellip;</button>
+      </div>
+    </div>
+    <div class="menu" data-m="create">
+      <button type="button">Create</button>
+      <div class="dd">
+        <button type="button" data-act="collage">Picture Collage&hellip;</button>
+        <button type="button" data-act="collagetray">Collage from Tray&hellip;</button>
+        <div class="sep"></div>
+        <button type="button" data-act="deskbg">Set Desktop Background&hellip;</button>
       </div>
     </div>
     <div class="menu" data-m="tools">
@@ -961,8 +1008,6 @@
       <div class="dd">
         <button type="button" data-act="sizer">Resize Photos (Sizer)&hellip;</button>
         <button type="button" data-act="fonts">Add Fonts (from PC)&hellip;</button>
-        <div class="sep"></div>
-        <button type="button" data-act="refresh">Refresh Folders</button>
       </div>
     </div>
     <div class="menu" data-m="help">
@@ -975,6 +1020,18 @@
       </div>
     </div>
   </nav>
+
+  <!-- ===== Picasa view tabs (Library | Collage) — v3.18.0 ===== -->
+  <div class="toptabs" id="toptabs" role="tablist" aria-label="View">
+    <button id="tabLib" class="nav-tab on" type="button" role="tab" aria-selected="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H10a2.4 2.4 0 0 1 2 .9A2.4 2.4 0 0 1 14 4h4.5A1.5 1.5 0 0 1 20 5.5v12a1.5 1.5 0 0 1-1.5 1.5H14a1.6 1.6 0 0 0-1.6 1.6h-.8A1.6 1.6 0 0 0 10 19H5.5A1.5 1.5 0 0 1 4 17.5v-12zM12 6.4v12.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      Library
+    </button>
+    <button id="tabCol" class="nav-tab" type="button" role="tab" aria-selected="false" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 12h17M12 4.5v15" stroke="currentColor" stroke-width="1.2"/></svg>
+      Collage
+    </button>
+  </div>
 
   <!-- ===== Restore last folder bar (only shows while Chrome needs one click) ===== -->
   <div id="restoreBar" class="restorebar" hidden>
@@ -1031,7 +1088,7 @@
     </main>
   </div>
 
-  <!-- ===== Photo Tray (Picasa style) ===== -->
+  <!-- ===== Photo Tray (Picasa style) — v3.18.0 exact layout ===== -->
   <footer id="tray" class="tray" hidden>
     <span class="tray-label">Photo Tray</span>
     <span id="trayCount" class="tray-count"></span>
@@ -1040,12 +1097,16 @@
       <button id="btnTrayPin" class="tray-pin" type="button" title="Hold selected items in tray (they stay even when you click around)">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5h6l-.7 5.3 2.9 2.9v1.6H6.8v-1.6l2.9-2.9L9 4.5zM12 14.3v5.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>
       </button>
+      <button id="btnTrayClear" class="tray-clear" type="button" title="Clear tray">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+      </button>
+      <span class="tray-sep"></span>
       <button id="btnTrayExport" class="btn" type="button" title="Copy selected photos to another folder">Export</button>
       <button id="btnTraySizer" class="btn" type="button" title="Make the selected photos smaller (Sizer)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="6" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M20 4L8.6 15.4M14.6 14.4L20 20M8.4 8.6l3.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Sizer</button>
       <button id="btnTrayRemove" class="btn" type="button" title="Remove from library">Remove</button>
-      <button id="btnTrayCollage" class="btn btn-accent" type="button">Collage</button>
-      <button id="btnTrayClear" class="tray-clear" type="button" title="Clear tray">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+      <button id="btnTrayCollage" class="btn btn-accent tray-create" type="button" title="Create a collage from the tray photos">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 12h17M12 4.5v15" stroke="currentColor" stroke-width="1.2"/></svg>
+        Create Photo Collage
       </button>
     </div>
   </footer>
@@ -1062,7 +1123,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.17.1</span>
+      <span class="ver">v3.18.0</span>
     </span>
   </footer>
 
@@ -2850,6 +2911,16 @@
           else toast('Add photos to the Tray first (use the + button on a photo)', 'err');
           break;
         case 'collage': els.btnCollage.click(); break;
+        case 'collagetray':
+          if (state.selArr.length && window.PixsaCollage) window.PixsaCollage.open(state.selArr);
+          else toast('Add photos to the Photo Tray first (click photos or their + button)', 'err');
+          break;
+        case 'deskbg':
+          if (window.PixsaCollage && (state.selArr.length || state.filtered.length)) {
+            window.PixsaCollage.open(state.selArr.length ? state.selArr : state.filtered);
+            toast('Press "Desktop Background" in the collage sidebar to set your wallpaper', 'ok', 4500);
+          } else toast('Import photos first', 'err');
+          break;
         case 'clear': els.clearBtn.click(); break;
         case 'edit': {
           if (!state.filtered.length) { toast('Import photos first', 'err'); break; }
@@ -2868,6 +2939,18 @@
           break;
         case 'selnone': clearSel(); break;
         case 'side': els.btnSide.click(); break;
+        case 'zin':
+        case 'zout': {
+          /* v3.18.0 FIX: these two View menu items never had a handler —
+             they now drive the same thumbnail-size slider as the status bar */
+          const z = document.getElementById('zoom');
+          const cur = parseInt(z.value, 10) || 170;
+          const nv = Math.max(+z.min, Math.min(+z.max, cur + (act === 'zin' ? 20 : -20)));
+          z.value = String(nv);
+          z.dispatchEvent(new Event('input', { bubbles: true }));
+          toast(`Thumbnail size: ${nv}px`, 'ok', 1600);
+          break;
+        }
         case 'sizer': openSizer(); break;
         case 'cloud': if (window.PixsaCloud) window.PixsaCloud.openSetup(); break;
         case 'all':
@@ -2889,7 +2972,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.17.1', 'ok', 2500);
+          toast('S H I V A M PIXA v3.18.0', 'ok', 2500);
           break;
       }
     }
@@ -2905,6 +2988,50 @@
     document.addEventListener('click', (e) => {
       if (!e.target.closest('#menubar')) els.menubar.querySelectorAll('.menu.open').forEach((x) => x.classList.remove('open'));
     });
+
+    /* ================= v3.18.0: Picasa view tabs (Library | Collage) =================
+       The Collage tab appears once a collage has been opened this session and
+       reopens the most recent collage (re-edit, positions intact) when clicked
+       while the maker is closed — exactly how Picasa's basic tab strip behaved. */
+    const tabLib = document.getElementById('tabLib');
+    const tabCol = document.getElementById('tabCol');
+    function syncViewTabs() {
+      const open = !!(window.PixsaCollage && window.PixsaCollage.isOpen());
+      if (open) { try { sessionStorage.setItem('pixsa.colSession', '1'); } catch (e) {} }
+      tabCol.hidden = !open && !sessionStorage.getItem('pixsa.colSession');
+      tabLib.classList.toggle('on', !open);
+      tabLib.setAttribute('aria-selected', String(!open));
+      tabCol.classList.toggle('on', open);
+      tabCol.setAttribute('aria-selected', String(open));
+    }
+    tabLib.addEventListener('click', () => {
+      if (window.PixsaCollage && window.PixsaCollage.isOpen()) window.PixsaCollage.close();
+      syncViewTabs();
+    });
+    tabCol.addEventListener('click', async () => {
+      if (!window.PixsaCollage || window.PixsaCollage.isOpen()) return;
+      /* 1st choice: the auto-saved working project (always fresh — collage.js
+         writes it on every change, power-cut safe) */
+      try {
+        const cur = await idbGet('collage', 'current');
+        if (cur && cur.photos && cur.photos.length) {
+          window.PixsaCollage.openRestored(cur);
+          syncViewTabs();
+          return;
+        }
+      } catch (e) {}
+      /* 2nd choice: the newest finished collage, re-edit with positions */
+      const done = state.photos.filter((p) => p.collageId);
+      if (done.length) {
+        window.PixsaCollage.editCollage(done[done.length - 1].collageId);
+        syncViewTabs();
+        return;
+      }
+      toast('Create a collage first — select photos and press Collage', 'err');
+    });
+    new MutationObserver(syncViewTabs).observe(document.getElementById('collage'), { attributes: true, attributeFilter: ['hidden'] });
+    syncViewTabs();
+
     els.btnAllF.addEventListener('click', () => {
       state.folderFilter = '';
       buildTree(); applyFilter();
