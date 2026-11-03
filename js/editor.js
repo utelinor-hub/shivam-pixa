@@ -46,7 +46,12 @@
            with"), and updates work Android-style: a persistent
            "new version ready" banner with Restart, plus update checks at
            every launch / focus / 15 minutes so installed PCs never miss
-           a release. */
+           a release.
+   v3.16.2: (app) nothing disappears silently any more — the update banner
+           stays up for 9 seconds before it applies itself, an "updated to
+           vX — all changes are live" toast confirms every applied update,
+           and the install button switches to a remembered "App installed"
+           state instead of vanishing after the install. */
 (() => {
   'use strict';
   const P = window.Pixsa;
