@@ -261,10 +261,12 @@
     .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .cell .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
     .cell .ph img {
-      width: 100%; height: 100%; object-fit: cover; display: block;
+      /* v3.10.2: Picasa-style main grid — the FULL photo is always visible at
+         its original aspect ratio (letterboxed on dark), never cropped */
+      width: 100%; height: 100%; object-fit: contain; display: block;
       opacity: 0; transition: opacity .2s;
     }
-    .cell .ph.ready { background: #fff; }
+    .cell .ph.ready { background: #1b1f26; }
     .cell .ph.ready img { opacity: 1; }
     .cell .ph.bad { background: repeating-linear-gradient(45deg, #e6e6e6, #e6e6e6 8px, #dcdcdc 8px, #dcdcdc 16px); }
     .cell .ph.bad::after { content: "Failed to load"; font-size: 11px; color: #98a0aa; }
@@ -868,7 +870,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.10.1</span>
+      <span class="ver">v3.10.2</span>
     </span>
   </footer>
 
@@ -2236,7 +2238,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.10.1', 'ok', 2500);
+          toast('S H I V A M PIXA v3.10.2', 'ok', 2500);
           break;
       }
     }
