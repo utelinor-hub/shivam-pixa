@@ -4,7 +4,7 @@
    Only then SKIP_WAITING activates it and the page reloads once. The new
    version never activates silently behind the user's back. */
 
-const VERSION = 'v3.16.2';
+const VERSION = 'v3.16.3';
 const CACHE = `shivam-pixa-${VERSION}`;
 /* photos arriving from the Android "Share → PIXA" share target land here
    first; the page picks them up (see receiveShared in index.html) */
@@ -43,6 +43,15 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('message', (e) => {
   if (e.data === 'SKIP_WAITING') self.skipWaiting();
+  /* v3.16.3: the Help menu asks a waiting worker which version it carries,
+     so the "Check for Updates" result can name the exact update. The page
+     transfers a MessageChannel port — reply on that port, not e.source. */
+  if (e.data && e.data.type === 'GET_VERSION') {
+    const payload = { type: 'VERSION', version: VERSION };
+    const port = e.ports && e.ports[0];
+    if (port) { try { port.postMessage(payload); } catch (err) {} }
+    else if (e.source) { try { e.source.postMessage(payload); } catch (err) {} }
+  }
 });
 
 /* ================= share target (Android: Share → PIXA) =================
