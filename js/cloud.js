@@ -9,6 +9,10 @@
    few seconds), cryptic Google error codes are translated into plain
    sentences with the fix, and a diagnostics block shows the site origin,
    the origin check and the client ID in use.
+   v3.9.1 — the dialog now updates LIVE the moment the status changes
+   (it kept showing a stale line while a failed popup sat behind the
+   dialog), and a failed sign-in re-opens the dialog so the plain-language
+   reason is on screen even on phones, where no hover tooltip exists.
 
    How it works (design goals):
    • Sign in with Google → each user gets their own private folder
@@ -119,6 +123,11 @@
     else if (st === 'err') { label = 'Sync off'; el.chip.classList.add('st-err'); }
     el.label.textContent = label;
     el.chip.title = 'Cloud sync (Google Drive) — ' + label + (C.statusNote ? ` — ${C.statusNote}` : '');
+    /* v3.9.1: if the Cloud dialog is open, refresh its status line and the
+       Sign-in diagnostics block at the same moment the status changes —
+       previously the exact error only appeared after closing and reopening
+       the dialog (and on phones there is no hover tooltip to fall back on) */
+    if (el.modal && !el.modal.hidden && el.line) updModal();
   }
 
   /* ================= kv helpers for queues/links ================= */
@@ -752,6 +761,10 @@
       updModal();
     } catch (e) {
       setStatus_('out', e.message);
+      /* v3.9.1: surface the failure right where the user pressed the button —
+         open the Cloud dialog so the plain-language reason (pop-up blocked,
+         wrong account, offline…) is on screen, not just a 7-second toast */
+      openModal();
       toast('Sign-in failed: ' + e.message, 'err', 7000);
     }
   }
