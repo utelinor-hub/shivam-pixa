@@ -1,22 +1,11 @@
 /* SHIVAM PIXA — Cloud Sync (Google Drive)
    ------------------------------------------------------------------
    v3.7.0 — optional, 100% background Google Drive sync.
-   v3.8.0 — adopts photos that other apps upload straight into the
-   "SHIVAM PIXA" Drive folder (e.g. an auto-upload app on the phone),
-   so camera photos can reach every PC without touching PIXA.
-   v3.9.0 — sign-in failures are now impossible to miss: the exact reason
-   stays visible inside the Cloud dialog (the old toast vanished after a
-   few seconds), cryptic Google error codes are translated into plain
-   sentences with the fix, and a diagnostics block shows the site origin,
-   the origin check and the client ID in use.
-   v3.9.1 — the dialog now updates LIVE the moment the status changes
-   (it kept showing a stale line while a failed popup sat behind the
-   dialog), and a failed sign-in re-opens the dialog so the plain-language
-   reason is on screen even on phones, where no hover tooltip exists.
-   v3.10.1 — Google's "Access blocked (Error 403: access_denied)" page is
-   now explained inside the app instead of a generic "window closed": the
-   message tells the owner exactly where to add the account as a test user
-   or to publish the app to Production (OAuth consent screen → Audience).
+   v3.7.2 — real Google errors are surfaced now: if sync goes red the Cloud
+            Sync window shows the exact reason (Drive API disabled → one-click
+            Enable link, rate limit, permission, expired session). Sign-in
+            itself makes a first /about call so a broken Cloud project is
+            caught the moment you sign in, not silently afterwards.
 
    How it works (design goals):
    • Sign in with Google → each user gets their own private folder
@@ -102,7 +91,7 @@
 
   const el = {
     chip: null, label: null,
-    modal: null, clientId: null, email: null, line: null, diag: null,
+    modal: null, clientId: null, email: null, line: null,
     btnSaveId: null, btnSign: null, btnNow: null, btnOut: null, btnFree: null
   };
 
@@ -127,11 +116,6 @@
     else if (st === 'err') { label = 'Sync off'; el.chip.classList.add('st-err'); }
     el.label.textContent = label;
     el.chip.title = 'Cloud sync (Google Drive) — ' + label + (C.statusNote ? ` — ${C.statusNote}` : '');
-    /* v3.9.1: if the Cloud dialog is open, refresh its status line and the
-       Sign-in diagnostics block at the same moment the status changes —
-       previously the exact error only appeared after closing and reopening
-       the dialog (and on phones there is no hover tooltip to fall back on) */
-    if (el.modal && !el.modal.hidden && el.line) updModal();
   }
 
   /* ================= kv helpers for queues/links ================= */
@@ -187,52 +171,19 @@
     return new Promise((resolve, reject) => {
       const origC = tc.callback, origE = tc.error_callback;
       const restore = () => { tc.callback = origC; try { tc.error_callback = origE; } catch (e) {} clearTimeout(timer); };
-      const timer = setTimeout(() => { restore(); reject(new Error('Google sign-in timed out — press “Sign in with Google” again and complete the window')); }, 120000);
+      const timer = setTimeout(() => { restore(); reject(new Error('Google sign-in timed out')); }, 120000);
       tc.callback = (resp) => {
         restore();
         if (resp && resp.access_token) resolve(resp.access_token);
-        else if (resp && resp.error) reject(new Error(oauthErrText(resp.error)));
-        else reject(new Error('Sign-in was cancelled'));
+        else reject(new Error((resp && resp.error) ? resp.error : 'Sign-in was cancelled'));
       };
       tc.error_callback = (err) => {
         restore();
-        reject(new Error(gisErrText(err)));
+        reject(new Error((err && (err.message || err.type)) || 'The Google window was closed or blocked'));
       };
       try { tc.requestAccessToken({ prompt: promptMode || '' }); }
       catch (e) { restore(); reject(e); }
     });
-  }
-
-  /* v3.9.0: translate cryptic GIS error types into plain sentences with the
-     actual fix — previously the user only saw codes like “popup_closed” */
-  function gisErrText(err) {
-    const type = (err && err.type) || '';
-    const map = {
-      popup_failed_to_open: 'The Google window could not open — allow pop-ups for this site, then press “Sign in with Google” again',
-      popup_closed: 'The Google window closed before sign-in finished — allow pop-ups and try again. If the window showed “Access blocked” (Error 403), the app is in Testing mode: open console.cloud.google.com → APIs & Services → OAuth consent screen → Audience and add this Google account under “Test users” (or publish the app to Production)',
-      popup_closed_by_user: 'Sign-in was cancelled — the Google window was closed before it finished',
-      popup_closed_by_click_away: 'The Google window closed when you clicked elsewhere — press “Sign in with Google” and complete the window',
-      access_denied: 'Google blocked this account (“Access blocked — Error 403: access_denied”). The app is in Testing mode, so only pre-approved accounts may sign in. Fix: open console.cloud.google.com → APIs & Services → OAuth consent screen (Google Auth Platform) → Audience, then either add this Google account under “Test users”, or set Publishing status to “In production” — then sign in again.',
-      startup_failed: 'Google sign-in could not start (browser or network issue) — reload the page and try again'
-    };
-    if (type && map[type]) return map[type];
-    return (err && (err.message || err.type)) || 'The Google window was closed or blocked';
-  }
-
-  /* v3.10.1: OAuth-level error codes that arrive through the token callback
-     (the popup redirected back with ?error=…). “access_denied” here means
-     the Google 403 testing-mode block page was shown; map the common codes
-     to their actual fixes instead of surfacing the raw code. */
-  function oauthErrText(code) {
-    const map = {
-      access_denied: gisErrText({ type: 'access_denied' }),
-      admin_policy_enforced: 'Your Google Workspace administrator does not allow signing in to this app — use a personal @gmail.com account',
-      invalid_client: 'The Client ID saved in Cloud Sync is wrong — paste it again and press Save',
-      unauthorized_client: 'This Client ID is not allowed for this site — in Google Cloud Console → Credentials, add “https://utelinor-hub.github.io/shivam-pixa” under Authorized JavaScript origins',
-      redirect_uri_mismatch: 'This site is not in the Client ID\u2019s Authorized JavaScript origins — fix it in Google Cloud Console → Credentials',
-      org_internal: 'This Client ID only allows accounts inside its organization — create a new OAuth Client ID with User type “External”'
-    };
-    return map[code] || ('Google sign-in failed (' + code + ') — try again, and if it repeats open the Cloud dialog diagnostics');
   }
 
   const hasToken = () => !!(C.token && Date.now() < C.tokenExp);
@@ -262,11 +213,31 @@
     return r;
   }
 
+  /* Read Google's REAL error message so the chip/modal shows WHAT is wrong
+     (e.g. "Drive API is disabled in project …" instead of a blind 403). */
+  async function apiErr(r) {
+    let msg = '';
+    try { const j = await r.json(); msg = (j && j.error && j.error.message) || ''; } catch (e) {}
+    if (r.status === 403) {
+      if (/has not been used|it is disabled|accessNotConfigured|serviceDisabled/i.test(msg)) {
+        const u = (msg.match(/https:\/\/[^\s"]+/) || [])[0]
+          || 'https://console.cloud.google.com/apis/library/drive.googleapis.com';
+        return 'Google Drive API is OFF in your Cloud project — Enable it: ' + u;
+      }
+      if (/rate|quota|exceeded|backend error/i.test(msg)) return 'Google Drive is busy — will retry automatically';
+      if (/insufficient|permission|forbidden/i.test(msg)) return 'Drive permission denied — sign in again';
+      return 'Drive access denied (403)' + (msg ? ' — ' + msg : '');
+    }
+    if (r.status === 401) return 'Google session expired — sign in again';
+    if (r.status >= 500) return 'Google Drive server problem — will retry automatically';
+    return 'Drive error ' + r.status + (msg ? ' — ' + msg : '');
+  }
+
   /* ================= Drive primitives ================= */
   async function findFolder() {
     const q = encodeURIComponent(`name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false and 'root' in parents`);
     const r = await authFetch(`${DRIVE}/files?q=${q}&fields=files(id,name)&pageSize=5`);
-    if (!r.ok) throw new Error('Drive search failed (' + r.status + ')');
+    if (!r.ok) throw new Error(await apiErr(r));
     const j = await r.json();
     if (j.files && j.files.length) return j.files[0].id;
     const cr = await authFetch(`${DRIVE}/files`, {
@@ -274,7 +245,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
     });
-    if (!cr.ok) throw new Error('Could not create the Drive folder (' + cr.status + ')');
+    if (!cr.ok) throw new Error(await apiErr(cr));
     return (await cr.json()).id;
   }
 
@@ -295,13 +266,13 @@
   async function uploadNew(blob, name, appProps) {
     const body = multipartBody({ name, parents: [C.folderId], appProperties: appProps || {} }, blob);
     const r = await authFetch(`${UPLOAD}/files?uploadType=multipart&fields=id`, { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=pixabnd' }, body });
-    if (!r.ok) throw new Error('Upload failed (' + r.status + ')');
+    if (!r.ok) throw new Error(await apiErr(r));
     return (await r.json()).id;
   }
 
   async function updateMedia(fileId, blob) {
     const r = await authFetch(`${UPLOAD}/files/${fileId}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': blob.type || 'application/octet-stream' }, body: blob });
-    if (!r.ok) throw new Error('Update failed (' + r.status + ')');
+    if (!r.ok) throw new Error(await apiErr(r));
     return true;
   }
 
@@ -319,7 +290,7 @@
     if (!C.manifestId) return null;
     const r = await authFetch(`${DRIVE}/files/${C.manifestId}?alt=media`);
     if (r.status === 404) return null;
-    if (!r.ok) throw new Error('Could not read sync data (' + r.status + ')');
+    if (!r.ok) throw new Error(await apiErr(r));
     const txt = await r.text();
     try { return JSON.parse(txt); } catch (e) { return null; }
   }
@@ -329,10 +300,10 @@
     const body = multipartBody({ name: MANIFEST_NAME, parents: [C.folderId] }, new Blob([JSON.stringify(m)], { type: 'application/json' }));
     if (C.manifestId) {
       const r = await authFetch(`${UPLOAD}/files/${C.manifestId}?uploadType=multipart&fields=id`, { method: 'PATCH', body });
-      if (!r.ok) throw new Error('Could not save sync data (' + r.status + ')');
+      if (!r.ok) throw new Error(await apiErr(r));
     } else {
       const r = await authFetch(`${UPLOAD}/files?uploadType=multipart&fields=id`, { method: 'POST', body });
-      if (!r.ok) throw new Error('Could not save sync data (' + r.status + ')');
+      if (!r.ok) throw new Error(await apiErr(r));
       C.manifestId = (await r.json()).id;
     }
     C.remote = m;
@@ -376,7 +347,7 @@
       } catch (err) { /* fall through to full file */ }
     }
     const r2 = await authFetch(`${DRIVE}/files/${e.fileId}?alt=media`);
-    if (!r2.ok) throw new Error('Could not download the photo (' + r2.status + ')');
+    if (!r2.ok) throw new Error(await apiErr(r2));
     const fb = await r2.blob();
     await blobSet(pid, fb);
     return fb;
@@ -481,51 +452,6 @@
       updated: nowIso()
     };
     schedulePush(2500);
-  }
-
-  /* ================= adopt photos uploaded straight into the Drive folder =================
-     v3.8.0 — the phone story: any app that auto-uploads camera photos into
-     the "SHIVAM PIXA" Drive folder (Autosync, FolderSync, PhotoSync, …)
-     is picked up here. The manifest only knows photos pushed by PIXA
-     itself, so at every pull the folder is listed and image files PIXA
-     did not file yet are adopted into the library (and into the manifest,
-     so every other PC sees them at the next poll). */
-  const ADOPT_IMG = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
-  async function adoptExternal(m) {
-    if (!C.folderId || C.pushing || !m || !m.photos) return 0;
-    const q = encodeURIComponent(`'${C.folderId}' in parents and trashed = false and mimeType contains 'image/'`);
-    const r = await authFetch(`${DRIVE}/files?q=${q}&fields=files(id,name,mimeType,size,createdTime,appProperties)&pageSize=1000`);
-    if (!r.ok) return 0;
-    const j = await r.json();
-    if (!j.files || !j.files.length) return 0;
-    const known = new Set();
-    m.photos.forEach((e) => { known.add(e.fileId); if (e.thumbId) known.add(e.thumbId); });
-    const fresh = j.files.filter((f) =>
-      f.id && !known.has(f.id) &&
-      ADOPT_IMG.test(f.name || '') &&
-      !/\.thumb\.jpe?g$/i.test(f.name || '') &&
-      !(f.appProperties && f.appProperties.pixa)
-    );
-    if (!fresh.length) return 0;
-    for (const f of fresh) {
-      m.photos.push({
-        pid: uuid(),
-        name: f.name,
-        folder: 'Phone & other uploads',
-        type: f.mimeType || 'image/jpeg',
-        size: Number(f.size) || 0,
-        lastModified: Date.parse(f.createdTime) || Date.now(),
-        fileId: f.id,
-        thumbId: null,
-        updated: f.createdTime || nowIso(),
-        deleted: false,
-        adopted: true
-      });
-    }
-    m.rev = Date.now();
-    await pushManifest(m);
-    await applyRemote(m, { silent: true });
-    return fresh.length;
   }
 
   /* ================= upload queue (background, zero-lag) ================= */
@@ -644,21 +570,9 @@
       setStatus_('syncing');
       C.folderId = C.folderId || await findFolder();
       C.manifestId = C.manifestId || await findManifest();
-      let m = await pullManifest();
-      if (!m) {
-        /* no manifest yet — still pick up photos other apps dropped in the folder */
-        let adopted0 = 0;
-        try { adopted0 = await adoptExternal(emptyManifest()); } catch (e) { /* non-fatal */ }
-        if (adopted0) toast(`${adopted0} photo${adopted0 > 1 ? 's' : ''} arrived from the phone`, 'ok', 4500);
-        if (manual) { await pushCycle(); } else setStatus_('ok');
-        return;
-      }
+      const m = await pullManifest();
+      if (!m) { if (manual) { await pushCycle(); } else setStatus_('ok'); return; }
       const changed = await applyRemote(m, { silent: !manual });
-      /* v3.8.0: adopt photos that other apps uploaded straight into the
-         Drive folder (e.g. an auto-upload app on the phone) */
-      let adopted = 0;
-      try { adopted = await adoptExternal(m); } catch (e) { /* non-fatal */ }
-      if (adopted) toast(`${adopted} photo${adopted > 1 ? 's' : ''} arrived from the phone`, 'ok', 4500);
       const mine = await linksGet();
       const haveLocalNew = state.photos.some((p) => !p.cloud && !mine[linkKey(p)]);
       if (haveLocalNew) schedulePush(1500);
@@ -768,7 +682,11 @@
       }
       setStatus_('connecting');
       await askToken(mode);
-      const info = await authFetch(`${DRIVE}/about?fields=user`).then((r) => r.ok ? r.json() : null).catch(() => null);
+      /* first real Drive call right after sign-in: if Google refuses (e.g. the
+         Drive API is not enabled in the Cloud project), show the REAL reason */
+      const ar = await authFetch(`${DRIVE}/about?fields=user`).catch(() => null);
+      if (ar && !ar.ok && (ar.status === 403 || ar.status === 401)) throw new Error(await apiErr(ar));
+      const info = ar && ar.ok ? await ar.json().catch(() => null) : null;
       if (info && info.user && info.user.emailAddress) { C.cfg.email = info.user.emailAddress; await cfgSet(C.cfg); }
       C.everSignedIn = true;
       C.enabled = true;
@@ -782,10 +700,6 @@
       updModal();
     } catch (e) {
       setStatus_('out', e.message);
-      /* v3.9.1: surface the failure right where the user pressed the button —
-         open the Cloud dialog so the plain-language reason (pop-up blocked,
-         wrong account, offline…) is on screen, not just a 7-second toast */
-      openModal();
       toast('Sign-in failed: ' + e.message, 'err', 7000);
     }
   }
@@ -825,18 +739,19 @@
     el.btnOut.disabled = !C.enabled;
     const stTxt = { off: 'Cloud sync is off', setup: 'Paste your Client ID', out: 'Signed out',
       connecting: 'Connecting…', syncing: 'Syncing…', ok: 'Everything is synced', err: 'Will retry automatically' };
-    /* v3.9.0: keep the exact error visible inside the dialog — the old code
-       dropped C.statusNote here, so failures showed only a 7-second toast */
-    el.line.textContent = (stTxt[C.status] || '') + (C.statusNote ? ` — ${C.statusNote}` : '');
-    if (el.diag) {
-      const allowed = originAllowed();
-      const cid = (C.cfg && C.cfg.clientId) || '';
-      el.diag.textContent =
-        `Site: ${location.origin}\n` +
-        `Origin check: ${allowed ? 'allowed ✓' : 'NOT allowed ✗ — sign-in only works on the official site'}\n` +
-        `Client ID: ${cid ? cid.slice(0, 14) + '…' + cid.slice(-8) : 'missing'}\n` +
-        (C.statusNote ? `Note: ${C.statusNote}` : 'No errors recorded');
-    }
+    let txt = stTxt[C.status] || '';
+    if (C.status === 'err' && C.statusNote) txt = C.statusNote;
+    const um = txt.match(/https:\/\/[^\s]+/);
+    if (um) {
+      const parts = txt.split(um[0]);
+      el.line.textContent = parts[0] + ' ';
+      const a = document.createElement('a');
+      a.href = um[0]; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.textContent = 'Enable Google Drive API';
+      a.style.cssText = 'color:#2b7cd3;font-weight:600;text-decoration:underline;cursor:pointer';
+      el.line.appendChild(a);
+      if (parts[1]) el.line.appendChild(document.createTextNode(' ' + parts[1]));
+    } else el.line.textContent = txt;
   }
 
   function wireUI() {
@@ -847,7 +762,6 @@
     el.clientId = document.getElementById('cloudClientId');
     el.email = document.getElementById('cloudEmail');
     el.line = document.getElementById('cloudLine');
-    el.diag = document.getElementById('cloudDiag');
     el.btnSaveId = document.getElementById('cloudSaveId');
     el.btnSign = document.getElementById('cloudSignIn');
     el.btnNow = document.getElementById('cloudSyncNow');
