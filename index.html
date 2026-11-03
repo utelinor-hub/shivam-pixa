@@ -153,6 +153,16 @@
     .menu .dd button { display: block; width: 100%; text-align: left; padding: 7px 12px; font-size: 12.5px; color: #2b3138; border-radius: 4px; }
     .menu .dd button:hover { background: var(--accent-soft); color: var(--accent-deep); }
     .menu .sep { height: 1px; background: #e4e7eb; margin: 4px 6px; }
+    /* ===== v3.16.3: Help menu owns updates — red dot on Help while an update waits ===== */
+    .menu > button { position: relative; }
+    .menu > button .upd-dot {
+      position: absolute; top: 1px; right: 3px; width: 7px; height: 7px;
+      border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 2px #f7f7f7;
+      animation: dotPulse 1.6s ease infinite;
+    }
+    @keyframes dotPulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+    .menu .dd button:disabled { color: #9aa1a9; cursor: default; }
+    .menu .dd button:disabled:hover { background: none; color: #9aa1a9; }
 
     .tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
     select {
@@ -907,8 +917,11 @@
       </div>
     </div>
     <div class="menu" data-m="help">
-      <button type="button">Help</button>
+      <button type="button">Help<span class="upd-dot" id="helpDot" hidden></span></button>
       <div class="dd">
+        <button type="button" data-act="upd-check">Check for Updates</button>
+        <button type="button" data-act="upd-install" id="ddInstall" disabled>Install Update</button>
+        <div class="sep"></div>
         <button type="button" data-act="about">About SHIVAM PIXA</button>
       </div>
     </div>
@@ -995,7 +1008,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.16.2</span>
+      <span class="ver">v3.16.3</span>
     </span>
   </footer>
 
@@ -2700,8 +2713,20 @@
           break;
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
+        case 'upd-check': {
+          const u = window.PixsaUpd;
+          if (u) u.checkNow();
+          else toast('Updates are not available in this browser', 'err', 4000);
+          break;
+        }
+        case 'upd-install': {
+          const u = window.PixsaUpd;
+          if (u && u.hasWaiting()) { toast('Restarting to install the update…', 'ok', 2500); u.applyNow(); }
+          else toast('No update is waiting — use "Check for Updates" first', 'ok', 4500);
+          break;
+        }
         case 'about':
-          toast('S H I V A M PIXA v3.16.2', 'ok', 2500);
+          toast('S H I V A M PIXA v3.16.3', 'ok', 2500);
           break;
       }
     }
@@ -2779,7 +2804,10 @@
           middle of an edit.
        3) The reload after an update is remembered: the splash is skipped on
           that reload and a short "updated to vX" toast confirms that ALL
-          changes are now live — the update never disappears silently. */
+          changes are now live — the update never disappears silently.
+       4) v3.16.3: the Help menu owns updates too — "Check for Updates" and
+          "Install Update" are always there (red dot on Help while an update
+          waits), so even a dismissed banner can never strand an update. */
     if ('serviceWorker' in navigator) {
       const hadController = !!navigator.serviceWorker.controller;
       const banner = document.getElementById('updBanner');
@@ -2787,12 +2815,28 @@
       const updClose = document.getElementById('updClose');
       let waiting = null; /* new worker: installed, not active yet */
       let dismissed = false;
+      /* v3.16.3: Help menu owns updates — always reachable, never missed */
+      const ddInstall = document.getElementById('ddInstall');
+      const helpDot = document.getElementById('helpDot');
+      const verText = () => ((document.querySelector('.ver') || {}).textContent || '').trim();
+      const syncUpdateUI = () => {
+        const has = !!waiting;
+        if (ddInstall) {
+          ddInstall.disabled = !has;
+          ddInstall.title = has
+            ? 'Apply the waiting update — the app restarts with the new version'
+            : 'No update waiting — choose "Check for Updates"';
+        }
+        if (helpDot) helpDot.hidden = !has;
+      };
+      syncUpdateUI();
       const hideBanner = () => banner.classList.remove('show');
-      updRestart.addEventListener('click', () => {
+      const applyNow = () => {
         hideBanner();
         if (waiting) { try { waiting.postMessage('SKIP_WAITING'); } catch (e) {} setTimeout(() => location.reload(), 150); }
         else location.reload();
-      });
+      };
+      updRestart.addEventListener('click', applyNow);
       updClose.addEventListener('click', () => { dismissed = true; hideBanner(); });
       /* v3.16.2: the update was just applied and the page reloaded — say so */
       if (sessionStorage.getItem('pixsa.up')) {
@@ -2803,7 +2847,9 @@
       const markReady = (w) => {
         if (!w || waiting === w) return;
         waiting = w;
+        syncUpdateUI();
         if (!dismissed) banner.classList.add('show');
+        else toast('A new version is ready — open the Help menu and choose "Install Update"', 'ok', 8000);
         const applyWhenIdle = () => {
           if (dismissed) return; /* user said "later" — apply at next launch */
           const busy = window.PixsaEditor && window.PixsaEditor.isOpen();
@@ -2822,6 +2868,46 @@
               if (nw.state === 'installed' && navigator.serviceWorker.controller) markReady(nw);
             });
           });
+          /* v3.16.3: manual "Check for Updates" from the Help menu — reports
+             exactly what happened (update ready with its version, or already
+             up to date) so a release can never feel lost */
+          const askVer = (w) => new Promise((res) => {
+            let done = false;
+            const finish = (v) => { if (!done) { done = true; res(v); } };
+            try {
+              const ch = new MessageChannel();
+              ch.port1.onmessage = (ev) => finish(ev.data && ev.data.version);
+              setTimeout(() => finish(null), 1200);
+              w.postMessage({ type: 'GET_VERSION' }, [ch.port2]);
+            } catch (e) { finish(null); }
+          });
+          const checkNow = () => {
+            if (checkNow.busy) return;
+            checkNow.busy = true;
+            toast('Checking for updates…', 'ok', 1800);
+            const started = Date.now();
+            reg.update().catch(() => {}).then(() => {
+              const poll = () => {
+                if (waiting) {
+                  checkNow.busy = false;
+                  askVer(waiting).then((v) => {
+                    toast(v ? `Update ${v} is ready — choose "Install Update" to apply it` : 'A new version is ready — choose "Install Update" to apply it', 'ok', 7000);
+                  });
+                } else if (reg.installing && Date.now() - started < 6000) {
+                  setTimeout(poll, 400);
+                } else {
+                  checkNow.busy = false;
+                  toast(`You're on the latest version (${verText() || 'all good'})`, 'ok', 4000);
+                }
+              };
+              setTimeout(poll, 300);
+            });
+          };
+          window.PixsaUpd = {
+            hasWaiting: () => !!waiting,
+            applyNow: () => applyNow(),
+            checkNow: () => checkNow()
+          };
           const check = () => reg.update().catch(() => {});
           setTimeout(check, 3000);
           setInterval(check, 15 * 60 * 1000);
