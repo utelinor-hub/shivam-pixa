@@ -329,6 +329,19 @@
     .fhead.foldable { cursor: pointer; user-select: none; }
     .fhead .chev { display: inline-flex; margin-right: 2px; transition: transform .15s ease; color: #7d848d; }
     .fhead.folded .chev { transform: rotate(-90deg); }
+    /* v3.17.0: Picasa home screen — folder header date + one-click collage button */
+    .fhead .fdate { color: #8a94a0; font-size: 11.5px; margin-left: 8px; white-space: nowrap; }
+    .fcolbtn { margin-left: auto; width: 26px; height: 22px; display: inline-grid; place-items: center; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); color: #3e6fa5; cursor: pointer; }
+    .fcolbtn:hover { border-color: var(--accent); background: #eaf2fc; }
+    .fcolbtn svg { width: 15px; height: 15px; }
+    /* v3.17.0: sidebar tree sections — Albums / Projects / Folders (Picasa) */
+    .tshead { display: block; padding: 9px 10px 3px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8a8f96; }
+    .titem.pi svg { color: #8a5fc4; }
+    /* v3.17.0: star a photo straight from the grid (Picasa "Starred" album) */
+    .starbtn { position: absolute; top: 3px; left: 3px; width: 23px; height: 23px; border-radius: 4px; border: 0; background: rgba(255,255,255,.92); color: #b3b8bf; font-size: 14px; line-height: 1; display: none; place-items: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+    .cell:hover .starbtn { display: grid; }
+    .starbtn.on { color: #e8a013; }
+    .starbtn.on, .cell .starbtn.starred { display: grid; }
 
     /* ---------- empty state ---------- */
     .empty {
@@ -753,17 +766,53 @@
     .c-toolinfo { margin-left: auto; font-size: 11.5px; color: #757a82; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .c-count { margin-left: auto; font-size: 12px; font-weight: 400; color: #6d7076; }
     #collage .m-head .icobtn { margin-left: 0; }
-    .c-selbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-    .c-selbtns button {
-      padding: 6px 6px; font-size: 12px; color: #2c2f34;
-      border: 1px solid #c6c3bc; border-radius: 3px;
-      background: linear-gradient(#fdfdfc, #edece7);
-    }
-    .c-selbtns button:hover:not(:disabled) { border-color: var(--accent); background: #eaf2fc; }
-    .c-selbtns button:disabled { opacity: .45; cursor: default; }
-    .m-foot-l { display: flex; gap: 8px; margin-right: auto; flex-wrap: wrap; }
-    .m-foot-r { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .m-foot-l .btn, .m-foot-r .btn { min-width: 0; padding: 7px 13px; font-size: 12.5px; }
+    /* ===== v3.17.0: Picasa 3 replica — tabs, border icons, orientation, grid4, clips, ctx menu ===== */
+    .c-tabs { display: flex; gap: 2px; background: rgba(0,0,0,.09); padding: 2px; border-radius: 6px; }
+    .c-tabs button { padding: 4px 18px; font-size: 12.5px; font-weight: 600; color: #4b5158; border-radius: 4px; border: 0; background: transparent; cursor: pointer; }
+    .c-tabs button.on { background: #fff; color: #235d9c; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+    .c-tabs2 { display: flex; border-bottom: 1px solid #c8c5be; margin: -12px -12px 10px; }
+    .c-tabs2 button { flex: 1; padding: 9px 4px; font-size: 12.5px; font-weight: 600; color: #4b5158; background: linear-gradient(#f6f5f3, #e7e5e0); border: 0; border-right: 1px solid #c8c5be; border-bottom: 2px solid transparent; cursor: pointer; }
+    .c-tabs2 button:last-child { border-right: 0; }
+    .c-tabs2 button.on { background: #fdfdfc; border-bottom-color: var(--accent); color: var(--accent-deep); }
+    .c-borders { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .c-borders button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 2px 5px; font-size: 10.5px; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; }
+    .c-borders button.on { border-color: var(--accent); background: #dcebfb; font-weight: 700; }
+    .bico { width: 26px; height: 21px; background: linear-gradient(135deg, #c9a36a, #a97f45); border: 1px solid #94826a; display: block; }
+    .bico-white { border: 3px solid #fff; outline: 1px solid #b5b2ab; }
+    .bico-pol { border: 3px solid #fff; border-bottom: 7px solid #fff; outline: 1px solid #b5b2ab; }
+    .c-orient { display: flex; gap: 6px; margin-top: 8px; }
+    .c-orient button { flex: 1; display: grid; place-items: center; padding: 6px 0; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); color: #33383f; cursor: pointer; }
+    .c-orient button.on { border-color: var(--accent); background: #dcebfb; color: var(--accent-deep); }
+    .c-orient svg { width: 24px; height: 17px; }
+    .c-grid4 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 16px; }
+    .c-grid4 button { padding: 8px 4px; font-size: 12px; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; }
+    .c-grid4 button:hover { border-color: var(--accent); background: #eaf2fc; }
+    .c-grid4 button.accent { background: var(--accent); border-color: var(--accent-deep); color: #fff; font-weight: 700; }
+    .c-grid4 button.accent:hover { background: var(--accent-deep); }
+    .c-stage { flex: 1; display: grid; place-items: center; min-height: 0; padding: 10px 14px; }
+    .c-prev { flex-direction: column; display: flex; }
+    .c-below { display: flex; gap: 8px; justify-content: center; padding: 2px 12px 12px; flex-wrap: wrap; }
+    .c-below .btn { min-width: 0; padding: 7px 13px; font-size: 12.5px; }
+    .ctxmenu { position: fixed; z-index: 400; min-width: 200px; background: #fff; border: 1px solid #b5b2ab; border-radius: 5px; box-shadow: 0 8px 26px rgba(0,0,0,.3); padding: 4px; }
+    .ctxmenu button { display: block; width: 100%; text-align: left; padding: 6px 12px; font-size: 12.5px; color: #2b3138; border-radius: 3px; border: 0; background: none; cursor: pointer; }
+    .ctxmenu button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent-deep); }
+    .ctxmenu button:disabled { color: #9aa1a9; cursor: default; }
+    .ctxmenu .csep { height: 1px; background: #e4e7eb; margin: 4px 6px; }
+    .c-clips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 52vh; overflow-y: auto; padding-right: 2px; }
+    .c-clips .clip { position: relative; border: 1px solid #c6c3bc; border-radius: 4px; background: #fff; padding: 0; cursor: pointer; overflow: hidden; }
+    .c-clips .clip img { width: 100%; height: 72px; object-fit: contain; display: block; background: #f2f1ed; }
+    .c-clips .clip:hover { border-color: var(--accent); box-shadow: 0 1px 5px rgba(43,124,211,.35); }
+    .c-clips .clip .inuse { position: absolute; right: 3px; bottom: 3px; font-size: 9px; background: rgba(43,124,211,.92); color: #fff; padding: 1px 5px; border-radius: 3px; }
+    .c-clips .cliptip { grid-column: 1 / -1; font-size: 11.5px; color: #6d7076; line-height: 1.5; padding: 6px 2px; }
+    /* v3.17.0: Picasa tray pushpin (hold) + red clear circle */
+    .tray-pin, .tray-clear { width: 27px; height: 27px; border-radius: 50%; display: inline-grid; place-items: center; cursor: pointer; flex: none; }
+    .tray-pin { border: 1px solid #2f7d3b; background: linear-gradient(#f2faf3, #d3ecd8); color: #2f7d3b; }
+    .tray-pin svg { width: 15px; height: 15px; }
+    .tray-pin:hover { border-color: #1e5e29; }
+    .tray-pin.on { background: #2f9e44; border-color: #1e5e29; color: #fff; }
+    .tray-clear { border: 1px solid #b03a3a; background: linear-gradient(#fdf0ef, #f7d9d7); color: #b03a3a; }
+    .tray-clear svg { width: 13px; height: 13px; }
+    .tray-clear:hover { background: #f3c6c3; }
     .c-busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(30,32,36,.35); }
     .m-foot { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid #bdbab3; background: #e2e0da; justify-content: flex-end; align-items: center; }
     .presets { display: flex; gap: 5px; margin-top: 6px; }
@@ -988,11 +1037,16 @@
     <span id="trayCount" class="tray-count"></span>
     <div id="trayStrip" class="tray-strip" aria-label="Selected photos"></div>
     <div class="tray-actions">
+      <button id="btnTrayPin" class="tray-pin" type="button" title="Hold selected items in tray (they stay even when you click around)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5h6l-.7 5.3 2.9 2.9v1.6H6.8v-1.6l2.9-2.9L9 4.5zM12 14.3v5.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>
+      </button>
       <button id="btnTrayExport" class="btn" type="button" title="Copy selected photos to another folder">Export</button>
       <button id="btnTraySizer" class="btn" type="button" title="Make the selected photos smaller (Sizer)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="6" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M20 4L8.6 15.4M14.6 14.4L20 20M8.4 8.6l3.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Sizer</button>
       <button id="btnTrayRemove" class="btn" type="button" title="Remove from library">Remove</button>
       <button id="btnTrayCollage" class="btn btn-accent" type="button">Collage</button>
-      <button id="btnTrayClear" class="linkbtn dim" type="button">Clear</button>
+      <button id="btnTrayClear" class="tray-clear" type="button" title="Clear tray">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+      </button>
     </div>
   </footer>
 
@@ -1008,7 +1062,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.16.3</span>
+      <span class="ver">v3.17.0</span>
     </span>
   </footer>
 
@@ -1272,111 +1326,137 @@
     </footer>
   </div>
 
-  <!-- ===== Collage maker (Picasa "Picture Collage" engine, v3.12.0) ===== -->
+  <!-- ===== Collage maker (Picasa 3 replica — v3.17.0) ===== -->
   <div id="collage" class="modal" hidden role="dialog" aria-label="Collage maker">
     <div class="m-box">
       <header class="m-head">
-        <button id="cBackTop" class="btn-green" type="button" title="Back to the library">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Back
-        </button>
-        Create Collage
+        <div class="c-tabs" role="tablist">
+          <button id="cTabLib" type="button" title="Back to the Library">Library</button>
+          <button id="cTabCol" type="button" class="on">Collage</button>
+        </div>
         <span id="cCount" class="c-count"></span>
         <button id="cClose" class="icobtn" type="button" aria-label="Close">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </button>
       </header>
-      <div class="c-tools">
-        <button id="cSelAll" type="button">Select All</button>
-        <button id="cSelNone" type="button">Select None</button>
-        <button id="cRemove" type="button">Remove</button>
-        <span class="c-tsep"></span>
-        <button id="cSetBg" type="button">Set as Background</button>
-        <span id="cToolInfo" class="c-toolinfo">Click a photo to select &bull; drag to move &bull; wheel resizes &bull; Shift+wheel rotates</span>
-      </div>
       <div class="c-body">
         <div class="c-side">
-          <h5>Page Format</h5>
-          <select id="cFormat" style="width:100%">
-            <option value="16x9">16:9 Screen (3840&times;2160)</option>
-            <option value="4x3" selected>4:3 (3200&times;2400)</option>
-            <option value="sq">Square 1:1 (3000&times;3000)</option>
-            <option value="4x6">4x6 Print (300 DPI)</option>
-            <option value="5x7">5x7 Print (300 DPI)</option>
-            <option value="8x10">8x10 Print (300 DPI)</option>
-            <option value="11x14">11x14 Print (300 DPI)</option>
-            <option value="16x20">16x20 Print (300 DPI)</option>
-            <option value="a4">A4 (300 DPI)</option>
-            <option value="letter">US Letter (300 DPI)</option>
-            <option value="custom">Custom ratio&hellip;</option>
-          </select>
-          <div id="cCustomRow" hidden style="margin-top:8px">
-            <div style="display:flex;align-items:center;gap:6px">
-              <input id="cCustW" type="number" min="1" max="60" step="0.5" value="16" style="width:70px" aria-label="Ratio width" />
-              <span style="color:#667">:</span>
-              <input id="cCustH" type="number" min="1" max="60" step="0.5" value="9" style="width:70px" aria-label="Ratio height" />
-              <button id="cCustApply" class="btn" type="button">Apply</button>
+          <div class="c-tabs2" role="tablist">
+            <button id="cTabSettings" type="button" class="on">Settings</button>
+            <button id="cTabClips" type="button">Clips (<span id="cClipCount">0</span>)</button>
+          </div>
+          <div id="cPaneSettings">
+            <h5>Collage Type</h5>
+            <select id="cType" style="width:100%">
+              <option value="pile" selected>Picture Pile : Looks like a pile of scattered pictures</option>
+              <option value="mosaic">Mosaic : Fits pictures together into a grid automatically</option>
+              <option value="frame">Frame Mosaic : A mosaic with a central framed picture</option>
+              <option value="grid">Grid : Arranges pictures in uniform rows and columns</option>
+              <option value="sheet">Contact Sheet : Thumbnails of all pictures</option>
+            </select>
+            <h5>Picture Borders</h5>
+            <div class="c-borders" id="cBorders">
+              <button type="button" data-b="none" title="No border"><span class="bico"></span>None</button>
+              <button type="button" data-b="white" class="on" title="Classic white photo border"><span class="bico bico-white"></span>White</button>
+              <button type="button" data-b="polaroid" title="Instant Polaroid — thick bottom border"><span class="bico bico-pol"></span>Polaroid</button>
+            </div>
+            <h5>Background</h5>
+            <label class="chkrow"><input type="radio" name="cbgm" id="cBgSolid" checked /> Solid Color</label>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+              <input id="cBg" type="color" value="#f5f2ec" style="height:26px;flex:1;min-width:0" />
+              <button id="cEyedropper" class="btn" type="button" title="Pick a color from anywhere on the screen" style="padding:5px 7px">
+                <svg viewBox="0 0 24 24" aria-hidden="true" style="width:15px;height:15px"><path d="M19.3 4.7a2.4 2.4 0 0 0-3.4 0l-2.1 2.1-1.4-1.4-1.5 1.5 6.8 6.8 1.5-1.5-1.4-1.4 2.1-2.1a2.4 2.4 0 0 0 0-3.4M13 10.5L4.6 18.9a1.7 1.7 0 0 0 2.4 2.4l8.4-8.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <div class="presets">
+              <button type="button" data-bg="#ffffff" style="background:#ffffff" title="White"></button>
+              <button type="button" data-bg="#000000" style="background:#000000" title="Black"></button>
+              <button type="button" data-bg="#d8d4cc" style="background:#d8d4cc" title="Grey"></button>
+              <button type="button" data-bg="#3e4650" style="background:#3e4650" title="Dark blue"></button>
+              <button type="button" data-bg="#f5f2ec" style="background:#f5f2ec" title="Warm paper"></button>
+            </div>
+            <label class="chkrow" style="margin-top:9px"><input type="radio" name="cbgm" id="cBgPhoto" /> Use Image</label>
+            <h5>Page Format</h5>
+            <select id="cFormat" style="width:100%">
+              <option value="4x3" selected>4:3 (Standard)</option>
+              <option value="16x9">16:9 : HDTV</option>
+              <option value="3x2">3:2 (35mm)</option>
+              <option value="letter">8.5 x 11 : Letter paper</option>
+              <option value="4x6">4 x 6 : Postcard</option>
+              <option value="sq">1:1 : Square</option>
+              <option value="screen">Current Screen Resolution</option>
+              <option value="custom">Custom ratio&hellip;</option>
+            </select>
+            <div id="cCustomRow" hidden style="margin-top:8px">
+              <div style="display:flex;align-items:center;gap:6px">
+                <input id="cCustW" type="number" min="1" max="60" step="0.5" value="16" style="width:70px" aria-label="Ratio width" />
+                <span style="color:#667">:</span>
+                <input id="cCustH" type="number" min="1" max="60" step="0.5" value="9" style="width:70px" aria-label="Ratio height" />
+                <button id="cCustApply" class="btn" type="button">Apply</button>
+              </div>
+            </div>
+            <div class="c-orient">
+              <button id="cOrientL" type="button" class="on" title="Landscape">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+              </button>
+              <button id="cOrientP" type="button" title="Portrait">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3.5" width="12" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+              </button>
+            </div>
+            <label class="chkrow" style="margin-top:10px"><input type="checkbox" id="cShadows" checked /> Draw Shadows</label>
+            <label class="chkrow" style="margin-top:6px"><input type="checkbox" id="cCaptions" /> Show Captions</label>
+            <div class="c-grid4">
+              <button id="cDesktop" type="button" title="Use this collage as your desktop wallpaper image">Desktop Background</button>
+              <button id="cCreate" type="button" class="accent" title="Finish and save this collage">Create Collage</button>
+              <button id="cReset" type="button" title="Back to the automatic Picasa layout">Reset</button>
+              <button id="cClose2" type="button" title="Close the collage maker">Close</button>
             </div>
           </div>
-          <button id="cOrient" class="btn" type="button" style="width:100%;margin-top:8px;justify-content:center">Orientation: Landscape</button>
-          <h5>Photo Borders</h5>
-          <select id="cBorder" style="width:100%">
-            <option value="none">No border</option>
-            <option value="white" selected>White border</option>
-            <option value="polaroid">Polaroid frame</option>
-          </select>
-          <h5>Background</h5>
-          <label class="chkrow"><input type="checkbox" id="cBgPhoto" /> Blurred photo background</label>
-          <input id="cBg" type="color" value="#f5f2ec" style="height:28px;width:100%;margin-top:8px" />
-          <div class="presets">
-            <button type="button" data-bg="#ffffff" style="background:#ffffff" title="White"></button>
-            <button type="button" data-bg="#000000" style="background:#000000" title="Black"></button>
-            <button type="button" data-bg="#d8d4cc" style="background:#d8d4cc" title="Grey"></button>
-            <button type="button" data-bg="#3e4650" style="background:#3e4650" title="Dark blue"></button>
-          </div>
-          <button id="cShuffle" class="btn" type="button" style="margin-top:10px;width:100%;justify-content:center">Shuffle</button>
-          <div id="cSelRow">
-            <h5>Selected Photo</h5>
-            <div class="c-selbtns">
-              <button id="cFwd" type="button" title="Bring forward (])">Bring Forward</button>
-              <button id="cBack1" type="button" title="Send backward ([)">Send Back</button>
-              <button id="cRotL" type="button" title="Rotate left 90&deg;">&#8634; 90&deg;</button>
-              <button id="cRotR" type="button" title="Rotate right 90&deg;">&#8635; 90&deg;</button>
-              <button id="cBigger" type="button" title="Bigger (+)">Bigger +</button>
-              <button id="cSmaller" type="button" title="Smaller (&minus;)">Smaller &minus;</button>
-            </div>
+          <div id="cPaneClips" hidden>
+            <div id="cClips" class="c-clips"></div>
+            <button id="cAddPhotos" class="btn" type="button" style="width:100%;justify-content:center;margin-top:9px">Add More Photos&hellip;</button>
           </div>
           <p class="cnote" id="cNote"></p>
         </div>
         <div class="c-prev">
-          <div id="cWrap" class="c-canvaswrap">
-            <canvas id="cCanvas" width="640" height="480"></canvas>
-            <canvas id="cOverlay" width="640" height="480"></canvas>
+          <div class="c-tools">
+            <button id="cSelAll" type="button">Select All</button>
+            <button id="cSelNone" type="button">Select None</button>
+            <button id="cRemove" type="button">Remove</button>
+            <span class="c-tsep"></span>
+            <button id="cSetBg" type="button">Set as Background</button>
+            <span id="cToolInfo" class="c-toolinfo">Drag to move &bull; drag the wheel knob to rotate + resize &bull; wheel resizes &bull; right-click for more</span>
+          </div>
+          <div class="c-stage">
+            <div id="cWrap" class="c-canvaswrap">
+              <canvas id="cCanvas" width="640" height="480"></canvas>
+              <canvas id="cOverlay" width="640" height="480"></canvas>
+            </div>
+          </div>
+          <div class="c-below">
+            <button id="cScramble" class="btn" type="button" title="Re-lay the whole collage">Scramble Collage</button>
+            <button id="cShufflePics" class="btn" type="button" title="Shuffle the order of the photos">Shuffle Pictures</button>
+            <button id="cViewEdit" class="btn" type="button" title="Open the selected photo in the editor">View and Edit</button>
           </div>
           <div id="cBusy" class="c-busy" hidden><span class="spin big"></span></div>
         </div>
       </div>
-      <footer class="m-foot">
-        <div class="m-foot-l">
-          <button id="cScramble" class="btn" type="button" title="Re-lay the whole collage">Scramble Collage</button>
-          <button id="cShufflePics" class="btn" type="button" title="Shuffle the order of the photos">Shuffle Pictures</button>
-          <button id="cViewEdit" class="btn" type="button" title="Open the selected photo in the editor">View and Edit</button>
-        </div>
-        <div class="m-foot-r">
-          <select id="cExportFmt" title="Export file format" style="width:auto">
-            <option value="auto" selected>Auto (JPEG/PNG)</option>
-            <option value="jpeg">JPEG</option>
-            <option value="png">PNG</option>
-          </select>
-          <button id="cCancel" class="btn" type="button">Cancel</button>
-          <button id="cCreate" class="btn btn-accent" type="button">Create Collage</button>
-          <button id="cSaveDir" class="btn btn-accent" type="button" hidden>Save to Library</button>
-          <button id="cDownload" class="btn" type="button" hidden>Download</button>
-          <button id="cBack" class="btn" type="button" hidden>Back to Edit</button>
-        </div>
+      <footer class="m-foot" id="cResultBar" hidden>
+        <span id="cResultNote" style="margin-right:auto;font-size:12px;color:#555b64"></span>
+        <select id="cExportFmt" title="Export file format" style="width:auto">
+          <option value="auto" selected>Auto (JPEG/PNG)</option>
+          <option value="jpeg">JPEG</option>
+          <option value="png">PNG</option>
+        </select>
+        <button id="cSaveDir" class="btn" type="button">Save to Folder</button>
+        <button id="cDownload" class="btn" type="button">Download</button>
+        <button id="cBack" class="btn" type="button">Back to Edit</button>
       </footer>
     </div>
   </div>
+
+  <!-- ===== v3.17.0: Picasa-style right-click menu on collage photos ===== -->
+  <div id="cMenu" class="ctxmenu" hidden></div>
 
   <input id="fileFallback" type="file" multiple accept="image/*,.heic,.heif,.tif,.tiff" webkitdirectory directory hidden />
   <input id="fontFile" type="file" multiple accept=".ttf,.otf,.woff,.woff2" hidden />
@@ -1413,6 +1493,7 @@
       btnSizer: $('#btnSizer'), btnCollage: $('#btnCollage'),
       tray: $('#tray'), trayStrip: $('#trayStrip'), trayCount: $('#trayCount'),
       btnTrayClear: $('#btnTrayClear'), btnTrayCollage: $('#btnTrayCollage'),
+      btnTrayPin: $('#btnTrayPin'),
       btnTraySizer: $('#btnTraySizer'), btnTrayExport: $('#btnTrayExport'),
       btnTrayRemove: $('#btnTrayRemove'),
       fileInput: $('#fileFallback'),
@@ -1425,6 +1506,9 @@
     const UNSUPPORTED_EXT = /\.(heic|heif|tiff?|dng|raw|cr2|cr3|nef|arw|orf|rw2)$/i;
     const state = {
       photos: [], filtered: [], groups: [], folder: '', folderFilter: '',
+      special: '',            /* v3.17.0: '' | 'recent' | 'starred' (Albums) */
+      trayPinned: false,      /* v3.17.0: Picasa pushpin — hold tray items */
+      stars: new Set(),       /* v3.17.0: starred photo keys */
       sort: localStorage.getItem('pixsa.sort') || 'name-asc',
       selArr: [], dirHandle: null
     };
@@ -1882,7 +1966,12 @@
     /* ================= filter / groups / status ================= */
     function applyFilter() {
       let arr = state.photos;
-      if (state.folderFilter !== '') arr = arr.filter((p) => (p.folder || '') === state.folderFilter);
+      if (state.special === 'recent') {
+        /* v3.17.0: Recently Updated album — the 60 newest additions */
+        arr = arr.slice().sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0)).slice(0, 60);
+      } else if (state.special === 'starred') {
+        arr = arr.filter((p) => p.star);
+      } else if (state.folderFilter !== '') arr = arr.filter((p) => (p.folder || '') === state.folderFilter);
       const s = state.sort;
       arr = arr.slice().sort((a, b) => {
         if (s === 'name-asc') return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
@@ -1936,7 +2025,7 @@
       els.btnAllF.hidden = state.folderFilter === '';
     }
 
-    /* ================= sidebar tree ================= */
+    /* ================= sidebar tree (Picasa 3: Albums / Projects / Folders) ================= */
     function buildTree() {
       els.tree.innerHTML = '';
       const counts = new Map();
@@ -1944,32 +2033,49 @@
         const k = p.folder || '';
         counts.set(k, (counts.get(k) || 0) + 1);
       }
-      const paths = [...counts.keys()].sort((a, b) => {
-        const da = a ? a.split('/').length : 0, db = b ? b.split('/').length : 0;
-        return da - db || a.localeCompare(b, undefined, { numeric: true });
-      });
-      const mk = (label, path, count, depth) => {
+      const sec = (label) => {
+        const s = document.createElement('span');
+        s.className = 'tshead'; s.textContent = label;
+        els.tree.appendChild(s);
+      };
+      const mk = (label, path, count, depth, opts) => {
+        opts = opts || {};
         const b = document.createElement('button');
-        b.type = 'button'; b.className = 'titem';
-        if (path === state.folderFilter) b.classList.add('sel');
+        b.type = 'button'; b.className = 'titem' + (opts.cls ? ' ' + opts.cls : '');
+        const on = opts.special ? state.special === opts.special
+                                : (path === state.folderFilter && !state.special);
+        if (on) b.classList.add('sel');
         b.style.paddingLeft = (10 + depth * 16) + 'px';
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('viewBox', '0 0 24 24');
-        svg.innerHTML = '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>';
+        svg.innerHTML = opts.icon || '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>';
         const nm = document.createElement('span'); nm.className = 'tname'; nm.textContent = label;
-        const cn = document.createElement('span'); cn.className = 'tcount'; cn.textContent = count;
+        const cn = document.createElement('span'); cn.className = 'tcount'; cn.textContent = opts.hideCount ? '' : count;
         b.appendChild(svg); b.appendChild(nm); b.appendChild(cn);
         b.addEventListener('click', () => {
-          state.folderFilter = path;
+          state.special = opts.special || '';
+          state.folderFilter = opts.special ? '' : path;
           buildTree();
           applyFilter();
         });
         els.tree.appendChild(b);
       };
-      const multiRoot = new Set(state.photos.map((p) => p.root || p.folder || '·')).size > 1;
+      const starCount = state.photos.filter((p) => p.star).length;
+      const colCount = counts.get('Collages') || 0;
+      sec('Albums');
+      mk('Recently Updated', '', Math.min(60, state.photos.length), 0, { special: 'recent' });
+      mk('Starred', '', starCount, 0, { special: 'starred', icon: '<path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6-5.1-2.8-5.1 2.8 1.1-5.6-4.2-3.9 5.7-.7L12 3.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>' });
+      sec('Projects');
+      mk('Collages', 'Collages', colCount, 0, { cls: 'pi', icon: '<rect x="3.5" y="3.5" width="17" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 12h17M12 3.5v17" stroke="currentColor" stroke-width="1.4"/>' });
+      sec('Folders');
+      const multiRoot = new Set(state.photos.map((p) => p.root || p.folder || '\u00b7')).size > 1;
       mk(multiRoot ? 'All photos' : (state.folder || 'Library'), '', state.photos.length, 0);
+      const paths = [...counts.keys()].sort((a, b) => {
+        const da = a ? a.split('/').length : 0, db = b ? b.split('/').length : 0;
+        return da - db || a.localeCompare(b, undefined, { numeric: true });
+      });
       for (const p of paths) {
-        if (p === '') continue;
+        if (p === '' || p === 'Collages') continue;
         const parts = p.split('/');
         mk(parts[parts.length - 1], p, counts.get(p), parts.length);
       }
@@ -2022,10 +2128,13 @@
     function toggleSel(p) {
       const k = photoKey(p);
       const i = state.selArr.findIndex((x) => photoKey(x) === k);
-      if (i >= 0) state.selArr.splice(i, 1); else state.selArr.push(p);
+      if (i >= 0) {
+        if (state.trayPinned) { toast('Tray is held by the pushpin — use the red button to clear it', 'ok', 3000); return; }
+        state.selArr.splice(i, 1);
+      } else state.selArr.push(p);
       renderTray();
     }
-    function clearSel() { state.selArr = []; renderTray(); }
+    function clearSel() { state.selArr = []; state.trayPinned = false; if (els.btnTrayPin) els.btnTrayPin.classList.remove('on'); renderTray(); }
     function renderTray() {
       const has = state.selArr.length > 0;
       els.tray.hidden = !has;
@@ -2043,7 +2152,30 @@
         d.appendChild(img);
         els.trayStrip.appendChild(d);
       }
+      /* v3.17.0: the collage Clips tab shows the same tray */
+      const cc = document.getElementById('cClipCount');
+      if (cc) cc.textContent = String(state.selArr.length);
+      if (window.PixsaCollage && window.PixsaCollage.syncClips) window.PixsaCollage.syncClips();
     }
+    /* v3.17.0: Starred album — star straight from the grid, persisted in kv */
+    async function toggleStar(p) {
+      p.star = !p.star;
+      const k = photoKey(p);
+      if (p.star) state.stars.add(k); else state.stars.delete(k);
+      try { await idbSet('kv', 'starred', [...state.stars]); } catch (e) {}
+      buildTree();
+      if (state.special === 'starred') applyFilter();
+    }
+    (async () => {
+      try {
+        const list = await idbGet('kv', 'starred');
+        if (Array.isArray(list)) {
+          state.stars = new Set(list);
+          for (const p of state.photos) p.star = state.stars.has(photoKey(p));
+          buildTree();
+        }
+      } catch (e) {}
+    })();
 
     async function exportSelected() {
       if (!state.selArr.length) return;
@@ -2123,6 +2255,28 @@
       const cn = document.createElement('span'); cn.className = 'fcount'; cn.textContent = `${g.items.length} photos`;
       const chev = document.createElement('span'); chev.className = 'chev'; chev.textContent = '\u25BE';
       head.appendChild(chev); head.appendChild(svg); head.appendChild(nm); head.appendChild(cn);
+      /* v3.17.0: Picasa folder header — latest date + one-click collage button */
+      let latest = 0;
+      for (const it of g.items) { const t = it.p.lastModified || 0; if (t > latest) latest = t; }
+      if (latest) {
+        const dt = document.createElement('span'); dt.className = 'fdate';
+        dt.textContent = new Date(latest).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        head.appendChild(dt);
+      }
+      if (g.path && g.path !== 'Collages') {
+        const col = document.createElement('button');
+        col.type = 'button'; col.className = 'fcolbtn'; col.title = 'Create Photo Collage with this folder';
+        col.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 12h17M12 3.5v17" stroke="currentColor" stroke-width="1.4"/></svg>';
+        col.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const items = g.items.map((it) => it.p);
+          if (items.length && window.PixsaCollage) {
+            toast(`Creating a collage from ${items.length} photo${items.length !== 1 ? 's' : ''}…`, 'ok', 2500);
+            window.PixsaCollage.open(items);
+          }
+        });
+        head.appendChild(col);
+      }
       /* v3.16.0: Picasa-style — click a folder header to fold/unfold the group */
       const foldKey = label || 'Photos';
       head.classList.add('foldable');
@@ -2186,11 +2340,15 @@
       const cap = document.createElement('span');
       cap.className = 'cap'; cap.textContent = entry.p.name;
       const chk = document.createElement('span'); chk.className = 'chk'; chk.textContent = '✓';
+      const star = document.createElement('button');
+      star.type = 'button'; star.className = 'starbtn' + (entry.p.star ? ' on' : '');
+      star.textContent = '★'; star.title = 'Star this photo (it appears in the Starred album)';
+      star.addEventListener('click', (e) => { e.stopPropagation(); toggleStar(entry.p); star.classList.toggle('on', !!entry.p.star); });
       const add = document.createElement('button');
       add.type = 'button'; add.className = 'addbtn'; add.textContent = '+';
       add.title = 'Add to Photo Tray';
       add.addEventListener('click', (e) => { e.stopPropagation(); toggleSel(entry.p); });
-      btn.appendChild(ph); btn.appendChild(cap); btn.appendChild(chk); btn.appendChild(add);
+      btn.appendChild(ph); btn.appendChild(cap); btn.appendChild(chk); btn.appendChild(star); btn.appendChild(add);
       /* v3.16.0: collages carry a small badge so they are easy to spot */
       if (entry.p.collageId) {
         btn.classList.add('is-collage');
@@ -2652,6 +2810,11 @@
       if (window.PixsaCollage) window.PixsaCollage.open(list);
     });
     els.btnTrayClear.addEventListener('click', clearSel);
+    els.btnTrayPin.addEventListener('click', () => {
+      state.trayPinned = !state.trayPinned;
+      els.btnTrayPin.classList.toggle('on', state.trayPinned);
+      toast(state.trayPinned ? 'Tray held — selected photos stay in the tray' : 'Tray released', 'ok', 2200);
+    });
     els.btnTraySizer.addEventListener('click', openSizer);
     els.btnTrayCollage.addEventListener('click', () => { if (state.selArr.length && window.PixsaCollage) window.PixsaCollage.open(state.selArr); });
     els.btnTrayExport.addEventListener('click', exportSelected);
@@ -2726,7 +2889,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.16.3', 'ok', 2500);
+          toast('S H I V A M PIXA v3.17.0', 'ok', 2500);
           break;
       }
     }
