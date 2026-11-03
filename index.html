@@ -949,7 +949,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.14.0</span>
+      <span class="ver">v3.14.1</span>
     </span>
   </footer>
 
@@ -1499,6 +1499,7 @@
     function mergePhotos(files, rootName) {
       const kept = state.photos.filter((p) => (p.root || '') !== rootName);
       state.photos = kept.concat(files);
+      hydrateDims(); /* v3.14.1: restore known ratios before the first paint */
     }
 
     async function loadFolder(dir, isRefresh = false, silent = false) {
@@ -1867,6 +1868,46 @@
     /* ================= selection + photo tray ================= */
     const photoKey = (p) => `${p.name}|${p.size}|${p.lastModified}`;
     const selSet = () => new Set(state.selArr.map(photoKey));
+    /* v3.14.1 FIX: the grid needs each photo's true pixel size on FIRST paint.
+       It used to be learned only while freshly generating a thumbnail, so on
+       every restart (thumbnails served from the IndexedDB cache) the grid fell
+       back to the CSS square ratio (1:1) and object-fit:cover cropped photos —
+       Picasa shows natural shapes, we showed squares. Sizes are now remembered
+       in kv/photoDims and hydrated before the first render. */
+    const dimsMap = new Map();
+    let dimsSaveT = 0;
+    function hydrateDims() {
+      if (!dimsMap.size || !state.photos.length) return;
+      for (const p of state.photos) {
+        if (p.w && p.h) continue;
+        const d = dimsMap.get(photoKey(p));
+        if (d && d[0] && d[1]) { p.w = d[0]; p.h = d[1]; }
+      }
+      if (state.filtered.length) {
+        document.querySelectorAll('.cell .ph[data-pi]').forEach((ph) => {
+          const p = state.filtered[+ph.dataset.pi];
+          if (p && p.w && p.h) ph.style.aspectRatio = `${p.w} / ${p.h}`;
+        });
+      }
+    }
+    function rememberDims(p, w, h) {
+      dimsMap.set(photoKey(p), [w, h]);
+      clearTimeout(dimsSaveT);
+      dimsSaveT = setTimeout(() => {
+        const o = {};
+        dimsMap.forEach((v, k) => { o[k] = v; });
+        idbSet('kv', 'photoDims', o).catch(() => {});
+      }, 1200);
+    }
+    (async () => {
+      try {
+        const m = await idbGet('kv', 'photoDims');
+        if (m && typeof m === 'object') {
+          Object.keys(m).forEach((k) => dimsMap.set(k, m[k]));
+          hydrateDims();
+        }
+      } catch (e) {}
+    })();
     function toggleSel(p) {
       const k = photoKey(p);
       const i = state.selArr.findIndex((x) => photoKey(x) === k);
@@ -2043,7 +2084,21 @@
     async function genThumb(p, key) {
       const cached = await idbGet('thumbs', key);
       if (cached) {
-        const u = URL.createObjectURL(cached);
+        /* v3.14.1 FIX: a cache hit used to return early WITHOUT setting p.w/p.h
+           — after a restart every cell stayed square and cover-cropped the
+           photo. The stored thumbnail keeps the original ratio, so read its
+           size (new entries carry it inline; older ones are decoded once). */
+        const blob = (cached && cached.blob) ? cached.blob : cached;
+        let bw = cached && cached.w, bh = cached && cached.h;
+        if (!bw || !bh) {
+          try {
+            const bm = await createImageBitmap(blob);
+            bw = bm.width; bh = bm.height;
+            if (bm.close) bm.close();
+          } catch (e) { bw = 0; bh = 0; }
+        }
+        if (bw && bh) { p.w = bw; p.h = bh; rememberDims(p, bw, bh); }
+        const u = URL.createObjectURL(blob);
         thumbMem.set(key, u);
         return u;
       }
@@ -2068,7 +2123,7 @@
       } catch (e) { return null; }
       /* v3.11.0: remember the photo's true aspect ratio — the grid cell uses
          it so every thumbnail keeps its original shape (Picasa style) */
-      if (src && src.width && src.height) { p.w = src.width; p.h = src.height; }
+      if (src && src.width && src.height) { p.w = src.width; p.h = src.height; rememberDims(p, p.w, p.h); }
       const sc = Math.min(1, THUMB / Math.max(src.width, src.height));
       const w = Math.max(1, Math.round(src.width * sc));
       const h = Math.max(1, Math.round(src.height * sc));
@@ -2085,7 +2140,8 @@
       }
       const blob = await new Promise((r) => c.toBlob(r, alphaSrc ? 'image/png' : 'image/jpeg', 0.82));
       if (!blob) return null;
-      idbSet('thumbs', key, blob).catch(() => {});
+      /* v3.14.1: store the ratio alongside the blob so restarts never re-decode */
+      idbSet('thumbs', key, { blob, w: p.w || 0, h: p.h || 0 }).catch(() => {});
       const u = URL.createObjectURL(blob);
       thumbMem.set(key, u);
       return u;
@@ -2506,7 +2562,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.14.0', 'ok', 2500);
+          toast('S H I V A M PIXA v3.14.1', 'ok', 2500);
           break;
       }
     }
