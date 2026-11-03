@@ -513,7 +513,7 @@
             fileId, thumbId, updated: nowIso(), deleted: false
           });
           upCount++;
-          if (upCount % 20 === 0) toast(`Uploading to Google Drive — ${upCount} done, continuing in the background`, 'ok', 3000);
+          if (upCount % 20 === 0) toast(`Uploading — ${upCount} done`, 'ok', 2500);
           await sleep(30);
         }
         p.cloud = { pid, fileId: (entries.get(pid) || {}).fileId, thumbId: (entries.get(pid) || {}).thumbId, updated: (entries.get(pid) || {}).updated };
@@ -528,7 +528,7 @@
       if (state.sort) m.settings.sort = state.sort;
       await pushManifest(m);
       setStatus_('ok');
-      if (upCount) toast(`${upCount} photo${upCount > 1 ? 's' : ''} backed up to Google Drive — they will now appear on your other PCs`, 'ok', 6000);
+      if (upCount) toast(`${upCount} photo${upCount > 1 ? 's' : ''} backed up to Google Drive`, 'ok', 4000);
     } catch (e) {
       setStatus_('err', e.message);
       schedulePush(60000); /* try again quietly */
@@ -631,14 +631,27 @@
   window.PixsaCloud = API;
 
   /* ================= sign in / out ================= */
+  /* fresh sign-in = fresh cloud state: drop the links/queues left by the
+     previous Google account, so a family member signing in on the same PC
+     always starts clean and never touches the other account's Drive files */
+  async function resetCloudLinkState() {
+    C.folderId = null; C.manifestId = null; C.remote = null;
+    await linksSet({}); await dirtySet([]); await delQSet([]);
+    let changed = false;
+    for (const p of state.photos.slice()) {
+      if (p.cloud && (p.handle || p.file)) { delete p.cloud; changed = true; }
+    }
+    if (changed) { buildTree(); applyFilter(); }
+  }
+
   async function signIn(mode) {
     try {
-      if (!C.cfg || !C.cfg.clientId) { openModal(); toast('Google Client ID is missing — paste it in the Cloud Sync window', 'err', 6000); return; }
+      if (!C.cfg || !C.cfg.clientId) { openModal(); toast('Client ID missing — paste it in Cloud Sync', 'err', 6000); return; }
       if (!originAllowed()) {
         /* guard: starting Google auth from a non-authorized origin can navigate
            this page away to a Google error screen (popup-blocked fallback) */
         setStatus_('out', 'Sign-in works on the official app site');
-        toast('Sign-in only works on the official app site — open https://utelinor-hub.github.io/shivam-pixa/ and use it there', 'err', 9000);
+        toast('Sign-in works only on the official app site: https://utelinor-hub.github.io/shivam-pixa/', 'err', 8000);
         updModal();
         return;
       }
@@ -649,11 +662,12 @@
       C.everSignedIn = true;
       C.enabled = true;
       sessSet({ token: C.token, exp: C.tokenExp, email: (C.cfg && C.cfg.email) || '' });
+      await resetCloudLinkState();
       setStatus_('syncing');
       startPolling(); startRenewTimer();
       await pullCycle({ manual: false });
       schedulePush(2000);
-      toast(`Signed in as ${C.cfg.email || 'Google account'} — your photos will now sync in the background`, 'ok', 5000);
+      toast(`Signed in as ${C.cfg.email || 'Google account'}`, 'ok', 3500);
       updModal();
     } catch (e) {
       setStatus_('out', e.message);
@@ -666,6 +680,7 @@
     C.token = null; C.enabled = false; C.everSignedIn = false;
     clearInterval(C.timer); clearInterval(C.renewTimer); clearTimeout(C.pushTimer);
     sessSet(null);
+    C.folderId = null; C.manifestId = null; C.remote = null;
     /* remove cloud-only photos from the grid (local disk photos stay) */
     const gone = state.photos.filter((p) => p.cloud && !p.handle && !p.file);
     state.photos = state.photos.filter((p) => !(p.cloud && !p.handle && !p.file));
@@ -674,7 +689,7 @@
     if (C.cfg && C.cfg.email) { C.cfg.email = ''; }
     cfgSet(C.cfg);
     setStatus_('out', 'Signed out');
-    toast('Signed out — cloud photos hidden, everything on this PC stays', 'ok', 5000);
+    toast('Signed out', 'ok', 2500);
     updModal();
   }
 
@@ -693,8 +708,8 @@
     el.btnSign.disabled = !(C.cfg && C.cfg.clientId);
     el.btnNow.disabled = !C.enabled;
     el.btnOut.disabled = !C.enabled;
-    const stTxt = { off: 'Cloud sync is off', setup: 'Setup needed — paste your Client ID below', out: 'Signed out — press “Sign in with Google”',
-      connecting: 'Connecting to Google…', syncing: 'Syncing in the background…', ok: 'Everything is synced', err: 'Sync problem — will retry automatically' };
+    const stTxt = { off: 'Cloud sync is off', setup: 'Paste your Client ID', out: 'Signed out',
+      connecting: 'Connecting…', syncing: 'Syncing…', ok: 'Everything is synced', err: 'Will retry automatically' };
     el.line.textContent = stTxt[C.status] || '';
   }
 
@@ -718,12 +733,12 @@
 
     el.btnSaveId.addEventListener('click', async () => {
       const v = el.clientId.value.trim();
-      if (!v || !v.endsWith('.apps.googleusercontent.com')) { toast('That does not look like a Google Client ID (it ends with .apps.googleusercontent.com)', 'err', 7000); return; }
+      if (!v || !v.endsWith('.apps.googleusercontent.com')) { toast('Not a valid Client ID (it ends with .apps.googleusercontent.com)', 'err', 6000); return; }
       C.cfg = C.cfg || {};
       C.cfg.clientId = v;
       await cfgSet(C.cfg);
       C.tc = null;
-      toast('Client ID saved — now press “Sign in with Google”', 'ok', 5000);
+      toast('Client ID saved', 'ok', 2500);
       updModal();
     });
     el.btnSign.addEventListener('click', () => signIn('consent select_account'));
