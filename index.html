@@ -242,31 +242,38 @@
     .fhead .fname { font-weight: 600; color: #235d9c; font-size: 13.5px; }
     .fhead .fcount { color: #6b7f95; font-size: 12px; margin-left: 2px; }
     .row {
-      /* v3.11.0: Picasa home-screen layout — thumbnails keep their ORIGINAL
-         aspect ratio, all sharing one row height; no boxes, no letterbox */
+      /* v3.12.0: Picasa home screen — thumbnails keep their ORIGINAL aspect
+         ratio, filename printed UNDER each photo like Picasa 3 */
       display: flex;
       flex-wrap: wrap;
       align-items: flex-start;
-      gap: 9px;
+      gap: 16px 9px;
     }
     .cell {
       position: relative; flex: 0 0 auto;
+      display: flex; flex-direction: column;
+      background: transparent; border: none; box-shadow: none; border-radius: 0;
+      padding: 0; text-align: left;
+      /* v3.4.0 speed: browser skips painting off-screen cells entirely */
+      content-visibility: auto;
+      contain-intrinsic-size: auto 194px;
+    }
+    .cell .ph {
+      /* v3.12.0: the photo box itself takes the photo's true ratio (set in JS);
+         width follows from the fixed row height, caption sits below the box */
+      position: relative; display: flex; align-items: center; justify-content: center;
       height: var(--thumb); aspect-ratio: 1; /* square until the real ratio loads */
-      border-radius: 4px; overflow: hidden;
+      overflow: hidden; border-radius: 4px;
       background: #dcdcdc; border: 1px solid #b4b4b4;
       box-shadow: 0 1px 2px rgba(0,0,0,.14);
       transition: border-color .12s, box-shadow .12s;
-      text-align: left;
-      /* v3.4.0 speed: browser skips painting off-screen cells entirely */
-      content-visibility: auto;
-      contain-intrinsic-size: auto 172px;
     }
-    .cell:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(43,124,211,.35); }
-    .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-    .cell .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+    .cell:hover .ph { border-color: var(--accent); box-shadow: 0 2px 8px rgba(43,124,211,.35); }
+    .cell:focus-visible .ph { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .cell.sel .ph { outline: 3px solid var(--accent); outline-offset: -3px; }
     .cell .ph img {
-      /* v3.11.0: the cell itself takes the photo's true ratio (set in JS), so
-         cover now fills it edge-to-edge — the full photo, never a letterbox */
+      /* the box already matches the photo ratio — cover fills it edge-to-edge,
+         the full photo, never a letterbox */
       width: 100%; height: 100%; object-fit: cover; display: block;
       opacity: 0; transition: opacity .2s;
     }
@@ -281,13 +288,12 @@
     }
     .cell .ph.ready .spin { display: none; }
     .cell .cap {
-      position: absolute; left: 0; right: 0; bottom: 0;
-      padding: 20px 9px 6px; font-size: 11px; color: #f2f6fb;
-      background: linear-gradient(transparent, rgba(10,20,32,.82));
+      /* v3.12.0: filename printed under the photo, always visible — Picasa 3 style */
+      position: static; max-width: 100%;
+      padding: 4px 2px 0; font-size: 11px; color: #565d66;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      opacity: 0; transition: opacity .12s; pointer-events: none;
+      pointer-events: none;
     }
-    .cell:hover .cap { opacity: 1; }
     .cell .addbtn {
       position: absolute; top: 5px; right: 5px; width: 22px; height: 22px;
       border-radius: 50%; background: rgba(255,255,255,.94); color: var(--accent);
@@ -662,21 +668,49 @@
     .fxpager button:hover:not(:disabled) { border-color: var(--accent); background: #dcebfb; }
     .fxpager button:disabled { opacity: .4; cursor: default; }
     .c-prev { flex: 1; display: grid; place-items: center; background: #4d5055; padding: 14px; position: relative; overflow: auto; }
+    .c-canvaswrap { position: relative; display: inline-block; line-height: 0; max-width: 100%; max-height: 100%; }
     #cCanvas { max-width: 100%; max-height: 100%; box-shadow: 0 3px 18px rgba(0,0,0,.5); touch-action: none; }
-    /* v3.11.0: the collage maker is now a FULL-SCREEN editor (Picasa style) —
-       settings rail on the left, huge live preview, photos draggable */
+    #cOverlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    /* v3.12.0: Picasa "Picture Collage" engine — full-screen editor with a
+       settings rail, a photo toolbar and an interactive live canvas */
     #collage { padding: 0; place-items: stretch; }
     #collage .m-box { width: 100vw; height: 100vh; max-width: none; max-height: none; border-radius: 0; border: none; }
+    .c-tools {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      padding: 6px 12px; border-bottom: 1px solid #c8c5be;
+      background: linear-gradient(#f6f5f3, #e7e5e0);
+    }
+    .c-tools button {
+      padding: 5px 12px; font-size: 12.5px; color: #2c2f34;
+      border: 1px solid #bcb9b2; border-radius: 3px;
+      background: linear-gradient(#fdfdfc, #eceae5);
+    }
+    .c-tools button:hover { border-color: var(--accent); background: #eaf2fc; }
+    .c-tsep { width: 1px; height: 20px; background: #c4c1ba; margin: 0 4px; }
+    .c-toolinfo { margin-left: auto; font-size: 11.5px; color: #757a82; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .c-count { margin-left: auto; font-size: 12px; font-weight: 400; color: #6d7076; }
+    #collage .m-head .icobtn { margin-left: 0; }
+    .c-selbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+    .c-selbtns button {
+      padding: 6px 6px; font-size: 12px; color: #2c2f34;
+      border: 1px solid #c6c3bc; border-radius: 3px;
+      background: linear-gradient(#fdfdfc, #edece7);
+    }
+    .c-selbtns button:hover:not(:disabled) { border-color: var(--accent); background: #eaf2fc; }
+    .c-selbtns button:disabled { opacity: .45; cursor: default; }
+    .m-foot-l { display: flex; gap: 8px; margin-right: auto; flex-wrap: wrap; }
+    .m-foot-r { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .m-foot-l .btn, .m-foot-r .btn { min-width: 0; padding: 7px 13px; font-size: 12.5px; }
     .c-busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(30,32,36,.35); }
-    .m-foot { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid #bdbab3; background: #e2e0da; justify-content: flex-end; }
-    .m-foot .btn { min-width: 120px; justify-content: center; }
+    .m-foot { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid #bdbab3; background: #e2e0da; justify-content: flex-end; align-items: center; }
     .presets { display: flex; gap: 5px; margin-top: 6px; }
     .presets button { width: 22px; height: 22px; border-radius: 3px; border: 1px solid #9c9992; }
     .spin.big { width: 34px; height: 34px; border-width: 4px; }
 
     @media (max-width: 900px) {
       .e-panel { width: 258px; }
-      .c-side { width: 178px; }
+      .c-side { width: 196px; }
+      .c-toolinfo { display: none; }
     }
 
     /* narrower desktops: keep the Picasa left rail but slim it down */
@@ -878,7 +912,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.11.0</span>
+      <span class="ver">v3.12.0</span>
     </span>
   </footer>
 
@@ -1072,7 +1106,7 @@
     </footer>
   </div>
 
-  <!-- ===== Collage maker ===== -->
+  <!-- ===== Collage maker (Picasa "Picture Collage" engine, v3.12.0) ===== -->
   <div id="collage" class="modal" hidden role="dialog" aria-label="Collage maker">
     <div class="m-box">
       <header class="m-head">
@@ -1081,33 +1115,42 @@
           Back
         </button>
         Create Collage
+        <span id="cCount" class="c-count"></span>
         <button id="cClose" class="icobtn" type="button" aria-label="Close">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </button>
       </header>
+      <div class="c-tools">
+        <button id="cSelAll" type="button">Select All</button>
+        <button id="cSelNone" type="button">Select None</button>
+        <button id="cRemove" type="button">Remove</button>
+        <span class="c-tsep"></span>
+        <button id="cSetBg" type="button">Set as Background</button>
+        <span id="cToolInfo" class="c-toolinfo">Click a photo to select &bull; drag to move &bull; wheel resizes &bull; Shift+wheel rotates</span>
+      </div>
       <div class="c-body">
         <div class="c-side">
-          <h5>Type</h5>
+          <h5>Layout</h5>
           <div class="c-types">
             <button type="button" data-ct="pile" class="on">Picture Pile</button>
             <button type="button" data-ct="mosaic">Mosaic</button>
+            <button type="button" data-ct="grid">Grid</button>
             <button type="button" data-ct="frame">Frame Mosaic</button>
-            <button type="button" data-ct="grid">Picture Grid</button>
             <button type="button" data-ct="sheet">Contact Sheet</button>
             <button type="button" data-ct="mex">Multiple Exposure</button>
           </div>
           <h5>Page Format</h5>
           <select id="cFormat" style="width:100%">
-            <option value="4x3">4:3 (landscape)</option>
-            <option value="16x9">16:9 (widescreen)</option>
-            <option value="sq">Square (1:1)</option>
-            <option value="4x6">4x6 print</option>
-            <option value="5x7">5x7 print</option>
-            <option value="8x10">8x10 print</option>
-            <option value="11x14">11x14 print</option>
-            <option value="16x20">16x20 print</option>
-            <option value="a4">A4 paper</option>
-            <option value="letter">US Letter</option>
+            <option value="16x9">16:9 Screen (3840&times;2160)</option>
+            <option value="4x3" selected>4:3 (3200&times;2400)</option>
+            <option value="sq">Square 1:1 (3000&times;3000)</option>
+            <option value="4x6">4x6 Print (300 DPI)</option>
+            <option value="5x7">5x7 Print (300 DPI)</option>
+            <option value="8x10">8x10 Print (300 DPI)</option>
+            <option value="11x14">11x14 Print (300 DPI)</option>
+            <option value="16x20">16x20 Print (300 DPI)</option>
+            <option value="a4">A4 (300 DPI)</option>
+            <option value="letter">US Letter (300 DPI)</option>
           </select>
           <button id="cOrient" class="btn" type="button" style="width:100%;margin-top:8px;justify-content:center">Orientation: Landscape</button>
           <h5>Photo Borders</h5>
@@ -1116,33 +1159,59 @@
             <option value="white" selected>White border</option>
             <option value="polaroid">Polaroid frame</option>
           </select>
-          <label class="chkrow" style="margin-top:8px"><input type="checkbox" id="cBgPhoto" /> Use the first photo as background</label>
+          <div id="cSpacingRow" hidden>
+            <h5>Grid Spacing</h5>
+            <input id="cSpacing" type="range" min="0" max="40" value="10" style="width:100%" />
+          </div>
           <h5>Background</h5>
-          <input id="cBg" type="color" value="#f5f2ec" style="height:28px;width:100%" />
+          <label class="chkrow"><input type="checkbox" id="cBgPhoto" /> Blurred photo background</label>
+          <input id="cBg" type="color" value="#f5f2ec" style="height:28px;width:100%;margin-top:8px" />
           <div class="presets">
             <button type="button" data-bg="#ffffff" style="background:#ffffff" title="White"></button>
             <button type="button" data-bg="#000000" style="background:#000000" title="Black"></button>
             <button type="button" data-bg="#d8d4cc" style="background:#d8d4cc" title="Grey"></button>
             <button type="button" data-bg="#3e4650" style="background:#3e4650" title="Dark blue"></button>
           </div>
-          <div id="cSpacingRow" hidden>
-            <h5>Grid Spacing</h5>
-            <input id="cSpacing" type="range" min="0" max="60" value="10" style="width:100%" />
+          <button id="cShuffle" class="btn" type="button" style="margin-top:10px;width:100%;justify-content:center">Shuffle</button>
+          <div id="cSelRow">
+            <h5>Selected Photo</h5>
+            <div class="c-selbtns">
+              <button id="cFwd" type="button" title="Bring forward (])">Bring Forward</button>
+              <button id="cBack1" type="button" title="Send backward ([)">Send Back</button>
+              <button id="cRotL" type="button" title="Rotate left 90&deg;">&#8634; 90&deg;</button>
+              <button id="cRotR" type="button" title="Rotate right 90&deg;">&#8635; 90&deg;</button>
+              <button id="cBigger" type="button" title="Bigger (+)">Bigger +</button>
+              <button id="cSmaller" type="button" title="Smaller (&minus;)">Smaller &minus;</button>
+            </div>
           </div>
-          <button id="cShuffle" class="btn" type="button" hidden style="margin-top:10px;width:100%;justify-content:center">Shuffle</button>
           <p class="cnote" id="cNote"></p>
         </div>
         <div class="c-prev">
-          <canvas id="cCanvas" width="640" height="480"></canvas>
+          <div id="cWrap" class="c-canvaswrap">
+            <canvas id="cCanvas" width="640" height="480"></canvas>
+            <canvas id="cOverlay" width="640" height="480"></canvas>
+          </div>
           <div id="cBusy" class="c-busy" hidden><span class="spin big"></span></div>
         </div>
       </div>
       <footer class="m-foot">
-        <button id="cCancel" class="btn" type="button">Cancel</button>
-        <button id="cCreate" class="btn btn-accent" type="button">Create Collage</button>
-        <button id="cSaveDir" class="btn btn-accent" type="button" hidden>Save to Library</button>
-        <button id="cDownload" class="btn" type="button" hidden>Download</button>
-        <button id="cBack" class="btn" type="button" hidden>Back to Edit</button>
+        <div class="m-foot-l">
+          <button id="cScramble" class="btn" type="button" title="Re-lay the whole collage">Scramble Collage</button>
+          <button id="cShufflePics" class="btn" type="button" title="Shuffle the order of the photos">Shuffle Pictures</button>
+          <button id="cViewEdit" class="btn" type="button" title="Open the selected photo in the editor">View and Edit</button>
+        </div>
+        <div class="m-foot-r">
+          <select id="cExportFmt" title="Export file format" style="width:auto">
+            <option value="auto" selected>Auto (JPEG/PNG)</option>
+            <option value="jpeg">JPEG</option>
+            <option value="png">PNG</option>
+          </select>
+          <button id="cCancel" class="btn" type="button">Cancel</button>
+          <button id="cCreate" class="btn btn-accent" type="button">Create Collage</button>
+          <button id="cSaveDir" class="btn btn-accent" type="button" hidden>Save to Library</button>
+          <button id="cDownload" class="btn" type="button" hidden>Download</button>
+          <button id="cBack" class="btn" type="button" hidden>Back to Edit</button>
+        </div>
       </footer>
     </div>
   </div>
@@ -1809,9 +1878,8 @@
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'cell'; btn.title = entry.p.name;
       btn.dataset.key = photoKey(entry.p);
-      /* v3.11.0: if the photo's true ratio is already known (decoded before),
-         size the cell to it right away — no square flash on re-render */
-      if (entry.p.w && entry.p.h) btn.style.aspectRatio = `${entry.p.w} / ${entry.p.h}`;
+      /* v3.12.0: if the photo's true ratio is already known (decoded before),
+         size the photo box to it right away — no square flash on re-render */
       if (selSet().has(btn.dataset.key)) btn.classList.add('sel');
       const ph = document.createElement('span');
       ph.className = 'ph'; ph.dataset.pi = entry.idx;
@@ -1825,6 +1893,7 @@
       add.title = 'Add to Photo Tray';
       add.addEventListener('click', (e) => { e.stopPropagation(); toggleSel(entry.p); });
       btn.appendChild(ph); btn.appendChild(cap); btn.appendChild(chk); btn.appendChild(add);
+      if (entry.p.w && entry.p.h) ph.style.aspectRatio = `${entry.p.w} / ${entry.p.h}`;
       /* single click = select (Photo Tray), double click = open the editor */
       btn.addEventListener('click', (e) => {
         if (e.detail >= 2) {
@@ -1923,12 +1992,9 @@
         const url = await getThumbURL(p);
         if (!ph.isConnected) return;
         if (url) {
-          /* v3.11.0: resize the cell to the photo's real ratio before the
+          /* v3.12.0: resize the photo box to the photo's real ratio before the
              image fades in, so nothing is cropped and no bands are shown */
-          if (p.w && p.h) {
-            const cell = ph.closest('.cell');
-            if (cell) cell.style.aspectRatio = `${p.w} / ${p.h}`;
-          }
+          if (p.w && p.h) ph.style.aspectRatio = `${p.w} / ${p.h}`;
           const img = new Image();
           img.alt = p.name; img.decoding = 'async';
           img.onload = () => ph.classList.add('ready');
@@ -2322,7 +2388,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.11.0', 'ok', 2500);
+          toast('S H I V A M PIXA v3.12.0', 'ok', 2500);
           break;
       }
     }
