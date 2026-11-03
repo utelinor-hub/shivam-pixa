@@ -71,7 +71,7 @@
     el.bgPhoto.checked = C.bgPhoto;
     el.cCreate.hidden = false; el.cCancel.hidden = false;
     el.cSaveDir.hidden = true; el.cDownload.hidden = !proj.previewBlob; el.cBack.hidden = true;
-    el.note.textContent = `Auto-saved collage reopened (${proj.photos.length} photos) — press Create to save it, or Download it.`;
+    el.note.textContent = `Auto-saved collage reopened (${proj.photos.length} photos)`;
     updateUI();
     el.busy.hidden = false;
     const out = [];
@@ -86,7 +86,7 @@
       if (C.url) URL.revokeObjectURL(C.url);
       C.url = URL.createObjectURL(C.blob);
     }
-    toast('Previous collage restored \u2713 \u2014 nothing is ever lost, everything auto-saves', 'ok', 4500);
+    toast('Previous collage restored', 'ok', 3000);
   }
 
   function dims() {
@@ -315,7 +315,7 @@
     el.root.hidden = false;
     el.cCreate.hidden = false; el.cCancel.hidden = false;
     el.cSaveDir.hidden = true; el.cDownload.hidden = true; el.cBack.hidden = true;
-    el.note.textContent = `${C.list.length} ${C.list.length === 1 ? 'photo used' : 'photos used'}${list.length > 40 ? ' (first 40)' : ''}. To use more photos, select them in the Photo Tray first.`;
+    el.note.textContent = `${C.list.length} ${C.list.length === 1 ? 'photo used' : 'photos used'}${list.length > 40 ? ' (first 40)' : ''}`;
     updateUI();
     await loadImgs();
     renderPreview();
@@ -343,7 +343,7 @@
     el.canvas.getContext('2d').drawImage(c, 0, 0);
     el.cCreate.hidden = true; el.cCancel.hidden = true;
     el.cSaveDir.hidden = false; el.cDownload.hidden = false; el.cBack.hidden = false;
-    el.note.textContent = `Collage ready (${W} \u00D7 ${H}px). Save or download it. \u2713 Auto-saved too \u2014 it will be restored even after a shutdown.`;
+    el.note.textContent = `Collage ready (${W} \u00D7 ${H}px)`;
     saveCollageProject();
   }
 
