@@ -912,7 +912,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.12.0</span>
+      <span class="ver">v3.12.1</span>
     </span>
   </footer>
 
@@ -1833,7 +1833,20 @@
       els.grid.hidden = !has;
       els.grid.innerHTML = '';
       renderCursor = 0;
-      if (has) renderMore();
+      if (!has) return;
+      renderMore();
+      /* v3.12.1: the lazy-render sentinel only fires IntersectionObserver on a
+         VISIBLE→NOT-VISIBLE flip. When the whole library is short (small
+         folders, tall screen) the sentinel never leaves the 800px lookahead
+         zone, so groups after the first were silently never drawn — folders
+         appeared to "disappear". Render groups eagerly while it is near. */
+      const mainEl = document.querySelector('main');
+      while (renderCursor < state.groups.length) {
+        const sr = els.sentinel.getBoundingClientRect();
+        const mr = mainEl.getBoundingClientRect();
+        if (sr.top <= mr.bottom + 800 && sr.bottom >= mr.top - 800) renderMore();
+        else break;
+      }
     }
 
     function renderMore() {
@@ -2388,7 +2401,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.12.0', 'ok', 2500);
+          toast('S H I V A M PIXA v3.12.1', 'ok', 2500);
           break;
       }
     }
