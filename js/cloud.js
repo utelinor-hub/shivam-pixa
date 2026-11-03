@@ -17,6 +17,12 @@
    now explained inside the app instead of a generic "window closed": the
    message tells the owner exactly where to add the account as a test user
    or to publish the app to Production (OAuth consent screen → Audience).
+   v3.14.1 — the "login completes but the chip goes red" case is diagnosed
+   in-app now: a broken Cloud project (Drive API switched off, blocked
+   origin) is caught the moment you sign in, the Cloud dialog shows the
+   exact reason in plain English, and a one-click "Enable Drive API" button
+   opens the right Google Cloud Console page. Every failed Drive response
+   is translated (rate limit, permission, session expired, Google outage).
 
    How it works (design goals):
    • Sign in with Google → each user gets their own private folder
@@ -97,13 +103,15 @@
     gisLoaded: false,
     enabled: false,
     everSignedIn: false,  // true only after a successful sign-in on this PC
-    pendingAdopt: 0
+    pendingAdopt: 0,
+    fixUrl: null          // console page that fixes the current error (button in the dialog)
   };
 
   const el = {
     chip: null, label: null,
     modal: null, clientId: null, email: null, line: null, diag: null,
-    btnSaveId: null, btnSign: null, btnNow: null, btnOut: null, btnFree: null
+    btnSaveId: null, btnSign: null, btnNow: null, btnOut: null, btnFree: null,
+    btnEnable: null
   };
 
   /* ================= IndexedDB 'cloudblobs' store (full-size cache) ================= */
@@ -115,6 +123,7 @@
   function setStatus_(st, note) {
     C.status = st;
     C.statusNote = note || '';
+    if (st === 'ok') C.fixUrl = null;   // error solved — hide the console-fix button
     if (!el.chip) return;
     const dot = el.chip.querySelector('.cdot');
     el.chip.classList.remove('st-err', 'st-ok', 'st-run');
@@ -215,6 +224,7 @@
       access_denied: 'Google blocked this account (“Access blocked — Error 403: access_denied”). The app is in Testing mode, so only pre-approved accounts may sign in. Fix: open console.cloud.google.com → APIs & Services → OAuth consent screen (Google Auth Platform) → Audience, then either add this Google account under “Test users”, or set Publishing status to “In production” — then sign in again.',
       startup_failed: 'Google sign-in could not start (browser or network issue) — reload the page and try again'
     };
+    if (type === 'access_denied') C.fixUrl = CONSOLE_AUDIENCE();
     if (type && map[type]) return map[type];
     return (err && (err.message || err.type)) || 'The Google window was closed or blocked';
   }
@@ -236,6 +246,48 @@
   }
 
   const hasToken = () => !!(C.token && Date.now() < C.tokenExp);
+
+  /* v3.14.1: failed Drive responses become plain sentences with the exact
+     fix. Console-fixable problems (Drive API switched off, Testing-mode 403)
+     also set C.fixUrl — the Cloud dialog then shows a one-click button that
+     opens the right Google Cloud Console page. */
+  const PROJECT_ID = DEFAULT_CLIENT_ID.split('-')[0] || '';
+  const CONSOLE_ENABLE = (p) => `https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=${p || PROJECT_ID}`;
+  const CONSOLE_AUDIENCE = (p) => `https://console.cloud.google.com/auth/audience?project=${p || PROJECT_ID}`;
+
+  async function driveErrText(r) {
+    C.fixUrl = null;
+    let body = '', reason = '', msg = '';
+    try {
+      body = await r.text();
+      const j = JSON.parse(body);
+      const e = j.error || {};
+      const er = (e.errors && e.errors[0]) || {};
+      reason = er.reason || (e.details && e.details[0] && e.details[0].reason) || '';
+      msg = e.message || er.message || '';
+    } catch (err) { /* non-JSON body */ }
+    const all = (reason + ' ' + msg + ' ' + body).toLowerCase();
+    if (r.status === 403 &&
+        (all.includes('accessnotconfigured') || all.includes('has not been used') ||
+         all.includes('api_target_not_enabled') || all.includes('servicedisabled') ||
+         all.includes('has not been enabled') || all.includes('is disabled'))) {
+      const m = body.match(/project=(\d+)/);
+      C.fixUrl = CONSOLE_ENABLE(m && m[1]);
+      return 'Google Drive API is switched OFF in your Cloud project — press "Enable Drive API" below, then wait about 1 minute (sync restarts on its own)';
+    }
+    if (all.includes('ratelimit') || all.includes('userratelimit') || all.includes('quotaexceeded') ||
+        all.includes('resource_exhausted') || all.includes('dailylimit') || r.status === 429) {
+      return 'Google is rate-limiting for a moment — sync will retry automatically';
+    }
+    if (r.status === 401) return 'Google session expired — press "Sign in with Google" to reconnect';
+    if (r.status === 403) {
+      C.fixUrl = CONSOLE_AUDIENCE();
+      return 'Google refused this request (permission) — sign out, sign in again and tick all the checkboxes; if it repeats, open the Cloud Console with the button below';
+    }
+    if (r.status >= 500) return 'Google Drive had a temporary problem — sync will retry automatically';
+    const short = (msg || '').replace(/\s+/g, ' ').trim().slice(0, 140);
+    return `Google Drive error (${r.status})${short ? ': ' + short : ''}`;
+  }
 
   /* Silent token renewal — ONLY for PCs that signed in successfully before.
      A successful sign-in proves this origin is authorized in the Google Cloud
@@ -266,7 +318,7 @@
   async function findFolder() {
     const q = encodeURIComponent(`name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false and 'root' in parents`);
     const r = await authFetch(`${DRIVE}/files?q=${q}&fields=files(id,name)&pageSize=5`);
-    if (!r.ok) throw new Error('Drive search failed (' + r.status + ')');
+    if (!r.ok) throw new Error(await driveErrText(r));
     const j = await r.json();
     if (j.files && j.files.length) return j.files[0].id;
     const cr = await authFetch(`${DRIVE}/files`, {
@@ -274,7 +326,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
     });
-    if (!cr.ok) throw new Error('Could not create the Drive folder (' + cr.status + ')');
+    if (!cr.ok) throw new Error(await driveErrText(cr));
     return (await cr.json()).id;
   }
 
@@ -295,13 +347,13 @@
   async function uploadNew(blob, name, appProps) {
     const body = multipartBody({ name, parents: [C.folderId], appProperties: appProps || {} }, blob);
     const r = await authFetch(`${UPLOAD}/files?uploadType=multipart&fields=id`, { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=pixabnd' }, body });
-    if (!r.ok) throw new Error('Upload failed (' + r.status + ')');
+    if (!r.ok) throw new Error(await driveErrText(r));
     return (await r.json()).id;
   }
 
   async function updateMedia(fileId, blob) {
     const r = await authFetch(`${UPLOAD}/files/${fileId}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': blob.type || 'application/octet-stream' }, body: blob });
-    if (!r.ok) throw new Error('Update failed (' + r.status + ')');
+    if (!r.ok) throw new Error(await driveErrText(r));
     return true;
   }
 
@@ -319,7 +371,7 @@
     if (!C.manifestId) return null;
     const r = await authFetch(`${DRIVE}/files/${C.manifestId}?alt=media`);
     if (r.status === 404) return null;
-    if (!r.ok) throw new Error('Could not read sync data (' + r.status + ')');
+    if (!r.ok) throw new Error(await driveErrText(r));
     const txt = await r.text();
     try { return JSON.parse(txt); } catch (e) { return null; }
   }
@@ -329,10 +381,10 @@
     const body = multipartBody({ name: MANIFEST_NAME, parents: [C.folderId] }, new Blob([JSON.stringify(m)], { type: 'application/json' }));
     if (C.manifestId) {
       const r = await authFetch(`${UPLOAD}/files/${C.manifestId}?uploadType=multipart&fields=id`, { method: 'PATCH', body });
-      if (!r.ok) throw new Error('Could not save sync data (' + r.status + ')');
+      if (!r.ok) throw new Error(await driveErrText(r));
     } else {
       const r = await authFetch(`${UPLOAD}/files?uploadType=multipart&fields=id`, { method: 'POST', body });
-      if (!r.ok) throw new Error('Could not save sync data (' + r.status + ')');
+      if (!r.ok) throw new Error(await driveErrText(r));
       C.manifestId = (await r.json()).id;
     }
     C.remote = m;
@@ -767,8 +819,17 @@
         return;
       }
       setStatus_('connecting');
+      C.fixUrl = null;
       await askToken(mode);
-      const info = await authFetch(`${DRIVE}/about?fields=user`).then((r) => r.ok ? r.json() : null).catch(() => null);
+      /* v3.14.1: verify the Drive project the moment we hold a token — a
+         broken Cloud project (Drive API off, blocked origin) fails HERE with
+         the exact fix on screen, instead of “login done” followed by a
+         silent red chip seconds later */
+      const aboutResp = await authFetch(`${DRIVE}/about?fields=user`).catch(() => null);
+      if (aboutResp && !aboutResp.ok && aboutResp.status < 500 && aboutResp.status !== 429) {
+        throw new Error(await driveErrText(aboutResp));
+      }
+      const info = (aboutResp && aboutResp.ok) ? await aboutResp.json().catch(() => null) : null;
       if (info && info.user && info.user.emailAddress) { C.cfg.email = info.user.emailAddress; await cfgSet(C.cfg); }
       C.everSignedIn = true;
       C.enabled = true;
@@ -828,6 +889,8 @@
     /* v3.9.0: keep the exact error visible inside the dialog — the old code
        dropped C.statusNote here, so failures showed only a 7-second toast */
     el.line.textContent = (stTxt[C.status] || '') + (C.statusNote ? ` — ${C.statusNote}` : '');
+    /* v3.14.1: console-fixable error → show the one-click fix button */
+    if (el.btnEnable) el.btnEnable.hidden = !C.fixUrl;
     if (el.diag) {
       const allowed = originAllowed();
       const cid = (C.cfg && C.cfg.clientId) || '';
@@ -871,6 +934,9 @@
     el.btnSign.addEventListener('click', () => signIn('consent select_account'));
     el.btnNow.addEventListener('click', () => { if (hasToken()) { pullCycle({ manual: true }); } else signIn(''); });
     el.btnOut.addEventListener('click', signOut);
+    /* v3.14.1: one-click jump to the exact Google Cloud Console page */
+    el.btnEnable = document.getElementById('cloudEnable');
+    if (el.btnEnable) el.btnEnable.addEventListener('click', () => { if (C.fixUrl) window.open(C.fixUrl, '_blank', 'noopener'); });
   }
 
   /* ================= boot ================= */
