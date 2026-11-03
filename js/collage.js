@@ -1,6 +1,12 @@
 /* SHIVAM PIXA — collage.js  (v3.15.0 "Picasa Picture Collage" engine)
    Free-form Picasa-style picture pile + interactive HTML5-canvas renderer.
 
+   v3.15.2 FIX — drag-to-move could die completely on some machines: one
+   missed pointerup left a ghost pointer in the pointer map, every later
+   press looked like a 2-finger pinch and bailed out. Pointer move/up now
+   live on the window (whole gesture always seen) and a mouse press flushes
+   stale pointers, so dragging can never get stuck again.
+
    v3.15.0: the Layout modes were removed (Picasa-style: everything is one
    free pile — place any photo anywhere). Page Format gained a Custom ratio.
    Dragging is Picasa-smooth now: while a photo is being dragged/rotated/
@@ -692,13 +698,104 @@
 
   function wireInteractions() {
     const cv = el.canvas;
+    /* v3.15.2 FIX — "drag to move is dead": pointermove/pointerup used to sit
+       on the CANVAS only. One missed pointerup (a touch contact the browser
+       cancelled elsewhere, a capture that silently failed, releasing the
+       mouse over another element) left a GHOST pointer inside `ptrs`
+       forever — the next pointerdown then looked like a 2-finger pinch,
+       startPinch() bailed out, and every drag stayed dead (photos were still
+       selectable, but nothing ever moved) until the page was reloaded.
+       Now: move/up/cancel live on WINDOW (the whole gesture is always seen),
+       and a mouse pointerdown flushes stale entries, so the trap can never
+       re-arm. */
+    const onMove = (e) => {
+      if (!C.open || el.root.hidden) return;
+      const pt = canvasPt(e);
+      if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, pt);
+      if (drag && drag.mode === 'pinch') { pinchUpdate(); return; }
+      if (!drag) {
+        const r = cv.getBoundingClientRect();
+        if (e.clientX < r.left || e.clientX >= r.right || e.clientY < r.top || e.clientY >= r.bottom) return;
+        if (finalized()) { cv.style.cursor = 'default'; return; }
+        const hit = C.type === 'pile' ? hitPhoto(pt) : (SLOTTED.includes(C.type) ? hitCell(pt) : -1);
+        cv.style.cursor = hit >= 0 ? 'grab' : 'default';
+        return;
+      }
+      switch (drag.mode) {
+        case 'move': {
+          const dx = (pt.x - drag.pt.x) / el.canvas.width;
+          const dy = (pt.y - drag.pt.y) / el.canvas.height;
+          C.pos = C.pos || [];
+          for (const j of C.sel) {
+            const s = drag.snap[j]; if (!s) continue;
+            C.pos[j] = { x: clamp(s.x + dx, -0.5, 1.5), y: clamp(s.y + dy, -0.5, 1.5), rot: s.rot, scale: s.scale };
+          }
+          drag.pt = pt;
+          dragPaint();
+          break;
+        }
+        case 'rot': {
+          const L = C.layout[drag.i];
+          const a = Math.atan2(pt.y - L.py, pt.x - L.px);
+          let rot = drag.start.rot + (a - drag.a0);
+          const snap90 = Math.round(rot / (Math.PI / 2)) * (Math.PI / 2);
+          if (Math.abs(rot - snap90) < 4 * DEG) rot = snap90;   /* magnetic 0/90/180/270 */
+          C.pos = C.pos || [];
+          C.pos[drag.i] = { x: drag.start.x, y: drag.start.y, rot, scale: drag.start.scale };
+          dragPaint();
+          break;
+        }
+        case 'scale': {
+          const L = C.layout[drag.i];
+          const d = dist(pt, { x: L.px, y: L.py });
+          C.pos = C.pos || [];
+          C.pos[drag.i] = { x: drag.start.x, y: drag.start.y, rot: drag.start.rot,
+                            scale: clamp(drag.start.scale * d / drag.d0, 0.2, 4) };
+          dragPaint();
+          break;
+        }
+        case 'swap': {
+          const over = hitCell(pt);
+          if (over !== swapTarget) { swapTarget = over; paintOverlay(); }
+          break;
+        }
+      }
+    };
+    const onUp = (e) => {
+      if (!C.open) return;
+      const known = e && ptrs.has(e.pointerId);
+      if (e && !drag && !known) return;   /* an ordinary click elsewhere in the app */
+      if (known) ptrs.delete(e.pointerId);
+      if (drag && drag.mode === 'pinch' && ptrs.size >= 2) return;  /* still pinching */
+      if (drag && drag.mode === 'swap') {
+        if (swapTarget >= 0 && swapTarget !== drag.from) {
+          const a = drag.from, b = swapTarget;
+          [C.imgs[a], C.imgs[b]] = [C.imgs[b], C.imgs[a]];
+          if (C.list && C.list[a] && C.list[b]) { const t = C.list[a]; C.list[a] = C.list[b]; C.list[b] = t; }
+          C.sel = new Set([a]);
+          scheduleRedraw(true);
+        }
+      } else if (drag) {
+        scheduleColSave();
+      }
+      drag = null;
+      swapTarget = -1;
+      endGesture();
+      clearTimeout(wheelT);
+      el.canvas.style.cursor = 'default';
+      scheduleRedraw(true);
+    };
     cv.addEventListener('pointerdown', (e) => {
-      if (!C.open || finalized()) return;
+      if (!C.open || finalized() || el.root.hidden) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();   /* no native text-selection / ghost image drag */
+      if (e.pointerType === 'mouse') ptrs.clear();   /* a mouse is one pointer: flush ghosts */
+      if (drag && drag.mode === 'wheel') { drag = null; endGesture(); clearTimeout(wheelT); }
       const pt = canvasPt(e);
       ptrs.set(e.pointerId, pt);
       try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
       if (C.type === 'pile') {
-        if (ptrs.size === 2) { startPinch(); return; }
+        if (ptrs.size >= 2) { startPinch(); return; }
         /* handles first (single selection) */
         if (C.sel.size === 1) {
           const i = [...C.sel][0];
@@ -752,80 +849,17 @@
       }
     });
 
-    cv.addEventListener('pointermove', (e) => {
-      if (!C.open) return;
-      const pt = canvasPt(e);
-      if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, pt);
-      if (drag && drag.mode === 'pinch') { pinchUpdate(); return; }
-      if (!drag) {
-        if (finalized()) { cv.style.cursor = 'default'; return; }
-        const hit = C.type === 'pile' ? hitPhoto(pt) : (SLOTTED.includes(C.type) ? hitCell(pt) : -1);
-        cv.style.cursor = hit >= 0 ? 'grab' : 'default';
-        return;
-      }
-      switch (drag.mode) {
-        case 'move': {
-          const dx = (pt.x - drag.pt.x) / el.canvas.width;
-          const dy = (pt.y - drag.pt.y) / el.canvas.height;
-          C.pos = C.pos || [];
-          for (const j of C.sel) {
-            const s = drag.snap[j]; if (!s) continue;
-            C.pos[j] = { x: clamp(s.x + dx, -0.5, 1.5), y: clamp(s.y + dy, -0.5, 1.5), rot: s.rot, scale: s.scale };
-          }
-          drag.pt = pt;
-          dragPaint();
-          break;
-        }
-        case 'rot': {
-          const L = C.layout[drag.i];
-          const a = Math.atan2(pt.y - L.py, pt.x - L.px);
-          let rot = drag.start.rot + (a - drag.a0);
-          const snap90 = Math.round(rot / (Math.PI / 2)) * (Math.PI / 2);
-          if (Math.abs(rot - snap90) < 4 * DEG) rot = snap90;   /* magnetic 0/90/180/270 */
-          C.pos = C.pos || [];
-          C.pos[drag.i] = { x: drag.start.x, y: drag.start.y, rot, scale: drag.start.scale };
-          dragPaint();
-          break;
-        }
-        case 'scale': {
-          const L = C.layout[drag.i];
-          const d = dist(pt, { x: L.px, y: L.py });
-          C.pos = C.pos || [];
-          C.pos[drag.i] = { x: drag.start.x, y: drag.start.y, rot: drag.start.rot,
-                            scale: clamp(drag.start.scale * d / drag.d0, 0.2, 4) };
-          dragPaint();
-          break;
-        }
-        case 'swap': {
-          const over = hitCell(pt);
-          if (over !== swapTarget) { swapTarget = over; paintOverlay(); }
-          break;
-        }
-      }
-    });
-
-    const endDrag = (e) => {
-      if (e && ptrs.has(e.pointerId)) ptrs.delete(e.pointerId);
-      if (drag && drag.mode === 'pinch' && ptrs.size >= 2) return;  /* still pinching */
-      if (drag && drag.mode === 'swap') {
-        if (swapTarget >= 0 && swapTarget !== drag.from) {
-          const a = drag.from, b = swapTarget;
-          [C.imgs[a], C.imgs[b]] = [C.imgs[b], C.imgs[a]];
-          if (C.list && C.list[a] && C.list[b]) { const t = C.list[a]; C.list[a] = C.list[b]; C.list[b] = t; }
-          C.sel = new Set([a]);
-          scheduleRedraw(true);
-        }
-      } else if (drag) {
-        scheduleColSave();
-      }
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('blur', () => {
+      ptrs.clear();   /* alt-tab / window switch: every pointer is gone */
       drag = null;
       swapTarget = -1;
       endGesture();
       clearTimeout(wheelT);
-      if (C.open) { el.canvas.style.cursor = 'default'; scheduleRedraw(true); }
-    };
-    cv.addEventListener('pointerup', endDrag);
-    cv.addEventListener('pointercancel', endDrag);
+      if (C.open) cv.style.cursor = 'default';
+    });
 
     cv.addEventListener('wheel', (e) => {
       if (!C.open || finalized() || C.type !== 'pile') return;
