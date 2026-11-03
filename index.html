@@ -495,16 +495,18 @@
       display: flex; align-items: center; gap: 12px; padding: 7px 12px;
       background: linear-gradient(#f8f7f5, #dedcd6); border-bottom: 1px solid #b8b5ae;
     }
+    .e-top .btn-tools { display: none; }
     .btn-green {
       background: linear-gradient(#a4d055, #77ab2e); color: #fff; font-weight: 700;
       border: 1px solid #5d8a20; border-radius: 4px; padding: 7px 14px; font-size: 13px;
       text-shadow: 0 1px 1px rgba(0,0,0,.25); display: inline-flex; align-items: center; gap: 7px;
     }
     .btn-green:hover { background: linear-gradient(#aed95f, #83b836); }
+    .btn-green { white-space: nowrap; }
     .e-name { font-weight: 600; font-size: 13px; color: #33363b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .e-count { font-size: 12px; color: #71747a; white-space: nowrap; }
     .e-nav { margin-left: auto; display: flex; gap: 4px; }
-    .e-body { flex: 1; display: flex; min-height: 0; }
+    .e-body { flex: 1; display: flex; min-height: 0; flex-direction: row-reverse; position: relative; }
     .e-stage {
       flex: 1; min-width: 0; position: relative; background: #4d5055;
       display: grid; place-items: center; overflow: auto; padding: 18px;
@@ -516,7 +518,7 @@
       letter-spacing: .14em; padding: 5px 11px; border-radius: 3px;
     }
     #eHist { width: 100%; height: 84px; display: block; background: #191b1f; border: 1px solid #3a3d42; border-radius: 4px; margin: 0 0 4px; }
-    .e-panel { width: 302px; background: #eceae5; border-left: 1px solid #bcb9b2; display: flex; flex-direction: column; }
+    .e-panel { width: 302px; background: #eceae5; border-right: 1px solid #bcb9b2; display: flex; flex-direction: column; }
     .e-tabs { display: flex; border-bottom: 1px solid #bdbab3; background: #dfddd7; }
     .e-tabs button {
       flex: 1; padding: 9px 4px; font-size: 12px; font-weight: 700; color: #55585e;
@@ -568,6 +570,28 @@
     .e-bottom input[type="range"] { width: 150px; accent-color: var(--accent); }
     .e-zoomlab { white-space: nowrap; }
     .e-dims { margin-left: auto; font-variant-numeric: tabular-nums; }
+    .e-exif { font-variant-numeric: tabular-nums; color: #3c3f45; font-weight: 600; white-space: nowrap; }
+    .e-exif:empty { display: none; }
+
+    /* editor on phones: the photo takes the WHOLE screen — the tool panel
+       becomes a slide-out drawer toggled by the Tools button (Picasa-style
+       full-bleed editing, no more tiny photo box) */
+    @media (max-width: 760px) {
+      .e-top .btn-tools { display: inline-flex; }
+      .e-top { gap: 8px; padding: 6px 8px; }
+      .btn-green { padding: 7px 10px; font-size: 12px; }
+      .e-name { font-size: 12px; }
+      .e-panel {
+        position: absolute; z-index: 30; top: 0; bottom: 0; left: 0; width: min(84vw, 320px);
+        box-shadow: 8px 0 28px rgba(0,0,0,.42);
+        transform: translateX(-103%); transition: transform .22s ease;
+      }
+      .editor.tools-open .e-panel { transform: none; }
+      .e-stage { padding: 10px; }
+      .e-actions { flex-wrap: wrap; }
+      .e-bottom { gap: 8px; padding: 6px 8px; flex-wrap: wrap; }
+      .e-bottom input[type="range"] { width: 110px; }
+    }
 
     /* crop overlay */
     #eCrop { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); cursor: move; z-index: 5; }
@@ -633,6 +657,12 @@
     @media (max-width: 900px) {
       .e-panel { width: 258px; }
       .c-side { width: 178px; }
+    }
+
+    /* narrower desktops: keep the Picasa left rail but slim it down */
+    @media (max-width: 900px) and (min-width: 761px) {
+      .e-panel { width: 232px; }
+      .e-tabbody { padding: 8px; }
     }
 
     @media (max-width: 760px) {
@@ -829,7 +859,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.8.0</span>
+      <span class="ver">v3.9.0</span>
     </span>
   </footer>
 
@@ -909,6 +939,10 @@
           <div id="cloudEmail" style="font-size:12px;color:#667;margin-top:3px">Not signed in</div>
         </div>
         <div class="cl-sec">
+          <h5>Sign-in diagnostics</h5>
+          <div id="cloudDiag" style="font-size:11.5px;color:#556;line-height:1.55;white-space:pre-line"></div>
+        </div>
+        <div class="cl-sec">
           <h5>Client ID</h5>
           <div class="cl-row">
             <input id="cloudClientId" type="text" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false" />
@@ -930,6 +964,10 @@
       <button id="eBack" class="btn-green" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Back to Library
+      </button>
+      <button id="eTools" class="btn-tools btn-green" type="button" title="Show or hide the editing tools">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16M4 12h16M4 17.5h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        Tools
       </button>
       <span id="eName" class="e-name"></span>
       <span id="eCount" class="e-count"></span>
@@ -1010,6 +1048,7 @@
       <span class="e-zoomlab">Zoom</span>
       <input id="eZoom" type="range" min="15" max="300" value="100" />
       <button id="eFit" class="linkbtn" type="button">Fit</button>
+      <span class="e-exif" id="eExif"></span>
       <span class="e-dims" id="eDims"></span>
     </footer>
   </div>
@@ -2168,7 +2207,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.8.0', 'ok', 2500);
+          toast('S H I V A M PIXA v3.9.0', 'ok', 2500);
           break;
       }
     }

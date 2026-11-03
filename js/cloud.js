@@ -4,6 +4,11 @@
    v3.8.0 — adopts photos that other apps upload straight into the
    "SHIVAM PIXA" Drive folder (e.g. an auto-upload app on the phone),
    so camera photos can reach every PC without touching PIXA.
+   v3.9.0 — sign-in failures are now impossible to miss: the exact reason
+   stays visible inside the Cloud dialog (the old toast vanished after a
+   few seconds), cryptic Google error codes are translated into plain
+   sentences with the fix, and a diagnostics block shows the site origin,
+   the origin check and the client ID in use.
 
    How it works (design goals):
    • Sign in with Google → each user gets their own private folder
@@ -89,7 +94,7 @@
 
   const el = {
     chip: null, label: null,
-    modal: null, clientId: null, email: null, line: null,
+    modal: null, clientId: null, email: null, line: null, diag: null,
     btnSaveId: null, btnSign: null, btnNow: null, btnOut: null, btnFree: null
   };
 
@@ -169,7 +174,7 @@
     return new Promise((resolve, reject) => {
       const origC = tc.callback, origE = tc.error_callback;
       const restore = () => { tc.callback = origC; try { tc.error_callback = origE; } catch (e) {} clearTimeout(timer); };
-      const timer = setTimeout(() => { restore(); reject(new Error('Google sign-in timed out')); }, 120000);
+      const timer = setTimeout(() => { restore(); reject(new Error('Google sign-in timed out — press “Sign in with Google” again and complete the window')); }, 120000);
       tc.callback = (resp) => {
         restore();
         if (resp && resp.access_token) resolve(resp.access_token);
@@ -177,11 +182,27 @@
       };
       tc.error_callback = (err) => {
         restore();
-        reject(new Error((err && (err.message || err.type)) || 'The Google window was closed or blocked'));
+        reject(new Error(gisErrText(err)));
       };
       try { tc.requestAccessToken({ prompt: promptMode || '' }); }
       catch (e) { restore(); reject(e); }
     });
+  }
+
+  /* v3.9.0: translate cryptic GIS error types into plain sentences with the
+     actual fix — previously the user only saw codes like “popup_closed” */
+  function gisErrText(err) {
+    const type = (err && err.type) || '';
+    const map = {
+      popup_failed_to_open: 'The Google window could not open — allow pop-ups for this site, then press “Sign in with Google” again',
+      popup_closed: 'The Google window closed before sign-in finished — if your browser shows a pop-up-blocker icon in the address bar, allow pop-ups and try again',
+      popup_closed_by_user: 'Sign-in was cancelled — the Google window was closed before it finished',
+      popup_closed_by_click_away: 'The Google window closed when you clicked elsewhere — press “Sign in with Google” and complete the window',
+      access_denied: 'Google refused this account — if this Google account is new to PIXA, first sign in once with the account that created the app, or add this account as a test user in Google Cloud Console (OAuth consent screen)',
+      startup_failed: 'Google sign-in could not start (browser or network issue) — reload the page and try again'
+    };
+    if (type && map[type]) return map[type];
+    return (err && (err.message || err.type)) || 'The Google window was closed or blocked';
   }
 
   const hasToken = () => !!(C.token && Date.now() < C.tokenExp);
@@ -770,7 +791,18 @@
     el.btnOut.disabled = !C.enabled;
     const stTxt = { off: 'Cloud sync is off', setup: 'Paste your Client ID', out: 'Signed out',
       connecting: 'Connecting…', syncing: 'Syncing…', ok: 'Everything is synced', err: 'Will retry automatically' };
-    el.line.textContent = stTxt[C.status] || '';
+    /* v3.9.0: keep the exact error visible inside the dialog — the old code
+       dropped C.statusNote here, so failures showed only a 7-second toast */
+    el.line.textContent = (stTxt[C.status] || '') + (C.statusNote ? ` — ${C.statusNote}` : '');
+    if (el.diag) {
+      const allowed = originAllowed();
+      const cid = (C.cfg && C.cfg.clientId) || '';
+      el.diag.textContent =
+        `Site: ${location.origin}\n` +
+        `Origin check: ${allowed ? 'allowed ✓' : 'NOT allowed ✗ — sign-in only works on the official site'}\n` +
+        `Client ID: ${cid ? cid.slice(0, 14) + '…' + cid.slice(-8) : 'missing'}\n` +
+        (C.statusNote ? `Note: ${C.statusNote}` : 'No errors recorded');
+    }
   }
 
   function wireUI() {
@@ -781,6 +813,7 @@
     el.clientId = document.getElementById('cloudClientId');
     el.email = document.getElementById('cloudEmail');
     el.line = document.getElementById('cloudLine');
+    el.diag = document.getElementById('cloudDiag');
     el.btnSaveId = document.getElementById('cloudSaveId');
     el.btnSign = document.getElementById('cloudSignIn');
     el.btnNow = document.getElementById('cloudSyncNow');
