@@ -35,7 +35,11 @@
    v3.15.2: (collage) drag-to-move could die completely after one missed
            pointerup (ghost pointer → every press looked like a pinch) —
            pointer move/up now live on the window and a mouse press flushes
-           stale pointers, so dragging always works again. */
+           stale pointers, so dragging always works again.
+   v3.16.0: (library) finished collages land in a pinned "Collages" folder
+           group and stay re-editable — double-click a collage to reopen it
+           with its photos and positions (Picasa-style Edit); folder group
+           headers fold/unfold like Picasa's folder tree. */
 (() => {
   'use strict';
   const P = window.Pixsa;
