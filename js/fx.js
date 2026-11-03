@@ -752,6 +752,121 @@
     cx.restore();
   }
 
+  /* ======================================================================
+     v3.14.0 — Paint & Select render support (Windows-11-Paint style)
+     • 'paint' : freehand stroke (pencil / brush / eraser) — pts normalized
+                 [[x,y],...], size is % of the SHORT side, eraser paints
+                 op.color (Color 2) exactly like Windows Paint
+     • 'shape' : line / rect / ellipse / triangle / star / arrow
+     • 'fill'  : flood fill (bucket) with a colour tolerance
+     • 'patch' : a pre-rendered PNG patch (selection copy / move / delete)
+                 drawn from the same sid->bitmap map as stickers
+     ====================================================================== */
+  function hexToRgb(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+    if (!m) return [0, 0, 0];
+    const n = parseInt(m[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function drawShapeOp(cx, W, H, op) {
+    const x1 = op.x1 * W, y1 = op.y1 * H, x2 = op.x2 * W, y2 = op.y2 * H;
+    const lw = Math.max(1, (op.size / 100) * Math.min(W, H));
+    const L = Math.min(x1, x2), T = Math.min(y1, y2), R = Math.max(x1, x2), B = Math.max(y1, y2);
+    const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
+    cx.save();
+    cx.lineWidth = lw;
+    cx.strokeStyle = op.color || '#000';
+    cx.fillStyle = op.fill || 'rgba(0,0,0,0)';
+    cx.lineJoin = 'round'; cx.lineCap = 'round';
+    cx.beginPath();
+    if (op.kind === 'line') {
+      cx.moveTo(x1, y1); cx.lineTo(x2, y2); cx.stroke();
+    } else if (op.kind === 'rect') {
+      cx.rect(L, T, R - L, B - T);
+      if (op.fill) cx.fill();
+      cx.stroke();
+    } else if (op.kind === 'ellipse') {
+      cx.ellipse(midX, midY, Math.max(0.5, (R - L) / 2), Math.max(0.5, (B - T) / 2), 0, 0, Math.PI * 2);
+      if (op.fill) cx.fill();
+      cx.stroke();
+    } else if (op.kind === 'triangle') {
+      cx.moveTo(midX, T); cx.lineTo(L, B); cx.lineTo(R, B); cx.closePath();
+      if (op.fill) cx.fill();
+      cx.stroke();
+    } else if (op.kind === 'star') {
+      const rx = Math.max(0.5, (R - L) / 2), ry = Math.max(0.5, (B - T) / 2);
+      for (let i = 0; i < 10; i++) {
+        const ang = -Math.PI / 2 + (i * Math.PI) / 5;
+        const rr = i % 2 ? 0.42 : 1;
+        const X = midX + Math.cos(ang) * rx * rr, Y = midY + Math.sin(ang) * ry * rr;
+        if (i === 0) cx.moveTo(X, Y); else cx.lineTo(X, Y);
+      }
+      cx.closePath();
+      if (op.fill) cx.fill();
+      cx.stroke();
+    } else if (op.kind === 'arrow') {
+      const dx = x2 - x1, dy = y2 - y1;
+      const len = Math.hypot(dx, dy) || 1;
+      const hl = Math.min(len * 0.32, lw * 4.5 + len * 0.12); /* head length */
+      const hw = hl * 0.55;                                   /* head half width */
+      const ux = dx / len, uy = dy / len;
+      const bx = x2 - ux * hl, by = y2 - uy * hl;             /* head base centre */
+      cx.moveTo(x1, y1); cx.lineTo(bx, by); cx.stroke();
+      cx.beginPath();
+      cx.moveTo(x2, y2);
+      cx.lineTo(bx - uy * hw, by + ux * hw);
+      cx.lineTo(bx + uy * hw, by - ux * hw);
+      cx.closePath();
+      cx.fillStyle = op.color || '#000';
+      cx.fill();
+    }
+    cx.restore();
+  }
+  /* scanline flood fill on an existing canvas (bucket tool) */
+  function floodFillCanvas(cx, cv, nx, ny, hex, tol) {
+    const W = cv.width, H = cv.height;
+    const sx = Math.round(nx * W), sy = Math.round(ny * H);
+    if (sx < 0 || sy < 0 || sx >= W || sy >= H) return false;
+    let img;
+    try { img = cx.getImageData(0, 0, W, H); } catch (e) { return false; }
+    const d = img.data;
+    const i0 = (sy * W + sx) * 4;
+    const r0 = d[i0], g0 = d[i0 + 1], b0 = d[i0 + 2];
+    const fr = hexToRgb(hex);
+    const t = (tol == null ? 30 : tol) * 2.42;
+    const t2 = t * t * 3;
+    const match = (i) => {
+      const dr = d[i] - r0, dg = d[i + 1] - g0, db = d[i + 2] - b0;
+      return dr * dr + dg * dg + db * db <= t2;
+    };
+    const seen = new Uint8Array(W * H);
+    const stack = [[sx, sy]];
+    while (stack.length) {
+      let [x, y] = stack.pop();
+      const row = y * W;
+      while (x >= 0 && !seen[row + x] && match((row + x) * 4)) x--;
+      x++;
+      let up = false, dn = false;
+      while (x < W && !seen[row + x] && match((row + x) * 4)) {
+        const idx = row + x;
+        seen[idx] = 1;
+        const i4 = idx * 4;
+        d[i4] = fr[0]; d[i4 + 1] = fr[1]; d[i4 + 2] = fr[2]; d[i4 + 3] = 255;
+        if (y > 0) {
+          const u = match((idx - W) * 4) && !seen[idx - W];
+          if (u && !up) { stack.push([x, y - 1]); up = true; } else if (!u) up = false;
+        }
+        if (y < H - 1) {
+          const v = match((idx + W) * 4) && !seen[idx + W];
+          if (v && !dn) { stack.push([x, y + 1]); dn = true; } else if (!v) dn = false;
+        }
+        x++;
+      }
+    }
+    cx.putImageData(img, 0, 0);
+    return true;
+  }
+
   /* ---------- main renderer ----------
      stickers: optional Map(sid -> ImageBitmap/canvas) — for 'sticker' ops
      renderOps: src + ops only (no tuning adj) — the cacheable base for previews */
@@ -844,6 +959,43 @@
           /* v3.13.0: shared renderer (preview, live draft and export all match) */
           drawTextOp(cx, acc.width, acc.height, op);
           break;
+        case 'paint': {
+          /* v3.14.0: pencil / brush / eraser stroke (eraser paints op.color) */
+          const Wp = acc.width, Hp = acc.height;
+          const lw = Math.max(1, (op.size / 100) * Math.min(Wp, Hp));
+          const pts = op.pts || [];
+          cx.save();
+          cx.globalAlpha = op.alpha == null ? 1 : op.alpha;
+          cx.strokeStyle = op.color; cx.fillStyle = op.color;
+          cx.lineJoin = 'round'; cx.lineCap = 'round';
+          cx.lineWidth = lw;
+          if (pts.length === 1) {
+            cx.beginPath();
+            cx.arc(pts[0][0] * Wp, pts[0][1] * Hp, lw / 2, 0, Math.PI * 2);
+            cx.fill();
+          } else if (pts.length > 1) {
+            cx.beginPath();
+            cx.moveTo(pts[0][0] * Wp, pts[0][1] * Hp);
+            for (let i = 1; i < pts.length; i++) cx.lineTo(pts[i][0] * Wp, pts[i][1] * Hp);
+            cx.stroke();
+          }
+          cx.restore();
+          break;
+        }
+        case 'shape':
+          drawShapeOp(cx, acc.width, acc.height, op);
+          break;
+        case 'fill':
+          floodFillCanvas(cx, acc, op.x, op.y, op.color, op.tol);
+          break;
+        case 'patch': {
+          const bmp = stickers ? stickers.get(op.sid) : null;
+          if (bmp) {
+            cx.drawImage(bmp, op.x * acc.width, op.y * acc.height,
+              Math.max(1, op.w * acc.width), Math.max(1, op.h * acc.height));
+          }
+          break;
+        }
         case 'sticker': {
           const bmp = stickers ? stickers.get(op.sid) : null;
           if (!bmp) break;
@@ -915,5 +1067,5 @@
     return false;
   }
 
-  window.PixsaFX = { EFFECTS, renderStack, renderOps, applyAdjTo, computeLevels, computeWB, redeyePt, retouchPt, mkCanvas, hasAlpha, drawTextOp };
+  window.PixsaFX = { EFFECTS, renderStack, renderOps, applyAdjTo, computeLevels, computeWB, redeyePt, retouchPt, mkCanvas, hasAlpha, drawTextOp, drawShapeOp, floodFillCanvas, hexToRgb };
 })();
