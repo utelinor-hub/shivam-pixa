@@ -19,6 +19,14 @@
            out from a “Tools” button (no more tiny photo box); new EXIF
            camera info in the bottom bar (shutter • f-stop • ISO • focal •
            flash) read straight from the JPEG, exactly like Picasa.
+   v3.14.0: Picasa-style tool SECTIONS — Crop/Straighten/ABC Text in one
+           section, One-click Fixes, Retouch, Add, Rotate — plus two new
+           tabs: PAINT (Windows-11-Paint style: pencil, brush, eraser, fill,
+           picker, line, rect, ellipse, triangle, star, arrow, Color 1 /
+           Color 2, classic palette, size slider) and SELECT (Windows style:
+           rect / lasso / magic-wand selection by colour, copy, cut, delete
+           = remove text & objects, paste as a draggable patch, drag-to-
+           move). Selection edits commit as full-res 'patch' ops.
    first (instant) and overwrites the same Drive file in the background. */
 (() => {
   'use strict';
@@ -45,6 +53,11 @@
     bold: false, italic: false, underline: false, stroke: '#000000', strokeW: 0, shadow: true, align: 'center'
   };
 
+  /* v3.14.0 tool families (Paint + Select) */
+  const PAINT_STROKES = ['pencil', 'brush', 'eraser'];
+  const PAINT_SHAPES = new Set(['line', 'rect', 'ellipse', 'triangle', 'star', 'arrow']);
+  const SEL_TOOLS = { selrect: 'rect', sellasso: 'lasso', selwand: 'wand' };
+
   const E = {
     open: false, photo: null, idx: -1, src: null,
     ops: [], adj: { ...ADJ0 },
@@ -56,6 +69,10 @@
     /* v3.13.0 Picasa text tool: txtSel = selected committed text op,
        txtEditing = { op, isNew } while the on-canvas editor is open */
     txtSel: null, txtEditing: null,
+    /* v3.14.0 Paint & Select state */
+    paint: { size: 6, c1: '#1a1a1a', c2: '#ffffff', noFill: false },
+    sel: null, floatSel: null, lift: null, clipboard: null,
+    liveShape: null, wandTol: 32, busySel: false,
     dirty: false, restored: false
   };
 
@@ -171,6 +188,9 @@
       /* v3.13.0: paint committed text + the live draft on top of tuning */
       for (const op of E.ops) if (op.type === 'text') FX.drawTextOp(cx, cv.width, cv.height, op);
       if (E.txtEditing && E.txtEditing.isNew && E.txtEditing.op.text) FX.drawTextOp(cx, cv.width, cv.height, E.txtEditing.op);
+      /* v3.14.0: while dragging a selection the "hole" must stay visible on
+         the preview — the base cache does not know about it yet */
+      if (E.lift) cx.drawImage(E.lift.hole, E.lift.bbox.x, E.lift.bbox.y, E.lift.bbox.w, E.lift.bbox.h);
       applyDisp();
       schedHist();
       res();
@@ -193,6 +213,7 @@
     if (oc && !oc.hidden) { oc.style.width = w; oc.style.height = h; }
     syncCropOverlay();
     syncTextOverlay();
+    syncOverlay();
   }
 
   /* ---------- before / after compare (hold) ---------- */
@@ -203,7 +224,7 @@
     const oc = q('#eOrig'), tag = q('#eOrigTag'), btn = q('#eCompare');
     if (on) {
       /* v3.13.0: hide the text wheel + typing layer while comparing */
-      gizCv.hidden = true; hideTxtEdit();
+      gizCv.hidden = true; hideTxtEdit(); ovlCv.hidden = true;
       const cv = ed.canvas;
       if (oc.width !== cv.width || oc.height !== cv.height) { oc.width = cv.width; oc.height = cv.height; }
       const ox = oc.getContext('2d');
@@ -272,6 +293,7 @@
     const s = JSON.parse(E.undo.pop());
     E.ops = s.ops; E.adj = s.adj; E.prevAdj = { ...E.adj };
     if (E.txtEditing) discardEditing();
+    E.floatSel = null; E.lift = null; E.liveShape = null;
     if (E.txtSel && !E.ops.includes(E.txtSel)) E.txtSel = null;
     resetAdjUI(); updFxTiles(); updUndoBtns(); setTool(null);
     renderPreview();
@@ -283,6 +305,7 @@
     const s = JSON.parse(E.redo.pop());
     E.ops = s.ops; E.adj = s.adj; E.prevAdj = { ...E.adj };
     if (E.txtEditing) discardEditing();
+    E.floatSel = null; E.lift = null; E.liveShape = null;
     if (E.txtSel && !E.ops.includes(E.txtSel)) E.txtSel = null;
     resetAdjUI(); updFxTiles(); updUndoBtns(); setTool(null);
     renderPreview();
@@ -293,8 +316,8 @@
     ed.redoBtn.disabled = !E.redo.length;
   }
 
-  function commit(op) {
-    pushUndo();
+  function commit(op, prevSnap) {
+    pushUndo(prevSnap);
     /* v3.13.0: keep text blocks LAST in the stack so a later crop/rotate/
        straighten can never clip them in the export while the preview (which
        paints text on top) stays identical */
@@ -488,6 +511,13 @@
       commitEditing();
       E.txtSel = null;
     }
+    /* v3.14.0: leaving Select stamps the pasted patch and drops the marquee;
+       a pending Paint shape preview is cancelled */
+    if (SEL_TOOLS[E.tool] && !(t && SEL_TOOLS[t])) {
+      if (E.floatSel) stampFloat();
+      clearSel();
+    }
+    if (E.liveShape && !PAINT_SHAPES.has(t)) E.liveShape = null;
     if (t === 'text' && !E.txtDraft) E.txtDraft = { ...TEXT0 };
     E.tool = t;
     ed.crop.hidden = !(t === 'crop' && E.cropR);
@@ -495,6 +525,7 @@
     renderToolbox();
     if (E.tool === 'straighten' && E.draft) renderPreview();
     syncTextOverlay();
+    syncOverlay();
   }
 
   function renderToolbox() {
@@ -644,6 +675,10 @@
         setTool(null);
       });
       q('#tbCancel').addEventListener('click', () => { E.draft = null; E.pmax = 1400; setTool(null); renderPreview(); });
+    } else {
+      /* v3.14.0: Paint & Select tools keep their options in their side tabs —
+         no floating toolbox for them */
+      tb.hidden = true; tb.innerHTML = '';
     }
   }
 
@@ -1137,6 +1172,16 @@
   /* ---------- canvas pointer: text position + sticker drag ---------- */
   ed.canvas.addEventListener('pointerdown', (e) => {
     if (!E.open) return;
+    /* v3.14.0 Paint: strokes, bucket and picker live here (shapes & select
+       go through the #eOvl overlay above the canvas) */
+    if (PAINT_STROKES.includes(E.tool)) {
+      e.preventDefault();
+      try { ed.canvas.setPointerCapture(e.pointerId); } catch (err) {}
+      strokeBegin(e);
+      return;
+    }
+    if (E.tool === 'fill') { e.preventDefault(); bucketAt(e); return; }
+    if (E.tool === 'picker') { e.preventDefault(); pickColor(e); return; }
     if (E.tool === 'redeye' || E.tool === 'retouch') {
       stroking = true;
       try { ed.canvas.setPointerCapture(e.pointerId); } catch (err) {}
@@ -1157,6 +1202,7 @@
     }
   });
   ed.canvas.addEventListener('pointermove', (e) => {
+    if (pnStroke) { strokeMove(e); return; }
     if (stroking) { strokeAt(e); return; }
     if (dragStk) {
       const cv = ed.canvas;
@@ -1167,6 +1213,7 @@
     }
   });
   ['pointerup', 'pointercancel'].forEach((ev) => ed.canvas.addEventListener(ev, () => {
+    if (pnStroke) { strokeEnd(); return; }
     stroking = false;
     if (dragStk) { dragStk = null; E.pmax = 1400; renderPreview(); scheduleEditSave(); }
   }));
@@ -1194,6 +1241,602 @@
     renderPreview(); scheduleEditSave();
     toast("I'm Feeling Lucky", 'ok', 1500);
   }
+
+  /* ======================================================================
+     v3.14.0 — PAINT (Windows-11-Paint style) & SELECT (Windows style)
+     Paint: pencil / brush / eraser strokes, flood fill, colour picker and
+     6 shapes with Color 1 (outline) / Color 2 (fill) — all non-destructive
+     ops rendered by fx.js, with undo/redo and autosave included.
+     Select: rectangle, lasso and magic-wand (colour) selections; copy,
+     cut, delete (fills the hole with the surrounding colour — removes
+     text and objects), paste as a floating draggable patch, and
+     drag-inside-to-move. Selection edits are committed as full-resolution
+     'patch' ops, so Save exports exactly what you see.
+     ====================================================================== */
+  const ovlCv = q('#eOvl');
+
+  const cvPtN = (e) => {
+    const r = ed.canvas.getBoundingClientRect();
+    return { nx: clamp((e.clientX - r.left) / r.width, 0, 1), ny: clamp((e.clientY - r.top) / r.height, 0, 1) };
+  };
+  const ovlPt = (e) => {
+    const r = ovlCv.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+  function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map((v) => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0')).join('');
+  }
+
+  /* ---------- side panels: palette, size, colors, tolerance ---------- */
+  const PALETTE = [
+    '#000000', '#7f7f7f', '#880015', '#ed1c24', '#ff7f27', '#fff200', '#22b14c', '#00a2e8', '#3f48cc', '#a349a4',
+    '#ffffff', '#c3c3c3', '#b97a57', '#ffaec9', '#ffc90e', '#efe4b0', '#b5e61d', '#99d9ea', '#7092be', '#c8bfe7'
+  ];
+  (function buildPaintPanel() {
+    const pal = q('#pnPal');
+    if (!pal) return;
+    for (const c of PALETTE) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.style.background = c; b.title = c;
+      b.addEventListener('click', () => { E.paint.c1 = c; q('#pnC1').value = c; });
+      b.addEventListener('contextmenu', (e) => { e.preventDefault(); E.paint.c2 = c; q('#pnC2').value = c; });
+      pal.appendChild(b);
+    }
+    q('#pnSize').addEventListener('input', (e) => { E.paint.size = +e.target.value; q('#pnSizeV').textContent = e.target.value; });
+    q('#pnC1').addEventListener('input', (e) => { E.paint.c1 = e.target.value; });
+    q('#pnC2').addEventListener('input', (e) => { E.paint.c2 = e.target.value; });
+    q('#pnSwap').addEventListener('click', () => {
+      const t = E.paint.c1; E.paint.c1 = E.paint.c2; E.paint.c2 = t;
+      q('#pnC1').value = E.paint.c1; q('#pnC2').value = E.paint.c2;
+    });
+    q('#pnNoFill').addEventListener('change', (e) => { E.paint.noFill = e.target.checked; });
+    const st = q('#selTol');
+    if (st) st.addEventListener('input', (e) => { E.wandTol = +e.target.value; q('#selTolV').textContent = e.target.value; });
+  })();
+
+  /* ---------- Paint: live strokes on the preview canvas ---------- */
+  let pnStroke = null;
+  function strokeBegin(e) {
+    const { nx, ny } = cvPtN(e);
+    pnStroke = {
+      tool: E.tool,
+      color: E.tool === 'eraser' ? E.paint.c2 : E.paint.c1,
+      size: E.paint.size,
+      pts: [[nx, ny]],
+      snap: snap()
+    };
+    drawLiveSeg();
+  }
+  function drawLiveSeg() {
+    const cv = ed.canvas, cx = cv.getContext('2d');
+    const lw = Math.max(1, (pnStroke.size / 100) * Math.min(cv.width, cv.height));
+    cx.save();
+    cx.strokeStyle = pnStroke.color; cx.fillStyle = pnStroke.color;
+    cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.lineWidth = lw;
+    const p = pnStroke.pts;
+    if (p.length === 1) {
+      cx.beginPath();
+      cx.arc(p[0][0] * cv.width, p[0][1] * cv.height, lw / 2, 0, Math.PI * 2);
+      cx.fill();
+    } else {
+      const a = p[p.length - 2], b = p[p.length - 1];
+      cx.beginPath();
+      cx.moveTo(a[0] * cv.width, a[1] * cv.height);
+      cx.lineTo(b[0] * cv.width, b[1] * cv.height);
+      cx.stroke();
+    }
+    cx.restore();
+  }
+  function strokeMove(e) {
+    const { nx, ny } = cvPtN(e);
+    const last = pnStroke.pts[pnStroke.pts.length - 1];
+    if (Math.hypot(nx - last[0], ny - last[1]) < 0.0015) return;
+    pnStroke.pts.push([nx, ny]);
+    drawLiveSeg();
+  }
+  function strokeEnd() {
+    if (!pnStroke) return;
+    const op = { type: 'paint', tool: pnStroke.tool, pts: pnStroke.pts, color: pnStroke.color, size: pnStroke.size, alpha: 1 };
+    const s = pnStroke.snap;
+    pnStroke = null;
+    commit(op, s);
+  }
+  function bucketAt(e) {
+    const { nx, ny } = cvPtN(e);
+    const cv = ed.canvas;
+    const s = snap();
+    const ok = FX.floodFillCanvas(cv.getContext('2d'), cv, nx, ny, E.paint.c1, 30);
+    if (ok) commit({ type: 'fill', x: nx, y: ny, color: E.paint.c1, tol: 30 }, s);
+  }
+  function pickColor(e) {
+    const { nx, ny } = cvPtN(e);
+    const cv = ed.canvas;
+    try {
+      const d = cv.getContext('2d').getImageData(Math.round(nx * (cv.width - 1)), Math.round(ny * (cv.height - 1)), 1, 1).data;
+      const hex = rgbToHex(d[0], d[1], d[2]);
+      E.paint.c1 = hex;
+      q('#pnC1').value = hex;
+      toast('Color picked: ' + hex, 'ok', 1300);
+    } catch (err) {}
+  }
+
+  /* ---------- Select: marquee, wand, copy/cut/delete/paste/move ---------- */
+  let ovDrag = null; /* active overlay drag { mode, ... } */
+  let antPhase = 0;
+  setInterval(() => {
+    if (E.open && (E.sel || E.floatSel || E.lift || ovDrag)) { antPhase = (antPhase + 1) % 12; drawOverlay(); }
+  }, 130);
+
+  function updSelUI() {
+    const has = !!E.sel;
+    ['selCopy', 'selCut', 'selDel'].forEach((id) => { const b = q('#' + id); if (b) b.disabled = !has; });
+    const pb = q('#selPaste'); if (pb) pb.disabled = !E.clipboard;
+    const db = q('#selDeselect');
+    if (db) { db.disabled = !has && !E.floatSel; db.textContent = E.floatSel ? 'Apply Patch (Esc)' : 'Deselect (Esc)'; }
+  }
+  function clearSel() {
+    E.sel = null;
+    drawOverlay();
+    updSelUI();
+  }
+  /* mask canvases: white = selected, built at preview-canvas resolution */
+  function maskFromRect(rc) {
+    const cv = ed.canvas;
+    const m = FX.mkCanvas(cv.width, cv.height);
+    const mx = m.getContext('2d');
+    mx.fillStyle = '#fff';
+    mx.fillRect(rc.x, rc.y, rc.w, rc.h);
+    return m;
+  }
+  function maskFromPath(pts /* stage px */) {
+    const cv = ed.canvas;
+    const m = FX.mkCanvas(cv.width, cv.height);
+    const mx = m.getContext('2d');
+    const ox = cv.offsetLeft, oy = cv.offsetTop;
+    const ds = cv.clientWidth / Math.max(1, cv.width);
+    mx.fillStyle = '#fff';
+    mx.beginPath();
+    pts.forEach((p, i) => {
+      const X = (p.x - ox) / ds, Y = (p.y - oy) / ds;
+      if (i === 0) mx.moveTo(X, Y); else mx.lineTo(X, Y);
+    });
+    mx.closePath();
+    mx.fill();
+    return m;
+  }
+  function wandMask(nx, ny) {
+    const cv = ed.canvas, W = cv.width, H = cv.height;
+    let d;
+    try { d = cv.getContext('2d').getImageData(0, 0, W, H).data; } catch (e) { return null; }
+    const sx = Math.round(nx * (W - 1)), sy = Math.round(ny * (H - 1));
+    const i0 = (sy * W + sx) * 4;
+    const r0 = d[i0], g0 = d[i0 + 1], b0 = d[i0 + 2];
+    const t = E.wandTol * 2.42, t2 = t * t * 3;
+    const match = (i) => {
+      const dr = d[i] - r0, dg = d[i + 1] - g0, db = d[i + 2] - b0;
+      return dr * dr + dg * dg + db * db <= t2;
+    };
+    const mask = new Uint8Array(W * H);
+    const stack = [[sx, sy]];
+    let minX = sx, minY = sy, maxX = sx, maxY = sy, count = 0;
+    while (stack.length) {
+      let [x, y] = stack.pop();
+      const row = y * W;
+      while (x >= 0 && !mask[row + x] && match((row + x) * 4)) x--;
+      x++;
+      let up = false, dn = false;
+      while (x < W && !mask[row + x] && match((row + x) * 4)) {
+        const idx = row + x;
+        mask[idx] = 1; count++;
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+        if (y > 0) { const u = match((idx - W) * 4) && !mask[idx - W]; if (u && !up) { stack.push([x, y - 1]); up = true; } else if (!u) up = false; }
+        if (y < H - 1) { const v = match((idx + W) * 4) && !mask[idx + W]; if (v && !dn) { stack.push([x, y + 1]); dn = true; } else if (!v) dn = false; }
+        x++;
+      }
+    }
+    if (!count) return null;
+    const m = FX.mkCanvas(W, H);
+    const mx = m.getContext('2d');
+    const img = mx.createImageData(W, H);
+    for (let i = 0; i < mask.length; i++) {
+      if (mask[i]) { const o = i * 4; img.data[o] = 255; img.data[o + 1] = 255; img.data[o + 2] = 255; img.data[o + 3] = 255; }
+    }
+    mx.putImageData(img, 0, 0);
+    return { mcv: m, bbox: { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 } };
+  }
+
+  /* full-resolution patch pieces for the current selection */
+  function sampleRingColor(full, bx, by, bw, bh) {
+    const W = full.width, H = full.height;
+    const gx = Math.max(0, bx - 10), gy = Math.max(0, by - 10);
+    const gw = Math.min(W, bx + bw + 10) - gx, gh = Math.min(H, by + bh + 10) - gy;
+    if (gw <= 0 || gh <= 0) return '#808080';
+    let d;
+    try { d = full.getContext('2d').getImageData(gx, gy, gw, gh).data; } catch (e) { return '#808080'; }
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let yy = 0; yy < gh; yy += 2) {
+      for (let xx = 0; xx < gw; xx += 2) {
+        const X = gx + xx, Y = gy + yy;
+        if (X >= bx && X < bx + bw && Y >= by && Y < by + bh) continue;
+        const i = (yy * gw + xx) * 4;
+        r += d[i]; g += d[i + 1]; b += d[i + 2]; n++;
+      }
+    }
+    if (!n) return '#808080';
+    return rgbToHex(r / n, g / n, b / n);
+  }
+  async function buildPatchParts() {
+    const cv = ed.canvas;
+    const b = E.sel.bbox;
+    setBusy(true);
+    await new Promise((r) => setTimeout(r, 30));
+    try {
+      const full = FX.renderStack(E.src, E.ops, E.adj, 0, stickerMap());
+      let bx = Math.max(0, Math.round((b.x / cv.width) * full.width));
+      let by = Math.max(0, Math.round((b.y / cv.height) * full.height));
+      let fw = Math.max(1, Math.round((b.w / cv.width) * full.width));
+      let fh = Math.max(1, Math.round((b.h / cv.height) * full.height));
+      fw = Math.min(fw, full.width - bx); fh = Math.min(fh, full.height - by);
+      if (fw < 2 || fh < 2) throw new Error('empty selection');
+      const mask = FX.mkCanvas(fw, fh);
+      /* v3.14.0 fix: crop the bbox SUB-REGION out of the full-size mask and
+         scale it to the patch size — drawing the whole mask squashed the
+         selection rect into a corner of the patch */
+      mask.getContext('2d').drawImage(E.sel.mcv, b.x, b.y, b.w, b.h, 0, 0, fw, fh);
+      const bg = sampleRingColor(full, bx, by, fw, fh);
+      return { full, bx, by, fw, fh, mask, bg, sx: bx / full.width, sy: by / full.height, sw: fw / full.width, sh: fh / full.height };
+    } finally { setBusy(false); }
+  }
+  async function addPatch(cv2) {
+    const sid = ++E.stkSeq;
+    const blob = await new Promise((r) => cv2.toBlob(r, 'image/png'));
+    E.stickers.push({ sid, bmp: cv2, blob });
+    return sid;
+  }
+  function makeHole(P0) {
+    const hole = FX.mkCanvas(P0.fw, P0.fh);
+    const hx = hole.getContext('2d');
+    hx.fillStyle = P0.bg;
+    hx.fillRect(0, 0, P0.fw, P0.fh);
+    hx.globalCompositeOperation = 'destination-in';
+    try { hx.filter = 'blur(0.6px)'; } catch (e) {}
+    hx.drawImage(P0.mask, 0, 0);
+    return hole;
+  }
+  function makeContent(P0) {
+    const cont = FX.mkCanvas(P0.fw, P0.fh);
+    const cx = cont.getContext('2d');
+    cx.drawImage(P0.full, P0.bx, P0.by, P0.fw, P0.fh, 0, 0, P0.fw, P0.fh);
+    cx.globalCompositeOperation = 'destination-in';
+    try { cx.filter = 'blur(0.6px)'; } catch (e) {}
+    cx.drawImage(P0.mask, 0, 0);
+    return cont;
+  }
+  async function deleteSelection() {
+    if (!E.sel || E.busySel) return;
+    E.busySel = true;
+    try {
+      const P0 = await buildPatchParts();
+      const hole = makeHole(P0);
+      const sid = await addPatch(hole);
+      commit({ type: 'patch', sid, x: P0.sx, y: P0.sy, w: P0.sw, h: P0.sh });
+      clearSel();
+      toast('Removed — hole filled with the surrounding colour', 'ok', 2200);
+    } catch (e) { toast('Could not process the selection', 'err', 2500); }
+    finally { E.busySel = false; }
+  }
+  async function copySelection(cut) {
+    if (!E.sel || E.busySel) return;
+    E.busySel = true;
+    try {
+      const P0 = await buildPatchParts();
+      const cont = makeContent(P0);
+      E.clipboard = { cv: cont };
+      try {
+        if (navigator.clipboard && window.ClipboardItem) {
+          const blob = await new Promise((r) => cont.toBlob(r, 'image/png'));
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        }
+      } catch (e) { /* system clipboard is optional */ }
+      if (!cut) { updSelUI(); toast('Copied — Paste puts it anywhere (also on your clipboard)', 'ok', 2400); return; }
+      const hole = makeHole(P0);
+      const sid = await addPatch(hole);
+      commit({ type: 'patch', sid, x: P0.sx, y: P0.sy, w: P0.sw, h: P0.sh });
+      clearSel();
+      toast('Cut — Paste it anywhere', 'ok', 2000);
+    } catch (e) { toast('Could not process the selection', 'err', 2500); }
+    finally { E.busySel = false; }
+  }
+  function pasteClipboard() {
+    if (!E.clipboard) return;
+    const cv = ed.canvas;
+    let w = E.clipboard.cv.width / cv.width, h = E.clipboard.cv.height / cv.height;
+    const k = Math.min(1, 0.92 / Math.max(w, h));
+    w *= k; h *= k;
+    E.floatSel = { cv: E.clipboard.cv, x: (1 - w) / 2, y: (1 - h) / 2, w, h };
+    if (!SEL_TOOLS[E.tool]) setTool('selrect');
+    drawOverlay(); updSelUI();
+    toast('Pasted — drag it, then Apply Patch (Esc / click outside)', 'ok', 2600);
+  }
+  async function stampFloat() {
+    const fl = E.floatSel;
+    if (!fl || E.busySel) return;
+    E.floatSel = null;
+    E.busySel = true;
+    try {
+      const sid = await addPatch(fl.cv);
+      commit({ type: 'patch', sid, x: fl.x, y: fl.y, w: fl.w, h: fl.h });
+      updSelUI();
+      toast('Pasted in place', 'ok', 1500);
+    } finally { E.busySel = false; }
+  }
+  async function liftSelection(p) {
+    if (E.busySel) return;
+    E.busySel = true;
+    try {
+      const P0 = await buildPatchParts();
+      const hole = makeHole(P0);
+      const cont = makeContent(P0);
+      const cv = ed.canvas;
+      const b = E.sel.bbox;
+      /* paint the hole straight onto the preview so the original pixels
+         vanish under the moving copy (a re-render restores them anyway) */
+      cv.getContext('2d').drawImage(hole, b.x, b.y, b.w, b.h);
+      const n = normPt(p);
+      E.lift = {
+        hole, cont,
+        x0: P0.sx, y0: P0.sy, w: P0.sw, h: P0.sh,
+        x: P0.sx, y: P0.sy,
+        bbox: b,
+        grabNx: n.nx - P0.sx, grabNy: n.ny - P0.sy,
+        snap: snap()
+      };
+      drawOverlay();
+    } finally { E.busySel = false; }
+  }
+  async function dropLift() {
+    const L = E.lift;
+    if (!L) return;
+    E.lift = null;
+    E.busySel = true;
+    try {
+      const sidH = await addPatch(L.hole);
+      const sidC = await addPatch(L.cont);
+      pushUndo(L.snap);
+      E.ops.push({ type: 'patch', sid: sidH, x: L.x0, y: L.y0, w: L.w, h: L.h });
+      E.ops.push({ type: 'patch', sid: sidC, x: L.x, y: L.y, w: L.w, h: L.h });
+      updFxTiles(); updUndoBtns();
+      renderPreview(); scheduleEditSave();
+      clearSel();
+      toast('Moved', 'ok', 1200);
+    } finally { E.busySel = false; }
+  }
+
+  /* ---------- overlay canvas: shape preview + marquees + float ---------- */
+  function syncOverlay() {
+    const active = E.open && !comparing &&
+      (PAINT_SHAPES.has(E.tool) || !!SEL_TOOLS[E.tool] || !!E.floatSel || !!E.lift);
+    ovlCv.hidden = !active;
+    ovlCv.classList.toggle('live', active);
+    if (!active) return;
+    ovlCv.style.left = '0px'; ovlCv.style.top = '0px';
+    ovlCv.style.width = ed.stage.clientWidth + 'px';
+    ovlCv.style.height = ed.stage.clientHeight + 'px';
+    drawOverlay();
+  }
+  function dashRect(g, x, y, w, h) {
+    if (w < 2 || h < 2) return;
+    g.save();
+    g.setLineDash([6, 4]); g.lineDashOffset = -antPhase;
+    g.strokeStyle = 'rgba(0,0,0,.65)'; g.lineWidth = 2.4;
+    g.strokeRect(x, y, w, h);
+    g.setLineDash([6, 4]); g.lineDashOffset = -antPhase - 5;
+    g.strokeStyle = '#fff'; g.lineWidth = 1.2;
+    g.strokeRect(x, y, w, h);
+    g.restore();
+  }
+  function dashPath(g, pts, close) {
+    g.save();
+    g.setLineDash([5, 4]); g.lineDashOffset = -antPhase;
+    g.strokeStyle = 'rgba(0,0,0,.65)'; g.lineWidth = 2.2;
+    g.beginPath();
+    pts.forEach((p, i) => { if (i === 0) g.moveTo(p.x, p.y); else g.lineTo(p.x, p.y); });
+    if (close) g.closePath();
+    g.stroke();
+    g.setLineDash([5, 4]); g.lineDashOffset = -antPhase - 4;
+    g.strokeStyle = '#fff'; g.lineWidth = 1.1;
+    g.stroke();
+    g.restore();
+  }
+  function drawOverlay() {
+    if (ovlCv.hidden) return;
+    const st = ed.stage;
+    const dpr = window.devicePixelRatio || 1;
+    const W = st.clientWidth, H = st.clientHeight;
+    if (!W || !H) return;
+    if (ovlCv.width !== Math.round(W * dpr) || ovlCv.height !== Math.round(H * dpr)) {
+      ovlCv.width = Math.round(W * dpr); ovlCv.height = Math.round(H * dpr);
+    }
+    const g = ovlCv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    const cv = ed.canvas;
+    const ox = cv.offsetLeft, oy = cv.offsetTop;
+    const dw = cv.clientWidth, dh = cv.clientHeight;
+    /* live shape preview */
+    if (E.liveShape) {
+      g.save(); g.translate(ox, oy);
+      FX.drawShapeOp(g, dw, dh, E.liveShape);
+      g.restore();
+    }
+    /* rect drag preview */
+    if (ovDrag && ovDrag.mode === 'rect') {
+      dashRect(g, ox + Math.min(ovDrag.a.x, ovDrag.cur.x), oy + Math.min(ovDrag.a.y, ovDrag.cur.y),
+        Math.abs(ovDrag.cur.x - ovDrag.a.x), Math.abs(ovDrag.cur.y - ovDrag.a.y));
+    }
+    /* lasso drag preview */
+    if (ovDrag && ovDrag.mode === 'lasso' && ovDrag.pts.length > 1) dashPath(g, ovDrag.pts, false);
+    /* committed selection */
+    if (E.sel && !E.lift) {
+      const b = E.sel.bbox, ds = cv.clientWidth / Math.max(1, cv.width);
+      dashRect(g, ox + b.x * ds, oy + b.y * ds, b.w * ds, b.h * ds);
+      if (E.sel.kind === 'lasso' && E.sel.pts) dashPath(g, E.sel.pts, true);
+    }
+    /* floating paste */
+    if (E.floatSel) {
+      const fl = E.floatSel;
+      g.drawImage(fl.cv, ox + fl.x * dw, oy + fl.y * dh, fl.w * dw, fl.h * dh);
+      dashRect(g, ox + fl.x * dw, oy + fl.y * dh, fl.w * dw, fl.h * dh);
+    }
+    /* moving selection (lift) */
+    if (E.lift) {
+      const L = E.lift;
+      g.drawImage(L.cont, ox + L.x * dw, oy + L.y * dh, L.w * dw, L.h * dh);
+      dashRect(g, ox + L.x * dw, oy + L.y * dh, L.w * dw, L.h * dh);
+    }
+  }
+
+  /* ---------- overlay gestures ---------- */
+  ovlCv.addEventListener('pointerdown', (e) => {
+    if (!E.open || comparing || E.busySel) return;
+    const isShape = PAINT_SHAPES.has(E.tool);
+    const isSel = !!SEL_TOOLS[E.tool];
+    if (!isShape && !isSel) return;
+    e.preventDefault();
+    try { ovlCv.setPointerCapture(e.pointerId); } catch (err) {}
+    const p = ovlPt(e);
+    if (isShape) {
+      const n = normPt(p);
+      ovDrag = { mode: 'shape' };
+      E.liveShape = { kind: E.tool, x1: n.nx, y1: n.ny, x2: n.nx, y2: n.ny, color: E.paint.c1, fill: E.paint.noFill ? null : E.paint.c2, size: E.paint.size };
+      drawOverlay();
+      return;
+    }
+    const n = normPt(p);
+    if (E.floatSel) {
+      const fl = E.floatSel, cv = ed.canvas;
+      const fx0 = cv.offsetLeft + fl.x * cv.clientWidth, fy0 = cv.offsetTop + fl.y * cv.clientHeight;
+      const fx1 = fx0 + fl.w * cv.clientWidth, fy1 = fy0 + fl.h * cv.clientHeight;
+      if (p.x >= fx0 && p.x <= fx1 && p.y >= fy0 && p.y <= fy1) {
+        ovDrag = { mode: 'float', ox: n.nx - fl.x, oy: n.ny - fl.y };
+      } else {
+        stampFloat();
+        clearSel();
+      }
+      return;
+    }
+    if (E.sel) {
+      const b = E.sel.bbox, cv = ed.canvas;
+      const dx0 = cv.offsetLeft + (b.x / cv.width) * cv.clientWidth;
+      const dy0 = cv.offsetTop + (b.y / cv.height) * cv.clientHeight;
+      const dx1 = dx0 + (b.w / cv.width) * cv.clientWidth;
+      const dy1 = dy0 + (b.h / cv.height) * cv.clientHeight;
+      if (p.x >= dx0 && p.x <= dx1 && p.y >= dy0 && p.y <= dy1) {
+        /* Windows-style: drag inside the selection MOVES those pixels */
+        liftSelection(p).then(() => { ovDrag = { mode: 'lift' }; });
+        return;
+      }
+    }
+    if (E.tool === 'selrect') {
+      ovDrag = { mode: 'rect', a: p, cur: p };
+      drawOverlay();
+    } else if (E.tool === 'sellasso') {
+      ovDrag = { mode: 'lasso', pts: [p] };
+    } else if (E.tool === 'selwand') {
+      const r = wandMask(n.nx, n.ny);
+      if (r) {
+        E.sel = { kind: 'wand', mcv: r.mcv, bbox: r.bbox, pts: null };
+        toast('Colour selected — Copy / Cut / Delete / drag to move', 'ok', 2000);
+      } else {
+        toast('Nothing matched — raise the Tolerance', undefined, 1800);
+      }
+      updSelUI();
+      drawOverlay();
+    }
+  });
+  ovlCv.addEventListener('pointermove', (e) => {
+    if (!ovDrag) return;
+    const p = ovlPt(e);
+    const n = normPt(p);
+    if (ovDrag.mode === 'shape') {
+      E.liveShape.x2 = n.nx; E.liveShape.y2 = n.ny;
+      drawOverlay();
+    } else if (ovDrag.mode === 'rect') {
+      ovDrag.cur = p;
+      drawOverlay();
+    } else if (ovDrag.mode === 'lasso') {
+      const lastP = ovDrag.pts[ovDrag.pts.length - 1];
+      if (Math.hypot(p.x - lastP.x, p.y - lastP.y) > 3) { ovDrag.pts.push(p); drawOverlay(); }
+    } else if (ovDrag.mode === 'float') {
+      const fl = E.floatSel;
+      if (fl) {
+        fl.x = clampN(n.nx - ovDrag.ox, -fl.w + 0.02, 0.98);
+        fl.y = clampN(n.ny - ovDrag.oy, -fl.h + 0.02, 0.98);
+        drawOverlay();
+      }
+    } else if (ovDrag.mode === 'lift') {
+      const L = E.lift;
+      if (L) {
+        L.x = clampN(n.nx - L.grabNx, -L.w + 0.02, 0.98);
+        L.y = clampN(n.ny - L.grabNy, -L.h + 0.02, 0.98);
+        drawOverlay();
+      }
+    }
+  });
+  ['pointerup', 'pointercancel'].forEach((ev) => ovlCv.addEventListener(ev, () => {
+    if (!ovDrag) return;
+    const drag = ovDrag;
+    ovDrag = null;
+    if (drag.mode === 'shape') {
+      const op = E.liveShape;
+      E.liveShape = null;
+      if (op && (Math.abs(op.x2 - op.x1) > 0.002 || Math.abs(op.y2 - op.y1) > 0.002)) {
+        commit({ type: 'shape', kind: op.kind, x1: op.x1, y1: op.y1, x2: op.x2, y2: op.y2, color: op.color, fill: op.fill, size: op.size });
+      }
+      drawOverlay();
+    } else if (drag.mode === 'rect') {
+      const cv = ed.canvas;
+      const ds = cv.clientWidth / Math.max(1, cv.width);
+      const x0 = (Math.min(drag.a.x, drag.cur.x) - cv.offsetLeft) / ds;
+      const y0 = (Math.min(drag.a.y, drag.cur.y) - cv.offsetTop) / ds;
+      const w0 = Math.abs(drag.cur.x - drag.a.x) / ds;
+      const h0 = Math.abs(drag.cur.y - drag.a.y) / ds;
+      if (w0 < 6 || h0 < 6) { drawOverlay(); return; } /* too small — treat as a click */
+      E.sel = { kind: 'rect', mcv: maskFromRect({ x: x0, y: y0, w: w0, h: h0 }), bbox: { x: x0, y: y0, w: w0, h: h0 }, pts: null };
+      updSelUI();
+      drawOverlay();
+    } else if (drag.mode === 'lasso') {
+      if (drag.pts.length > 2) {
+        const cv = ed.canvas;
+        const ds = cv.clientWidth / Math.max(1, cv.width);
+        let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+        for (const p of drag.pts) {
+          minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+          maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+        }
+        E.sel = {
+          kind: 'lasso',
+          mcv: maskFromPath(drag.pts),
+          bbox: { x: (minX - cv.offsetLeft) / ds, y: (minY - cv.offsetTop) / ds, w: (maxX - minX) / ds, h: (maxY - minY) / ds },
+          pts: drag.pts
+        };
+        updSelUI();
+      }
+      drawOverlay();
+    } else if (drag.mode === 'lift') {
+      dropLift();
+    }
+    /* 'float' keeps floating until Apply / click outside */
+  }));
+
+  /* ---------- Select side-panel actions ---------- */
+  [['#selCopy', () => copySelection(false)],
+   ['#selCut', () => copySelection(true)],
+   ['#selDel', () => deleteSelection()],
+   ['#selPaste', () => pasteClipboard()],
+   ['#selDeselect', () => { if (E.floatSel) stampFloat(); else clearSel(); }]
+  ].forEach(([sel2, fn]) => { const b = q(sel2); if (b) b.addEventListener('click', fn); });
 
   /* ---------- save ---------- */
   const baseName = (n) => n.replace(/\.[^.]+$/, '') || 'photo';
@@ -1256,6 +1899,7 @@
       E.ops = []; E.adj = { ...ADJ0 }; E.prevAdj = { ...E.adj };
       E.undo = []; E.redo = []; E.stickers = []; E.stkSel = null;
       E.txtSel = null; E.txtEditing = null; E.txtDraft = { ...TEXT0, alpha: 1 };
+      E.sel = null; E.floatSel = null; E.lift = null; E.liveShape = null;
       hideTxtEdit();
       resetAdjUI(); updFxTiles(); updUndoBtns(); setTool(null);
       await renderPreview();
@@ -1315,6 +1959,8 @@
     E.tool = null; E.cropR = null; E.aspect = 0; E.pendPts = []; E.draft = null;
     E.stickers = []; E.stkSeq = 0; E.stkSel = null;
     E.txtSel = null; E.txtEditing = null; E.txtDraft = { ...TEXT0, alpha: 1 };
+    E.paint = { size: 6, c1: '#1a1a1a', c2: '#ffffff', noFill: false };
+    E.sel = null; E.floatSel = null; E.lift = null; E.clipboard = null; E.liveShape = null;
     hideTxtEdit();
     E.dirty = false; E.restored = false;
     E.fit = true; E.zoom = 100; ed.zoom.value = 100;
@@ -1360,7 +2006,8 @@
     E.tool = null;
     comparing = false;
     q('#eOrig').hidden = true; q('#eOrigTag').hidden = true;
-    gizCv.hidden = true; hideTxtEdit();
+    gizCv.hidden = true; hideTxtEdit(); ovlCv.hidden = true;
+    E.sel = null; E.floatSel = null; E.lift = null; E.liveShape = null;
     baseCv = null; baseKey = '';
     if (E.dirty) saveEditSession();
     ed.root.hidden = true;
@@ -1426,7 +2073,12 @@
     const tag = document.activeElement ? document.activeElement.tagName : '';
     if (e.key === 'Escape') {
       e.preventDefault();
-      if (E.tool) setTool(null); else close();
+      /* v3.14.0: Esc stamps a pasted patch, else drops the selection, else
+         closes the active tool, else the editor */
+      if (E.floatSel) { stampFloat(); clearSel(); }
+      else if (E.sel) clearSel();
+      else if (E.tool) setTool(null);
+      else close();
       return;
     }
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -1441,12 +2093,22 @@
       scheduleEditSave();
       return;
     }
+    /* v3.14.0: Delete removes the selected area (Windows style) */
+    if (E.sel && (e.key === 'Delete' || e.key === 'Backspace')) {
+      e.preventDefault();
+      deleteSelection();
+      return;
+    }
     if (e.key === 'ArrowRight') { e.preventDefault(); nav(1); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); nav(-1); }
     else if (e.key === 'b' || e.key === 'B') { if (!e.repeat) setCompare(true); }
     else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) doRedo(); else doUndo(); }
     else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); doRedo(); }
     else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); doSave(); }
+    /* v3.14.0: Windows-style clipboard for selections */
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && E.sel) { e.preventDefault(); copySelection(false); }
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x' && E.sel) { e.preventDefault(); copySelection(true); }
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && E.clipboard) { e.preventDefault(); pasteClipboard(); }
   });
 
   buildFx();
@@ -1456,14 +2118,17 @@
   window.PixsaEditor = {
     open, close, isOpen: () => E.open,
     /* test hook */
+    _selDbg: () => E.sel ? { kind: E.sel.kind, mw: E.sel.mcv.width, mh: E.sel.mcv.height, bbox: { x: +E.sel.bbox.x.toFixed(1), y: +E.sel.bbox.y.toFixed(1), w: +E.sel.bbox.w.toFixed(1), h: +E.sel.bbox.h.toFixed(1) }, cvW: ed.canvas.width, cvH: ed.canvas.height } : null,
     _dbg: () => {
       const op = (E.txtEditing && E.txtEditing.op) || E.txtSel;
       const gm = op ? textDisplayGeom(op) : null;
       const gr = gizCv.getBoundingClientRect();
       return {
         tool: E.tool, ops: E.ops.length,
+        sel: E.sel ? E.sel.kind : null, float: !!E.floatSel, clip: !!E.clipboard,
+        paintOps: E.ops.filter((o) => ['paint', 'shape', 'fill', 'patch'].includes(o.type)).length,
         text: E.ops.filter((o) => o.type === 'text').map((o) => ({ t: o.text, x: +o.x.toFixed(3), y: +o.y.toFixed(3), size: +o.size.toFixed(1), rot: o.rot || 0 })),
-        sel: !!E.txtSel, editing: !!(E.txtEditing && E.txtEditing.op.text),
+        txtSel: !!E.txtSel, editing: !!(E.txtEditing && E.txtEditing.op.text),
         geom: gm ? { cx: Math.round(gm.cx), cy: Math.round(gm.cy), r: Math.round(gm.r), rot: gm.rot, w: Math.round(gm.w), h: Math.round(gm.h) } : null,
         giz: { x: Math.round(gr.x), y: Math.round(gr.y), w: Math.round(gr.width), h: Math.round(gr.height) }
       };

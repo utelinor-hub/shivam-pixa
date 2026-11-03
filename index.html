@@ -641,6 +641,32 @@
       background-image: linear-gradient(rgba(255,255,255,.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.55) 1px, transparent 1px);
       background-size: 33.33% 33.33%, 33.33% 33.33%; }
 
+    /* v3.14.0 — Picasa-style tool sections + Paint & Select tabs */
+    .sechead {
+      margin: 12px 0 6px; padding-bottom: 3px; font-size: 10.5px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .08em; color: #6d7076;
+      border-bottom: 1px solid #d4d1ca;
+    }
+    #tab-basic .sechead:first-child { margin-top: 2px; }
+    .toolgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+    .toolgrid .fixbtn { margin: 0; }
+    .toolgrid .fixbtn svg { width: 15px; height: 15px; }
+    .c12 { display: flex; align-items: center; gap: 8px; margin: 9px 0 2px; font-size: 11.5px; color: #3c3f45; flex-wrap: wrap; }
+    .c12 .cbox { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .c12 input[type="color"] { width: 34px; height: 26px; padding: 0; border: 1px solid #b5b2ab; border-radius: 3px; background: none; cursor: pointer; }
+    .c12 .fixbtn { width: auto; padding: 4px 9px; margin: 0; font-size: 11.5px; }
+    .swatches { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; margin: 6px 0 2px; }
+    .swatches button { aspect-ratio: 1; min-width: 0; border: 1px solid rgba(0,0,0,.28); border-radius: 2px; padding: 0; cursor: pointer; }
+    .swatches button:hover { transform: scale(1.14); border-color: #333; z-index: 1; }
+    .palhint { font-size: 10.5px; color: #8a8d93; margin: 4px 0 0; }
+    .hint { font-size: 11px; color: #71747a; margin: 9px 0 0; line-height: 1.5; }
+    .fixbtn:disabled { opacity: .45; cursor: default; }
+    .fixbtn:disabled:hover { border-color: #c6c3bc; background: linear-gradient(#fdfdfc, #edece7); }
+    /* v3.14.0: overlay canvas — Paint shape preview + Select marquee & floating selection */
+    #eOvl { position: absolute; left: 0; top: 0; z-index: 7; pointer-events: none; }
+    #eOvl.live { pointer-events: auto; cursor: crosshair; }
+    .e-tabs button { font-size: 10.8px; gap: 4px; }
+
     .e-busy { position: absolute; inset: 0; z-index: 9; display: grid; place-items: center; background: rgba(30,32,36,.35); }
     .e-textpop { position: absolute; z-index: 12; background: #fff; border: 1px solid #b5b2ab; border-radius: 5px; box-shadow: 0 6px 22px rgba(0,0,0,.3); padding: 9px; width: 232px; }
     .e-textpop input[type="text"] { width: 100%; padding: 6px 8px; border: 1px solid #bcbcbc; border-radius: 4px; font-size: 13px; outline: none; }
@@ -923,7 +949,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.13.0</span>
+      <span class="ver">v3.14.0</span>
     </span>
   </footer>
 
@@ -1057,31 +1083,96 @@
         </div>
         <!-- v3.13.0 Picasa text tool: gizmo wheel + on-canvas typing layer -->
         <canvas id="eGiz" hidden></canvas>
+        <!-- v3.14.0 Paint shapes + Select marquee / floating selection -->
+        <canvas id="eOvl" hidden></canvas>
         <textarea id="eTxtEdit" class="txtEdit" hidden spellcheck="false" wrap="off"></textarea>
         <div id="eBusy" class="e-busy" hidden><span class="spin big"></span></div>
       </div>
       <aside class="e-panel">
         <div class="e-tabs">
-          <button type="button" data-tab="basic" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5L13 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 3.5v4M14.5 5.5h4M19 10.5v3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Basic Fixes</button>
-          <button type="button" data-tab="tuning"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M5 10V4M12 20v-9M12 7V4M19 20v-4M19 12V4M2.8 14h4.4M9.8 7h4.4M16.8 16h4.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Tuning</button>
-          <button type="button" data-tab="effects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6-4.6-1.9 4.6-1.9zM18.5 15.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Effects</button>
+          <button type="button" data-tab="basic" class="on" title="Basic Fixes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5L13 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 3.5v4M14.5 5.5h4M19 10.5v3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Basic</button>
+          <button type="button" data-tab="tuning" title="Tuning"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M5 10V4M12 20v-9M12 7V4M19 20v-4M19 12V4M2.8 14h4.4M9.8 7h4.4M16.8 16h4.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Tuning</button>
+          <button type="button" data-tab="effects" title="Effects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6-4.6-1.9 4.6-1.9zM18.5 15.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Effects</button>
+          <button type="button" data-tab="paint" title="Paint — draw on the photo (Windows Paint style)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5c-3 .8-6.5 3.3-8.6 6l2.6 2.6c2.7-2.1 5.2-5.6 6-8.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M11 11.2c-1.7.2-3 1.5-3 3.2 0 1.5-1 2.4-2.5 2.6 1.1 1.6 2.8 2.5 4.5 2.5 2.1 0 3.9-1.7 3.9-3.9 0-1.7-.9-3.1-2.9-4.4z" fill="currentColor"/></svg>Paint</button>
+          <button type="button" data-tab="select" title="Select — copy / cut / delete part of the photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7V5.5a2 2 0 012-2H7M17 3.5h1.5a2 2 0 012 2V7M20.5 17v1.5a2 2 0 01-2 2H17M7 20.5H5.5a2 2 0 01-2-2V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3.5 10.5v3M20.5 10.5v3M10.5 3.5h3M10.5 20.5h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Select</button>
         </div>
         <div class="e-tabbody">
           <div id="tab-basic" class="e-tab on">
-            <button class="fixbtn" type="button" data-fix="lucky"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5L13 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 3.5v4M14.5 5.5h4M19 10.5v3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>I'm Feeling Lucky</button>
-            <button class="fixbtn" type="button" data-fix="autocon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.8a8.2 8.2 0 010 16.4z" fill="currentColor"/></svg>Auto Contrast</button>
-            <button class="fixbtn" type="button" data-fix="autocolor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5s6 6.6 6 10.4a6 6 0 11-12 0c0-3.8 6-10.4 6-10.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Auto Color</button>
-            <button class="fixbtn" type="button" data-fix="redeye"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Remove Redeye</button>
-            <button class="fixbtn" type="button" data-fix="retouch"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="9" width="17.6" height="6" rx="3" transform="rotate(-45 12 12)" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="10.3" cy="10.4" r="1" fill="currentColor"/><circle cx="13.7" cy="13.7" r="1" fill="currentColor"/></svg>Retouch (Blur)</button>
-            <button class="fixbtn" type="button" data-fix="crop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 2.5v13a2 2 0 002 2h13M2.5 6.5h13a2 2 0 012 2v13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Crop</button>
-            <button class="fixbtn" type="button" data-fix="straighten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 19.5h17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2.5"/><path d="M5 15.5L19 7.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="5" cy="15.5" r="1.4" fill="currentColor"/><circle cx="19" cy="7.5" r="1.4" fill="currentColor"/></svg>Straighten</button>
-            <button class="fixbtn" type="button" data-fix="text"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7V4.5h14V7M12 4.5v15M9.5 19.5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Add Text</button>
-            <button class="fixbtn" type="button" data-fix="sticker"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8.6" cy="9.4" r="1.6" fill="currentColor"/><path d="M4 16.5l4.8-4.2 3.4 3L15 13l6 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Add Logo / Sticker (PNG)</button>
+            <div class="sechead">Crop &bull; Straighten &bull; Text</div>
+            <div class="toolgrid">
+              <button class="fixbtn" type="button" data-fix="crop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 2.5v13a2 2 0 002 2h13M2.5 6.5h13a2 2 0 012 2v13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Crop</button>
+              <button class="fixbtn" type="button" data-fix="straighten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 19.5h17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2.5"/><path d="M5 15.5L19 7.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="5" cy="15.5" r="1.4" fill="currentColor"/><circle cx="19" cy="7.5" r="1.4" fill="currentColor"/></svg>Straighten</button>
+              <button class="fixbtn" type="button" data-fix="text"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7V4.5h14V7M12 4.5v15M9.5 19.5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>ABC Text</button>
+            </div>
+            <div class="sechead">One-click Fixes</div>
+            <div class="toolgrid">
+              <button class="fixbtn" type="button" data-fix="lucky"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5L13 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 3.5v4M14.5 5.5h4M19 10.5v3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Lucky</button>
+              <button class="fixbtn" type="button" data-fix="autocon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.8a8.2 8.2 0 010 16.4z" fill="currentColor"/></svg>Contrast</button>
+              <button class="fixbtn" type="button" data-fix="autocolor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5s6 6.6 6 10.4a6 6 0 11-12 0c0-3.8 6-10.4 6-10.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Color</button>
+            </div>
+            <div class="sechead">Retouch</div>
+            <div class="toolgrid">
+              <button class="fixbtn" type="button" data-fix="redeye"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Redeye</button>
+              <button class="fixbtn" type="button" data-fix="retouch"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="9" width="17.6" height="6" rx="3" transform="rotate(-45 12 12)" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="10.3" cy="10.4" r="1" fill="currentColor"/><circle cx="13.7" cy="13.7" r="1" fill="currentColor"/></svg>Blur Spot</button>
+            </div>
+            <div class="sechead">Add</div>
+            <div class="toolgrid">
+              <button class="fixbtn" type="button" data-fix="sticker"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8.6" cy="9.4" r="1.6" fill="currentColor"/><path d="M4 16.5l4.8-4.2 3.4 3L15 13l6 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Sticker / Logo</button>
+            </div>
+            <div class="sechead">Rotate</div>
             <div class="rotrow">
               <button class="fixbtn" type="button" data-fix="rotl"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5L4 8.7l4.5 4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 8.7H15a5.4 5.4 0 110 10.8h-3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Rotate Left</button>
               <button class="fixbtn" type="button" data-fix="rotr"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5L20 8.7l-4.5 4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.5 8.7H9a5.4 5.4 0 100 10.8h3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Rotate Right</button>
             </div>
             <div id="eToolBox" class="toolbox" hidden></div>
+          </div>
+          <div id="tab-paint" class="e-tab">
+            <div class="sechead">Brushes &amp; Tools</div>
+            <div class="toolgrid">
+              <button class="fixbtn" type="button" data-fix="pencil" title="Pencil — thin hard line"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 013 3L8 19l-4 1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14.5 6.5l3 3" stroke="currentColor" stroke-width="1.5"/></svg>Pencil</button>
+              <button class="fixbtn" type="button" data-fix="brush" title="Brush — soft round stroke"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5c-3 .8-6.5 3.3-8.6 6l2.6 2.6c2.7-2.1 5.2-5.6 6-8.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M11 11.2c-1.7.2-3 1.5-3 3.2 0 1.5-1 2.4-2.5 2.6 1.1 1.6 2.8 2.5 4.5 2.5 2.1 0 3.9-1.7 3.9-3.9 0-1.7-.9-3.1-2.9-4.4z" fill="currentColor"/></svg>Brush</button>
+              <button class="fixbtn" type="button" data-fix="eraser" title="Eraser — paints with Color 2, like Windows Paint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.6 15.4l7.8-7.8a2 2 0 012.8 0l3.2 3.2a2 2 0 010 2.8l-5.9 5.9H8.8l-4.2-4.1zM20 19.5H9.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.5 9.5l6 6" stroke="currentColor" stroke-width="1.4"/></svg>Eraser</button>
+              <button class="fixbtn" type="button" data-fix="fill" title="Fill — pour Color 1 into a colour area"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l7 7-7.5 7.5a2.4 2.4 0 01-3.4 0L4.5 14.4a2.4 2.4 0 010-3.4L9 6.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M2.5 12.5h12" stroke="currentColor" stroke-width="1.4"/><path d="M19.5 15.5s1.8 2.2 1.8 3.6a1.8 1.8 0 11-3.6 0c0-1.4 1.8-3.6 1.8-3.6z" fill="currentColor"/></svg>Fill</button>
+              <button class="fixbtn" type="button" data-fix="picker" title="Pick a colour from the photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.7 4.3a2.6 2.6 0 00-3.7 0l-2 2-1-1-1.8 1.8 6.7 6.7 1.8-1.8-1-1 2-2a2.6 2.6 0 000-3.7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12.5 8.5l-7 7-.8 3.8 3.8-.8 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Picker</button>
+            </div>
+            <div class="sechead">Shapes</div>
+            <div class="toolgrid">
+              <button class="fixbtn" type="button" data-fix="line"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5L19.5 4.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Line</button>
+              <button class="fixbtn" type="button" data-fix="rect"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>Rectangle</button>
+              <button class="fixbtn" type="button" data-fix="ellipse"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="8" ry="6" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>Ellipse</button>
+              <button class="fixbtn" type="button" data-fix="triangle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5L20.5 19h-17z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Triangle</button>
+              <button class="fixbtn" type="button" data-fix="star"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6-5.1-2.8-5.1 2.8 1.1-5.6-4.2-3.9 5.7-.7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Star</button>
+              <button class="fixbtn" type="button" data-fix="arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5L18 6M18 6h-6.5M18 6v6.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>Arrow</button>
+            </div>
+            <div class="trow"><label>Size</label><input id="pnSize" type="range" min="1" max="60" value="6" /><span class="val" id="pnSizeV">6</span></div>
+            <div class="c12">
+              <span class="cbox">Color 1 <input type="color" id="pnC1" value="#1a1a1a" title="Brush / outline colour" /></span>
+              <span class="cbox">Color 2 <input type="color" id="pnC2" value="#ffffff" title="Shape fill / eraser colour" /></span>
+              <button id="pnSwap" class="fixbtn" type="button" title="Swap Color 1 and Color 2">&#8644; Swap</button>
+            </div>
+            <div class="sechead">Palette</div>
+            <div class="swatches" id="pnPal"></div>
+            <p class="palhint">Left-click = Color 1 &bull; right-click = Color 2</p>
+            <label class="chkrow" style="margin-top:8px"><input type="checkbox" id="pnNoFill" /> Shapes: outline only (no fill)</label>
+            <p class="hint">Drag on the photo to draw &bull; Fill pours Color 1 into a colour area &bull; Picker copies a colour from the photo &bull; Eraser paints with Color 2, exactly like Windows Paint.</p>
+          </div>
+          <div id="tab-select" class="e-tab">
+            <div class="sechead">Selection Tools</div>
+            <div class="toolgrid">
+              <button class="fixbtn" type="button" data-fix="selrect" title="Drag a rectangle to select"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5V6a2 2 0 012-2h1.5M16.5 4H18a2 2 0 012 2v1.5M20 16.5V18a2 2 0 01-2 2h-1.5M7.5 20H6a2 2 0 01-2-2v-1.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 10.5v3M20 10.5v3M10.5 4h3M10.5 20h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Rect Select</button>
+              <button class="fixbtn" type="button" data-fix="sellasso" title="Draw a freehand outline to select"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.8 7.2C15.6 5.6 13.9 4.7 12 4.7c-3.6 0-6.5 2.6-6.5 5.8 0 2.4 1.7 4.4 4.1 5.3-.4 1.1-1.2 2-2.4 2.7 1.9.4 3.7-.1 5-1.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="17.3" cy="12.8" r="2.3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Lasso</button>
+              <button class="fixbtn" type="button" data-fix="selwand" title="Click a colour — every matching pixel nearby gets selected"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20L15 9" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M13.5 4.5l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9zM19 11l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Magic Wand</button>
+            </div>
+            <div class="trow"><label>Tolerance</label><input id="selTol" type="range" min="4" max="120" value="32" /><span class="val" id="selTolV">32</span></div>
+            <div class="sechead">What to do with it</div>
+            <div class="toolgrid">
+              <button id="selCopy" class="fixbtn" type="button" disabled title="Copy the selected pixels (Ctrl+C)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5 14.5V6a1.5 1.5 0 011.5-1.5H15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Copy</button>
+              <button id="selCut" class="fixbtn" type="button" disabled title="Cut — copy and remove (Ctrl+X)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.5" cy="17.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="17.5" cy="17.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.2 15.8L17.5 4.5M15.8 15.8L6.5 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Cut</button>
+              <button id="selDel" class="fixbtn" type="button" disabled title="Delete — fills the selection with the colour around it (removes text/objects)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15M9.5 6V4.5h5V6M6.5 6.5l1 13h9l1-13M10 10.5v5.5M14 10.5v5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Delete</button>
+              <button id="selPaste" class="fixbtn" type="button" disabled title="Paste the copied pixels — drag them, then Apply (Ctrl+V)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4.5" width="14" height="16" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9 4.5V3h6v1.5M9 10h6M9 14h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Paste</button>
+            </div>
+            <button id="selDeselect" class="fixbtn" type="button" disabled style="margin-top:5px">Deselect (Esc)</button>
+            <p class="hint">Magic Wand = select by colour &bull; Delete removes text/objects and fills the spot with the surrounding colour &bull; Copy &rarr; Paste clones a part &bull; drag inside a selection to move those pixels &bull; Delete key also works.</p>
           </div>
           <div id="tab-tuning" class="e-tab">
             <canvas id="eHist" width="280" height="84"></canvas>
@@ -2415,7 +2506,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.13.0', 'ok', 2500);
+          toast('S H I V A M PIXA v3.14.0', 'ok', 2500);
           break;
       }
     }
