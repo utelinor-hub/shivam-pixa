@@ -65,6 +65,16 @@
            style updates: the app keeps checking under Help, shows the new
            version there, and one click on "Install Update" with internet
            on updates and restarts it automatically.
+   v3.21.0: (editor) the Cutout tool — a professional Remove-Background
+           engine for product photos: border-connected background detection
+           (colour clusters sampled from the photo edges, so shiny parts
+           inside the product are never cut), enclosed-hole cutting for
+           rings/bangles, dust despeckle, edge feathering + colour
+           de-fringing (no halo), a Keep/Remove fix brush with undo,
+           a zoomable checkerboard QA preview with before/after hold, and
+           Transparent-PNG / pure-white / custom-colour output with an
+           optional soft shadow. Committed as a 'cutout' op — undo/redo,
+           auto-save and transparent-PNG export all keep working.
    v3.19.0: (collage) the PicasaCollage DOM engine — the collage editor now
            runs on the reference prototype 1:1: every photo is a real DOM
            element you grab and drag anywhere at 60fps, Picasa's round wheel
@@ -396,7 +406,7 @@
     /* v3.13.0: keep text blocks LAST in the stack so a later crop/rotate/
        straighten can never clip them in the export while the preview (which
        paints text on top) stays identical */
-    if (op.type === 'crop' || op.type === 'rot' || op.type === 'straighten') {
+    if (op.type === 'crop' || op.type === 'rot' || op.type === 'straighten' || op.type === 'cutout') {
       E.ops = [...E.ops.filter((o) => o.type !== 'text'), op, ...E.ops.filter((o) => o.type === 'text')];
     } else {
       E.ops.push(op);
@@ -424,7 +434,17 @@
       return;
     }
     try {
-      const blob = await new Promise((r) => ed.canvas.toBlob(r, 'image/jpeg', 0.86));
+      /* v3.21.0: the JPEG auto-save preview must not show transparent
+         (cut-out) areas as black — composite over white first */
+      let saveCv = ed.canvas;
+      if (FX.hasAlpha(ed.canvas)) {
+        saveCv = FX.mkCanvas(ed.canvas.width, ed.canvas.height);
+        const scx = saveCv.getContext('2d');
+        scx.fillStyle = '#fff';
+        scx.fillRect(0, 0, saveCv.width, saveCv.height);
+        scx.drawImage(ed.canvas, 0, 0);
+      }
+      const blob = await new Promise((r) => saveCv.toBlob(r, 'image/jpeg', 0.86));
       if (!blob) return;
       const stickers = E.stickers.map((s) => ({ sid: s.sid, blob: s.blob }));
       await P.idbSet('edits', k, { ops: E.ops, adj: E.adj, stickers, previewBlob: blob, ts: Date.now() });
@@ -2117,6 +2137,7 @@
       else if (f === 'rotl') commit({ type: 'rot', deg: -90 });
       else if (f === 'rotr') commit({ type: 'rot', deg: 90 });
       else if (f === 'sticker') q('#stickerFile').click();
+      else if (f === 'cutout') { if (window.PixsaCutout) window.PixsaCutout.open(); }
       else if (E.tool === f) setTool(null);
       else if (f === 'crop') startCrop();
       else setTool(f);
@@ -2190,8 +2211,25 @@
   wireSliders();
   wireFxStr();
 
+  /* ---------- v3.21.0 Cutout (Remove Background) ----------
+     The cutout works on the current committed base (ops, no text, no
+     tuning) at full resolution; tuning sliders and text stay live on top. */
+  function cutoutSource() {
+    return FX.renderOps(E.src, E.ops.filter((o) => o.type !== 'text'), 0, stickerMap());
+  }
+  async function commitCutout(blob) {
+    if (!E.open || !blob) return false;
+    let bmp = null;
+    try { bmp = await createImageBitmap(blob); } catch (e) { return false; }
+    const sid = ++E.stkSeq;
+    E.stickers.push({ sid, bmp, blob });
+    commit({ type: 'cutout', sid });
+    return true;
+  }
+
   window.PixsaEditor = {
     open, close, isOpen: () => E.open,
+    commitCutout, cutoutSource,
     /* test hook */
     _selDbg: () => E.sel ? { kind: E.sel.kind, mw: E.sel.mcv.width, mh: E.sel.mcv.height, bbox: { x: +E.sel.bbox.x.toFixed(1), y: +E.sel.bbox.y.toFixed(1), w: +E.sel.bbox.w.toFixed(1), h: +E.sel.bbox.h.toFixed(1) }, cvW: ed.canvas.width, cvH: ed.canvas.height } : null,
     _dbg: () => {

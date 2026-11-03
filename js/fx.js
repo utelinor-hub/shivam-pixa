@@ -996,6 +996,22 @@
           }
           break;
         }
+        case 'cutout': {
+          /* v3.21.0: full-canvas RGBA replacement (background removed). The
+             stored bitmap was produced at source resolution from the same
+             sid->bitmap map as patches, so it scales cleanly down to the
+             preview cap and stays 1:1 on full-res export. Transparency is
+             preserved — hasAlpha() then switches Save/Export to PNG. */
+          const cbmp = stickers ? stickers.get(op.sid) : null;
+          if (cbmp) {
+            const nc = mkCanvas(acc.width, acc.height);
+            const nx = nc.getContext('2d');
+            nx.imageSmoothingQuality = 'high';
+            nx.drawImage(cbmp, 0, 0, nc.width, nc.height);
+            acc = nc; cx = nx;
+          }
+          break;
+        }
         case 'sticker': {
           const bmp = stickers ? stickers.get(op.sid) : null;
           if (!bmp) break;
