@@ -789,7 +789,6 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10" r="1.6" fill="currentColor"/><path d="M4 17l5-5 3.5 3.5L16 12l4 4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
         <h1>Let's Get Started</h1>
-        <p>Choose any <b>folder of photos on your PC</b> &mdash; all photos (including sub-folders) appear here in one place. Everything stays on your PC &mdash; and goes to <b>your own Google Drive</b> only if you sign in.</p>
         <div class="row2">
           <button id="btnImport2" class="btn btn-accent" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
@@ -797,7 +796,6 @@
           </button>
           <button id="btnDemo" class="btn" type="button">View Demo Photos</button>
         </div>
-        <p class="tip"><b>Single-click</b> a photo to <b>select</b> it, <b>double-click</b> to open it in the <b>editor</b> (crop, light, effects, text). Corner <b>+</b> adds it to the Photo Tray, and <b>Alt+A</b> selects the whole album at once. Supported: JPG, PNG, WebP, GIF, BMP, AVIF. iPhone <b>HEIC</b> photos do not preview in Edge &mdash; on your phone go to Settings &#8594; Camera &#8594; Formats &#8594; <b>&#8220;Most Compatible&#8221;</b>, or convert them to JPG.</p>
       </div>
 
       <div id="grid" hidden></div>
@@ -813,7 +811,7 @@
     <div class="tray-actions">
       <button id="btnTrayExport" class="btn" type="button" title="Copy selected photos to another folder">Export</button>
       <button id="btnTraySizer" class="btn" type="button" title="Make the selected photos smaller (Sizer)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="6" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M20 4L8.6 15.4M14.6 14.4L20 20M8.4 8.6l3.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Sizer</button>
-      <button id="btnTrayRemove" class="btn" type="button" title="Remove the selected photos from the library (synced photos are also deleted from Google Drive)">Remove</button>
+      <button id="btnTrayRemove" class="btn" type="button" title="Remove from library">Remove</button>
       <button id="btnTrayCollage" class="btn btn-accent" type="button">Collage</button>
       <button id="btnTrayClear" class="linkbtn dim" type="button">Clear</button>
     </div>
@@ -877,7 +875,6 @@
             </select>
           </div>
           <label class="chkrow" style="margin-top:10px"><input type="checkbox" id="szInPlace" checked /> Overwrite the original files (same folder)</label>
-          <p class="cnote">High-quality multi-step scaling keeps photos sharp: a 1&nbsp;MB photo at 40% becomes about 150&ndash;300&nbsp;KB with no visible quality loss. Uncheck the box to save resized copies into a folder you choose instead. Photos with unsaved auto-saved edits lose those edits when resized, and animated GIFs become still photos.</p>
         </div>
         <div class="sz-col">
           <div id="szSummary" class="sz-summary"></div>
@@ -912,19 +909,17 @@
           <div id="cloudEmail" style="font-size:12px;color:#667;margin-top:3px">Not signed in</div>
         </div>
         <div class="cl-sec">
-          <h5>Google Client ID &mdash; already built in</h5>
+          <h5>Client ID</h5>
           <div class="cl-row">
             <input id="cloudClientId" type="text" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false" />
             <button id="cloudSaveId" class="btn" type="button">Save</button>
           </div>
-          <p class="cl-note">You can sign in right away &mdash; the app ships with its own free Client ID. It only works from the app's official home (<b>https://utelinor-hub.github.io</b>). Advanced: to use your own ID, open <b>console.cloud.google.com</b> &rarr; <b>APIs &amp; Services</b> &rarr; <b>Credentials</b> &rarr; <b>Create Credentials &rarr; OAuth client ID &rarr; Web application</b>, add your site under <b>Authorized JavaScript origins</b>, then paste the ID above and press Save. Photos go to <b>your own Google Drive</b> (15 GB free) and nowhere else.</p>
         </div>
         <div class="cl-row" style="justify-content:flex-end">
           <button id="cloudSyncNow" class="btn" type="button">Sync Now</button>
           <button id="cloudSignOut" class="btn" type="button">Sign Out</button>
           <button id="cloudSignIn" class="btn btn-accent" type="button">Sign in with Google</button>
         </div>
-        <p class="cl-note">How it works: every PC signed in with the same Google account sees the same photos, collages and settings. An <b>edit overwrites the same photo</b> (never a duplicate), <b>deleting in PIXA also deletes it in Drive</b>, new photos appear on your other PCs automatically, and everything syncs <b>in the background</b> &mdash; editing always stays fast. No internet? The app keeps working and syncs when you are back online.</p>
       </div>
     </div>
   </div>
@@ -991,8 +986,6 @@
             <div class="srow"><span class="sname">Temperature</span><input id="adTemp" type="range" min="-100" max="100" value="0" /><span class="val" id="vTemp">0</span></div>
             <div class="srow"><span class="sname">Tint</span><input id="adTint" type="range" min="-100" max="100" value="0" /><span class="val" id="vTint">0</span></div>
             <div class="srow"><span class="sname">Saturation</span><input id="adSat" type="range" min="-100" max="100" value="0" /><span class="val" id="vSat">0</span></div>
-            <p class="cnote">Drag a slider for a live preview. Double-click any slider to reset it to zero.</p>
-            <p class="cnote">The graph above is the live RGB histogram of your photo.</p>
           </div>
           <div id="tab-effects" class="e-tab">
             <div class="fxpager">
@@ -1002,7 +995,6 @@
             </div>
             <div class="srow"><span class="sname">Intensity</span><input id="fxStr" type="range" min="5" max="100" value="100" disabled /><span class="val" id="fxStrV">&mdash;</span></div>
             <div id="fxGrid" class="fxgrid"></div>
-            <p class="cnote">Effects apply instantly. Click a tile again to remove it, and use <b>Intensity</b> to fine-tune the last applied effect. Three pages; use the arrows to switch.</p>
           </div>
         </div>
         <div class="e-actions">
@@ -1240,7 +1232,7 @@
         out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: (f.webkitRelativePath || f.name).split('/').slice(1, -1).join('/') });
       }
       if (!out.length) {
-        toast(total ? `${total} files found, but no supported photo among them (JPG/PNG/WebP/GIF/BMP/AVIF required${unsup ? `; ${unsup} were HEIC/RAW` : ''})` : 'No files found', 'err', 8000);
+        toast(total ? `${total} files found, but no supported photo among them` : 'No files found', 'err', 6000);
         return;
       }
       state.photos = out;
@@ -1251,7 +1243,7 @@
       buildTree();
       applyFilter();
       const nfolders = new Set(out.map((q) => q.folder || '')).size;
-      toast(`${out.length} photos imported • in ${nfolders} folders${unsup ? ` • ${unsup} HEIC/RAW skipped (no preview in Edge)` : ''}`, 'ok', 6500);
+      toast(`${out.length} photos imported • ${nfolders} folders${unsup ? ` • ${unsup} HEIC/RAW skipped` : ''}`, 'ok', 4000);
       if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged();
     }
     els.fileInput.addEventListener('change', () => {
@@ -1280,9 +1272,9 @@
       if (!files.length) {
         let msg = 'No files found in this folder';
         if (stats.unsupported) {
-          msg = `${stats.total} files found, but ${stats.unsupported} HEIC/TIFF/RAW photos cannot be previewed in Edge. Try a folder with JPG/PNG/WebP photos.`;
+          msg = `${stats.total} files found, but only HEIC/RAW photos — convert them to JPG`;
         } else if (stats.total) {
-          msg = `${stats.total} files found, but none of them is a supported photo format (JPG/PNG/WebP/GIF/BMP/AVIF)`;
+          msg = `${stats.total} files found, but no supported photo among them`;
         }
         toast(msg, 'err', 8000);
         setStatus();
@@ -1298,7 +1290,7 @@
       applyFilter();
       if (!isRefresh) {
         const nfolders = new Set(files.map((f) => f.folder || '')).size;
-        toast(`${files.length} photos found • in ${nfolders} folders${stats.unsupported ? ` • ${stats.unsupported} HEIC/RAW (no preview in Edge)` : ''} • ${stats.total} files scanned`, 'ok', 7000);
+        toast(`${files.length} photos imported • ${nfolders} folders${stats.unsupported ? ` • ${stats.unsupported} HEIC/RAW skipped` : ''}`, 'ok', 4000);
       } else {
         toast(`Refreshed — ${files.length} photos`, 'ok', 3000);
       }
@@ -1329,7 +1321,7 @@
     /* ================= refresh ================= */
     els.btnRefresh.addEventListener('click', async () => {
       const h = await idbGet('kv', 'lastFolder');
-      if (!h || !h.name) { toast('Import a folder first — then refresh will work', 'err'); return; }
+      if (!h || !h.name) { toast('Import a folder first', 'err'); return; }
       try {
         let perm = await h.queryPermission({ mode: 'read' });
         if (perm !== 'granted') perm = await h.requestPermission({ mode: 'read' });
@@ -1379,7 +1371,7 @@
           if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: '' });
         }
       }
-      if (!out.length) { toast('No supported photo found in the dropped files (JPG/PNG/WebP/GIF/BMP/AVIF)', 'err', 6000); setStatus(); return; }
+      if (!out.length) { toast('No supported photo in the dropped files', 'err', 6000); setStatus(); return; }
       state.photos = out;
       state.folder = entries.length && entries[0].isDirectory ? entries[0].name : 'Dropped photos';
       state.folderFilter = '';
@@ -1808,8 +1800,8 @@
       const noHandle = list.some((p) => !p.handle);
       const src = state.selArr.length ? `${n} selected photo${n !== 1 ? 's' : ''}` : `all ${n} photos in this album`;
       sz.summary.textContent = noHandle
-        ? `Ready: ${src}. These photos were not imported from a PC folder, so the resized copies will be saved into a folder you choose.`
-        : `Ready: ${src}. The photos will be resized in place — the original files become smaller.`;
+        ? `Ready: ${src} — resized copies go to a folder you choose.`
+        : `Ready: ${src} — resized in place.`;
     }
     function openSizer() {
       const list = state.selArr.length ? state.selArr : state.filtered;
@@ -1888,7 +1880,7 @@
       const maxH = Math.round(+sz.h.value || 0);
       const quality = clamp(+sz.q.value || 0.92, 0.5, 1);
       if (!maxW && !maxH && pct >= 100) {
-        toast('Choose a size smaller than 100% — otherwise there is nothing to resize', 'err');
+        toast('Choose a size below 100%', 'err');
         return;
       }
       const list = szTargets();
@@ -2115,7 +2107,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.7.1 — 100% offline photo editor + collage (Picasa style): 36 effects with intensity, live histogram, I\'m Feeling Lucky, crop, straighten, text, stickers, Sizer photo resizer, 6 collage types, power-cut safe auto-save, and optional background sync with your own Google Drive. The official SHIVAM app. Everything stays on your PC unless you sign in.', 'ok', 9000);
+          toast('S H I V A M PIXA v3.7.1', 'ok', 2500);
           break;
       }
     }
@@ -2245,7 +2237,7 @@
         } catch (e) { toast(`Could not load font: ${f.name}`, 'err'); }
       }
       if (added) {
-        toast(`${added} font${added > 1 ? 's' : ''} added — they will appear in the Font list of the Text tool`, 'ok', 5000);
+        toast(`${added} font${added > 1 ? 's' : ''} added`, 'ok', 3000);
         document.dispatchEvent(new CustomEvent('pixa-fonts-updated'));
       }
     }
