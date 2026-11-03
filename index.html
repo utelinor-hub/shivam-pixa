@@ -242,12 +242,16 @@
     .fhead .fname { font-weight: 600; color: #235d9c; font-size: 13.5px; }
     .fhead .fcount { color: #6b7f95; font-size: 12px; margin-left: 2px; }
     .row {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(var(--thumb), 1fr));
+      /* v3.11.0: Picasa home-screen layout — thumbnails keep their ORIGINAL
+         aspect ratio, all sharing one row height; no boxes, no letterbox */
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
       gap: 9px;
     }
     .cell {
-      position: relative; aspect-ratio: 1 / 1;
+      position: relative; flex: 0 0 auto;
+      height: var(--thumb); aspect-ratio: 1; /* square until the real ratio loads */
       border-radius: 4px; overflow: hidden;
       background: #dcdcdc; border: 1px solid #b4b4b4;
       box-shadow: 0 1px 2px rgba(0,0,0,.14);
@@ -261,12 +265,12 @@
     .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .cell .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
     .cell .ph img {
-      /* v3.10.2: Picasa-style main grid — the FULL photo is always visible at
-         its original aspect ratio (letterboxed on dark), never cropped */
-      width: 100%; height: 100%; object-fit: contain; display: block;
+      /* v3.11.0: the cell itself takes the photo's true ratio (set in JS), so
+         cover now fills it edge-to-edge — the full photo, never a letterbox */
+      width: 100%; height: 100%; object-fit: cover; display: block;
       opacity: 0; transition: opacity .2s;
     }
-    .cell .ph.ready { background: #1b1f26; }
+    .cell .ph.ready { background: #fff; }
     .cell .ph.ready img { opacity: 1; }
     .cell .ph.bad { background: repeating-linear-gradient(45deg, #e6e6e6, #e6e6e6 8px, #dcdcdc 8px, #dcdcdc 16px); }
     .cell .ph.bad::after { content: "Failed to load"; font-size: 11px; color: #98a0aa; }
@@ -658,7 +662,11 @@
     .fxpager button:hover:not(:disabled) { border-color: var(--accent); background: #dcebfb; }
     .fxpager button:disabled { opacity: .4; cursor: default; }
     .c-prev { flex: 1; display: grid; place-items: center; background: #4d5055; padding: 14px; position: relative; overflow: auto; }
-    #cCanvas { max-width: 100%; max-height: 100%; box-shadow: 0 3px 18px rgba(0,0,0,.5); }
+    #cCanvas { max-width: 100%; max-height: 100%; box-shadow: 0 3px 18px rgba(0,0,0,.5); touch-action: none; }
+    /* v3.11.0: the collage maker is now a FULL-SCREEN editor (Picasa style) —
+       settings rail on the left, huge live preview, photos draggable */
+    #collage { padding: 0; place-items: stretch; }
+    #collage .m-box { width: 100vw; height: 100vh; max-width: none; max-height: none; border-radius: 0; border: none; }
     .c-busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(30,32,36,.35); }
     .m-foot { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid #bdbab3; background: #e2e0da; justify-content: flex-end; }
     .m-foot .btn { min-width: 120px; justify-content: center; }
@@ -870,7 +878,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.10.2</span>
+      <span class="ver">v3.11.0</span>
     </span>
   </footer>
 
@@ -1279,21 +1287,25 @@
         total++;
         if (UNSUPPORTED_EXT.test(f.name)) { unsup++; continue; }
         if (!IMG_EXT.test(f.name)) continue;
-        out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: (f.webkitRelativePath || f.name).split('/').slice(1, -1).join('/') });
+        const rel = (f.file && f.file.webkitRelativePath) || f.webkitRelativePath || '';
+        const root = rel ? rel.split('/')[0] : 'Imported photos';
+        const sub = rel.split('/').slice(1, -1).join('/');
+        out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: sub ? `${root}/${sub}` : root, root });
       }
       if (!out.length) {
         toast(total ? `${total} files found, but no supported photo among them` : 'No files found', 'err', 6000);
         return;
       }
-      state.photos = out;
+      /* v3.11.0: ADD to the library — folders imported before stay */
+      mergePhotos(out, out[0].root);
       state.dirHandle = null;
-      state.folder = ((out[0].file && out[0].file.webkitRelativePath) ? out[0].file.webkitRelativePath.split('/')[0] : '') || 'Imported photos';
+      state.folder = out[0].root;
       state.folderFilter = '';
       clearSel();
       buildTree();
       applyFilter();
       const nfolders = new Set(out.map((q) => q.folder || '')).size;
-      toast(`${out.length} photos imported • ${nfolders} folders${unsup ? ` • ${unsup} HEIC/RAW skipped` : ''}`, 'ok', 4000);
+      toast(`Added "${out[0].root}" — ${out.length} photos • library now has ${state.photos.length} photos in all folders${unsup ? ` • ${unsup} HEIC/RAW skipped` : ''}`, 'ok', 5000);
       if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged();
     }
     els.fileInput.addEventListener('change', () => {
@@ -1307,13 +1319,21 @@
       if (list.length) addFontFiles(list);
     });
 
+    /* v3.11.0: Picasa-style library — importing a folder ADDS it alongside the
+       folders already in the library (nothing disappears). Re-importing the
+       same root folder replaces only that root's photos, so nothing doubles. */
+    function mergePhotos(files, rootName) {
+      const kept = state.photos.filter((p) => (p.root || '') !== rootName);
+      state.photos = kept.concat(files);
+    }
+
     async function loadFolder(dir, isRefresh = false, silent = false) {
       const files = [];
       const stats = { total: 0, unsupported: 0, count: 0 };
       els.restore.hidden = true;
       setStatus('Scanning...');
       try {
-        await scanDir(dir, 0, files, stats, '');
+        await scanDir(dir, 0, files, stats, '', dir.name);
       } catch (e) {
         toast('Folder scan fail: ' + (e.message || e.name), 'err', 7000);
         setStatus();
@@ -1330,26 +1350,37 @@
         setStatus();
         return;
       }
-      state.photos = files;
+      mergePhotos(files, dir.name);
       state.dirHandle = dir;
       state.folder = dir.name;
-      state.folderFilter = '';
+      state.folderFilter = ''; /* show ALL folders in the library */
       clearSel();
-      if (canPicker) { try { await idbSet('kv', 'lastFolder', dir); } catch (e) {} }
+      if (canPicker) {
+        /* v3.11.0: remember EVERY imported folder so all of them reopen */
+        try {
+          let list = await idbGet('kv', 'lastFolders');
+          if (!Array.isArray(list)) list = [];
+          const legacy = await idbGet('kv', 'lastFolder').catch(() => null);
+          if (legacy && legacy.name) { list.push(legacy); idbDel('kv', 'lastFolder').catch(() => {}); }
+          list = list.filter((h) => h && h.name && h.name !== dir.name);
+          list.push(dir);
+          await idbSet('kv', 'lastFolders', list);
+        } catch (e) {}
+      }
       buildTree();
       applyFilter();
       if (!silent) {
         if (!isRefresh) {
           const nfolders = new Set(files.map((f) => f.folder || '')).size;
-          toast(`${files.length} photos imported • ${nfolders} folders${stats.unsupported ? ` • ${stats.unsupported} HEIC/RAW skipped` : ''}`, 'ok', 4000);
+          toast(`Added "${dir.name}" — ${files.length} photos • library now has ${state.photos.length} photos in all folders`, 'ok', 5000);
         } else {
-          toast(`Refreshed — ${files.length} photos`, 'ok', 3000);
+          toast(`Refreshed — ${files.length} photos in "${dir.name}"`, 'ok', 3000);
         }
       }
       if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged();
     }
 
-    async function scanDir(dir, depth, out, stats, prefix) {
+    async function scanDir(dir, depth, out, stats, prefix, rootName) {
       if (depth > 6 || out.length >= MAX_PHOTOS) return;
       for await (const [name, entry] of dir.entries()) {
         if (out.length >= MAX_PHOTOS) return;
@@ -1360,46 +1391,62 @@
           if (!IMG_EXT.test(name)) continue;
           try {
             const f = await entry.getFile();
-            out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: entry, file: null, folder: prefix });
+            /* v3.11.0: the tree path starts with the root folder's own name,
+               so two imported folders can never merge into one group */
+            out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: entry, file: null, folder: rootName ? (prefix ? `${rootName}/${prefix}` : rootName) : prefix, root: rootName || dir.name });
             stats.count++;
             if (stats.count % 500 === 0) setStatus(`Scanning... ${stats.count} photos`);
           } catch (e) { /* unreadable file — skip */ }
         } else if (entry.kind === 'directory') {
-          await scanDir(entry, depth + 1, out, stats, prefix ? `${prefix}/${name}` : name);
+          await scanDir(entry, depth + 1, out, stats, prefix ? `${prefix}/${name}` : name, rootName);
         }
       }
     }
 
     /* ================= refresh ================= */
     els.btnRefresh.addEventListener('click', async () => {
-      const h = await idbGet('kv', 'lastFolder');
-      if (!h || !h.name) { toast('Import a folder first', 'err'); return; }
-      try {
-        let perm = await h.queryPermission({ mode: 'read' });
-        if (perm !== 'granted') perm = await h.requestPermission({ mode: 'read' });
-        if (perm !== 'granted') { toast('Permission not granted — import the folder again', 'err'); return; }
-        await loadFolder(h, true);
-      } catch (e) {
-        toast('Refresh fail: ' + (e.message || e.name), 'err');
+      /* v3.11.0: refresh rescans EVERY imported folder, not just the last one */
+      let list = await idbGet('kv', 'lastFolders').catch(() => null);
+      if (!Array.isArray(list) || !list.length) {
+        const legacy = await idbGet('kv', 'lastFolder').catch(() => null);
+        list = legacy && legacy.name ? [legacy] : [];
       }
+      list = list.filter((h) => h && h.name);
+      if (!list.length) { toast('Import a folder first', 'err'); return; }
+      let okN = 0, total = 0;
+      for (const h of list) {
+        try {
+          let perm = await h.queryPermission({ mode: 'read' });
+          if (perm !== 'granted') perm = await h.requestPermission({ mode: 'read' });
+          if (perm !== 'granted') continue;
+          await loadFolder(h, true, okN > 0);
+          okN++;
+        } catch (e) { /* skip unreadable folder */ }
+      }
+      total = state.photos.length;
+      if (okN) toast(`Refreshed ${okN} folder${okN > 1 ? 's' : ''} — ${total} photos in the library`, 'ok', 3500);
+      else toast('Refresh fail: folder access was not granted', 'err');
     });
 
-    /* ================= drag & drop ================= */
-    function walkEntry(entry, depth, out) {
+    /* ================= drag & drop =================
+       v3.11.0: dropped folders/photos are ADDED to the library (root-tagged,
+       so repeated drops of the same folder replace, never duplicate) */
+    function walkEntry(entry, depth, out, rootName, prefix) {
       return new Promise((resolve) => {
         if (!entry) return resolve();
         if (entry.isFile) {
           entry.file((f) => {
-            if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: '' });
+            if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: prefix ? `${rootName}/${prefix}` : rootName, root: rootName });
             resolve();
           }, () => resolve());
         } else if (entry.isDirectory && depth < 6) {
           const rd = entry.createReader();
+          const sub = entry.name === rootName ? prefix : (prefix ? `${prefix}/${entry.name}` : entry.name);
           const readBatch = () => rd.readEntries(async (list) => {
             if (!list.length) return resolve();
             for (const en of list) {
               if (out.length >= MAX_PHOTOS) return resolve();
-              if (!en.name.startsWith('.')) await walkEntry(en, depth + 1, out);
+              if (!en.name.startsWith('.')) await walkEntry(en, depth + 1, out, rootName, sub);
             }
             readBatch();
           }, () => resolve());
@@ -1416,22 +1463,24 @@
       setStatus('Scanning dropped files...');
       const items = [...e.dataTransfer.items];
       const entries = items.map((it) => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
+      const root = entries.length && entries[0].isDirectory ? entries[0].name : 'Dropped photos';
       if (entries.length) {
-        for (const en of entries) await walkEntry(en, 0, out);
+        for (const en of entries) await walkEntry(en, 0, out, root, '');
       } else {
         for (const f of e.dataTransfer.files || []) {
-          if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: '' });
+          if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: root, root });
         }
       }
       if (!out.length) { toast('No supported photo in the dropped files', 'err', 6000); setStatus(); return; }
-      state.photos = out;
-      state.folder = entries.length && entries[0].isDirectory ? entries[0].name : 'Dropped photos';
+      mergePhotos(out, root);
+      state.folder = root;
       state.folderFilter = '';
       state.dirHandle = null;
       clearSel();
       buildTree();
       applyFilter();
-      toast(`${out.length} photos added from the drop`);
+      toast(`Added "${root}" — ${out.length} photos • library now has ${state.photos.length} photos in all folders`, 'ok', 4500);
+      if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged();
     });
 
     /* ================= share target receiver (Android: Share → PIXA) =================
@@ -1447,7 +1496,7 @@
         if (!IMG_EXT.test(f.name)) continue;
         if (seen.has(`${f.name}|${f.size}`)) continue; /* already in the library */
         seen.add(`${f.name}|${f.size}`);
-        fresh.push({ name: f.name, size: f.size, lastModified: f.lastModified || Date.now(), handle: null, file: f, folder: 'Shared from phone' });
+        fresh.push({ name: f.name, size: f.size, lastModified: f.lastModified || Date.now(), handle: null, file: f, folder: 'Shared from phone', root: 'Shared from phone' });
       }
       if (!fresh.length) { toast('Those photos are already in PIXA', 'ok', 3000); return; }
       state.photos = state.photos.concat(fresh);
@@ -1533,7 +1582,7 @@
         const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.85));
         const name = `Demo-${String(i + 1).padStart(2, '0')}.jpg`;
         const file = new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() - i * 86400000 });
-        out.push({ name, size: file.size, lastModified: file.lastModified, handle: null, file, folder: '' });
+        out.push({ name, size: file.size, lastModified: file.lastModified, handle: null, file, folder: 'Demo Photos', root: 'Demo Photos' });
       }
       return out;
     }
@@ -1632,7 +1681,8 @@
         });
         els.tree.appendChild(b);
       };
-      mk(state.folder || 'Library', '', state.photos.length, 0);
+      const multiRoot = new Set(state.photos.map((p) => p.root || p.folder || '·')).size > 1;
+      mk(multiRoot ? 'All photos' : (state.folder || 'Library'), '', state.photos.length, 0);
       for (const p of paths) {
         if (p === '') continue;
         const parts = p.split('/');
@@ -1759,6 +1809,9 @@
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'cell'; btn.title = entry.p.name;
       btn.dataset.key = photoKey(entry.p);
+      /* v3.11.0: if the photo's true ratio is already known (decoded before),
+         size the cell to it right away — no square flash on re-render */
+      if (entry.p.w && entry.p.h) btn.style.aspectRatio = `${entry.p.w} / ${entry.p.h}`;
       if (selSet().has(btn.dataset.key)) btn.classList.add('sel');
       const ph = document.createElement('span');
       ph.className = 'ph'; ph.dataset.pi = entry.idx;
@@ -1826,6 +1879,9 @@
           });
         }
       } catch (e) { return null; }
+      /* v3.11.0: remember the photo's true aspect ratio — the grid cell uses
+         it so every thumbnail keeps its original shape (Picasa style) */
+      if (src && src.width && src.height) { p.w = src.width; p.h = src.height; }
       const sc = Math.min(1, THUMB / Math.max(src.width, src.height));
       const w = Math.max(1, Math.round(src.width * sc));
       const h = Math.max(1, Math.round(src.height * sc));
@@ -1867,6 +1923,12 @@
         const url = await getThumbURL(p);
         if (!ph.isConnected) return;
         if (url) {
+          /* v3.11.0: resize the cell to the photo's real ratio before the
+             image fades in, so nothing is cropped and no bands are shown */
+          if (p.w && p.h) {
+            const cell = ph.closest('.cell');
+            if (cell) cell.style.aspectRatio = `${p.w} / ${p.h}`;
+          }
           const img = new Image();
           img.alt = p.name; img.decoding = 'async';
           img.onload = () => ph.classList.add('ready');
@@ -2110,29 +2172,50 @@
          app quietly allows it and the folder opens (the small bar is just a
          status note with a Remove button, not a question) */
     async function initRestore() {
+      /* v3.11.0: EVERY imported folder reopens on start — not just the last
+         one. All handles are stored in IndexedDB ('lastFolders'); the legacy
+         single 'lastFolder' key is migrated automatically. */
       if (!canPicker || inIframe) return;
-      let h = null;
-      try { h = await idbGet('kv', 'lastFolder'); } catch (e) {}
-      if (!h || !h.name) return;
-
-      let perm = 'prompt';
-      try { perm = await h.queryPermission({ mode: 'read' }); } catch (e) {}
-      if (perm === 'granted') {
-        try { await loadFolder(h, true, true); } catch (e) { toast('Could not reopen the folder', 'err'); }
-        return;
+      let handles = null;
+      try { handles = await idbGet('kv', 'lastFolders'); } catch (e) {}
+      if (!Array.isArray(handles) || !handles.length) {
+        const legacy = await idbGet('kv', 'lastFolder').catch(() => null);
+        if (legacy && legacy.name) {
+          handles = [legacy];
+          idbSet('kv', 'lastFolders', handles).catch(() => {});
+          idbDel('kv', 'lastFolder').catch(() => {});
+        } else return;
       }
+      handles = handles.filter((h) => h && h.name);
+      if (!handles.length) return;
 
-      els.restoreName.textContent = h.name;
+      const pending = [];
+      let opened = 0;
+      for (const h of handles) {
+        let perm = 'prompt';
+        try { perm = await h.queryPermission({ mode: 'read' }); } catch (e) {}
+        if (perm === 'granted') {
+          try { await loadFolder(h, true, true); opened++; } catch (e) { /* skip */ }
+        } else pending.push(h);
+      }
+      if (opened) els.restore.hidden = true;
+      if (!pending.length) return;
+
+      els.restoreName.textContent = pending.length > 1
+        ? `${pending[0].name} + ${pending.length - 1} more folder${pending.length > 2 ? 's' : ''}`
+        : pending[0].name;
       els.restore.hidden = false;
       const tryOpen = async (ev) => {
         /* ignore clicks on the bar itself (Remove button etc.) */
         if (ev && ev.target && els.restore.contains(ev.target)) return;
         document.removeEventListener('pointerdown', tryOpen, true);
         document.removeEventListener('keydown', tryOpen, true);
-        let p2 = 'denied';
-        try { p2 = await h.requestPermission({ mode: 'read' }); } catch (e) {}
-        if (p2 === 'granted') {
-          try { await loadFolder(h, true, true); return; } catch (e) { toast('Could not reopen the folder', 'err'); }
+        for (const h of pending) {
+          let p2 = 'denied';
+          try { p2 = await h.requestPermission({ mode: 'read' }); } catch (e) {}
+          if (p2 === 'granted') {
+            try { await loadFolder(h, true, true); } catch (e) { toast('Could not reopen ' + h.name, 'err'); }
+          }
         }
         els.restore.hidden = true;
       };
@@ -2141,9 +2224,10 @@
       els.restoreDel.onclick = async () => {
         document.removeEventListener('pointerdown', tryOpen, true);
         document.removeEventListener('keydown', tryOpen, true);
+        await idbDel('kv', 'lastFolders').catch(() => {});
         await idbDel('kv', 'lastFolder').catch(() => {});
         els.restore.hidden = true;
-        toast('Folder removed from the app — it will not reopen automatically');
+        toast('Folders removed from the app — they will not reopen automatically');
       };
     }
 
@@ -2238,7 +2322,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.10.2', 'ok', 2500);
+          toast('S H I V A M PIXA v3.11.0', 'ok', 2500);
           break;
       }
     }
