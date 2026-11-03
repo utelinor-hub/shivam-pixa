@@ -51,7 +51,12 @@
            stays up for 9 seconds before it applies itself, an "updated to
            vX — all changes are live" toast confirms every applied update,
            and the install button switches to a remembered "App installed"
-           state instead of vanishing after the install. */
+           state instead of vanishing after the install.
+   v3.16.3: (updates) the Help menu owns updates — "Check for Updates" and
+           "Install Update" live there permanently (a red dot marks Help
+           while an update waits, and the check names the waiting version),
+           so an update can never be missed, dismissed into nowhere or left
+           stuck again. */
 (() => {
   'use strict';
   const P = window.Pixsa;
