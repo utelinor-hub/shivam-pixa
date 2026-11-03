@@ -1,18 +1,17 @@
-/* SHIVAM PIXA — collage.js  (v3.12.0 "Picasa Picture Collage" engine)
-   Modular layout engine + interactive HTML5-canvas renderer.
+/* SHIVAM PIXA — collage.js  (v3.15.0 "Picasa Picture Collage" engine)
+   Free-form Picasa-style picture pile + interactive HTML5-canvas renderer.
 
-   Layout modes:
-     pile    Picture Pile      — polaroid scatter, full manual control
-     mosaic  Mosaic            — 1-2 featured photos + tessellated rows (bin packing)
-     grid    Grid              — uniform row/column cells
-     frame   Frame Mosaic      — one central photo framed by edge tiles
-     sheet   Contact Sheet     — white contain-cells with margins
-     mex     Multiple Exposure — alpha blend
+   v3.15.0: the Layout modes were removed (Picasa-style: everything is one
+   free pile — place any photo anywhere). Page Format gained a Custom ratio.
+   Dragging is Picasa-smooth now: while a photo is being dragged/rotated/
+   resized the full collage is NOT re-rendered every frame — a static base
+   snapshot is composited on the overlay canvas and only the moved photos
+   are redrawn. The rotate / resize handles are clamped inside the canvas
+   so they stay reachable when a photo sits on the page edge.
 
-   Interactivity (Picture Pile): click = select, drag = move (multi-select),
+   Interactivity: click = select, drag = move (multi-select),
    wheel = resize, Shift+wheel = rotate, rotation + scale handles, pinch =
    scale+rotate on touch, ]/[ = front/back, Delete = remove.
-   Slotted modes (Mosaic/Grid/Frame/Sheet): drag a photo onto another to swap.
 
    Rendering: one paint function renders BOTH the live preview and the
    final export — exportDims() renders at 3840x2160 (screen) or true
@@ -28,7 +27,9 @@
   const el = {
     root: q('#collage'), canvas: q('#cCanvas'), overlay: q('#cOverlay'),
     busy: q('#cBusy'), note: q('#cNote'), count: q('#cCount'), toolInfo: q('#cToolInfo'),
-    fmt: q('#cFormat'), bg: q('#cBg'), spacingRow: q('#cSpacingRow'), spacing: q('#cSpacing'),
+    fmt: q('#cFormat'), custRow: q('#cCustomRow'), custW: q('#cCustW'), custH: q('#cCustH'),
+    custApply: q('#cCustApply'),
+    bg: q('#cBg'),
     shuffle: q('#cShuffle'), border: q('#cBorder'), orient: q('#cOrient'), bgPhoto: q('#cBgPhoto'),
     exportFmt: q('#cExportFmt'),
     cCreate: q('#cCreate'), cCancel: q('#cCancel'), cSaveDir: q('#cSaveDir'),
@@ -42,8 +43,9 @@
   const DEG = Math.PI / 180;
 
   const C = {
-    open: false, list: [], imgs: [], type: 'pile', bg: '#f5f2ec', spacing: 10, seed: 7,
+    open: false, list: [], imgs: [], type: 'pile', bg: '#f5f2ec', seed: 7,
     border: 'white', landscape: true, bgPhoto: false, bgIdx: 0,
+    custW: 16, custH: 9,
     alphaAny: false, restored: false,
     /* per-photo manual transforms (Picture Pile):
        pos[i] = { x, y (0..1 canvas-normalized center), rot (radians), scale }
@@ -104,6 +106,10 @@
   }
 
   /* ================= page geometry ================= */
+  const custR = () => {
+    const w = Math.max(1, C.custW || 16), h = Math.max(1, C.custH || 9);
+    return clamp(w / h, 0.2, 5);
+  };
   function nativeDims(fmt) {
     switch (fmt) {
       case '16x9': return [1920, 1080];
@@ -115,6 +121,10 @@
       case '16x20': return [2000, 2500];
       case 'a4': return [1191, 1684];
       case 'letter': return [1700, 2200];
+      case 'custom': {
+        const r = custR();
+        return r >= 1 ? [Math.round(1600 * r), 1600] : [1600, Math.round(1600 / r)];
+      }
       default: return [1600, 1200]; /* 4x3 */
     }
   }
@@ -137,6 +147,12 @@
       case '16x20': W = 4800; H = 6000; break;
       case 'a4': W = 2480; H = 3508; break;
       case 'letter': W = 2550; H = 3300; break;
+      case 'custom': {
+        const r = custR();
+        W = Math.round(3000 * (r >= 1 ? r : 1));
+        H = Math.round(3000 * (r >= 1 ? 1 : 1 / r));
+        break;
+      }
       default: W = 3200; H = 2400;
     }
     if (C.landscape !== (W >= H)) { const t = W; W = H; H = t; }
@@ -146,52 +162,63 @@
   }
 
   /* ================= LAYOUT: Picture Pile ================= */
-  function paintPile(x, W, H) {
+  /* geometry for ONE photo — the random scatter values come from the photo's
+     own index (a deterministic rng is advanced 4 steps per earlier photo),
+     so drawing a single photo independently matches the full render */
+  function pileGeom(i, W, H) {
     const n = C.imgs.length;
-    const rand = rng();
     const cols = Math.max(1, Math.ceil(Math.sqrt(n)));
     const rows = Math.max(1, Math.ceil(n / cols));
     const cw = W / cols, ch = H / rows;
-    const base = [];
-    for (let i = 0; i < n; i++) {
-      const img = C.imgs[i];
-      /* every photo's random values come from its OWN index, so manual edits
-         of one photo never move the others */
-      const jw0 = cw * (0.55 + rand() * 0.35);   /* leaves air between photos */
-      const px0 = (i % cols) * cw + cw / 2 + (rand() - 0.5) * cw * 0.3;
-      const py0 = Math.floor(i / cols) * ch + ch / 2 + (rand() - 0.5) * ch * 0.3;
-      const rot0 = (rand() - 0.5) * 30 * DEG;          /* -15deg .. +15deg */
-      const man = C.pos && C.pos[i];
-      const scl = (man && man.scale) || 1;
-      base[i] = {
-        img, jw: jw0 * scl, jh: jw0 * (img.height / img.width) * scl,
-        px: man ? man.x * W : px0, py: man ? man.y * H : py0,
-        rot: man ? man.rot : rot0
-      };
+    const rand = rng();
+    for (let k = 0; k < i * 4; k++) rand();   /* advance to this photo's values */
+    return {
+      jw0: cw * (0.55 + rand() * 0.35),      /* leaves air between photos */
+      px0: (i % cols) * cw + cw / 2 + (rand() - 0.5) * cw * 0.3,
+      py0: Math.floor(i / cols) * ch + ch / 2 + (rand() - 0.5) * ch * 0.3,
+      rot0: (rand() - 0.5) * 30 * DEG        /* -15deg .. +15deg */
+    };
+  }
+  /* draw ONE pile photo (used by the full render AND the smooth-drag overlay).
+     Returns the geometry so the caller can update the hit-test layout. */
+  function drawPilePhoto(x, i, W, H) {
+    const img = C.imgs[i];
+    if (!img) return null;
+    const g = pileGeom(i, W, H);
+    const man = C.pos && C.pos[i];
+    const scl = (man && man.scale) || 1;
+    const b = {
+      img, jw: g.jw0 * scl, jh: g.jw0 * (img.height / img.width) * scl,
+      px: man ? man.x * W : g.px0, py: man ? man.y * H : g.py0,
+      rot: man ? man.rot : g.rot0
+    };
+    x.save();
+    x.translate(b.px, b.py);
+    x.rotate(b.rot);
+    x.shadowColor = 'rgba(0,0,0,.38)';
+    x.shadowBlur = Math.min(W, H) * 0.022;
+    x.shadowOffsetY = Math.min(W, H) * 0.008;
+    if (C.border === 'none') {
+      x.drawImage(b.img, -b.jw / 2, -b.jh / 2, b.jw, b.jh);
+    } else {
+      const u = Math.min(b.jw, b.jh);
+      const pad = C.border === 'polaroid' ? u * 0.05 : u * 0.032;
+      const bot = C.border === 'polaroid' ? u * 0.16 : pad;
+      x.fillStyle = '#ffffff';
+      x.fillRect(-b.jw / 2 - pad, -b.jh / 2 - pad, b.jw + pad * 2, b.jh + pad + bot);
+      x.shadowColor = 'transparent';
+      x.drawImage(b.img, -b.jw / 2, -b.jh / 2, b.jw, b.jh);
     }
-    if (!C.order || C.order.length !== n) C.order = C.imgs.map((_, i) => i);
+    x.restore();
+    return b;
+  }
+  function paintPile(x, W, H, skip) {
+    if (!C.order || C.order.length !== C.imgs.length) C.order = C.imgs.map((_, i) => i);
     const layout = [];
     for (const i of C.order) {
-      const b = base[i];
-      x.save();
-      x.translate(b.px, b.py);
-      x.rotate(b.rot);
-      x.shadowColor = 'rgba(0,0,0,.38)';
-      x.shadowBlur = Math.min(W, H) * 0.022;
-      x.shadowOffsetY = Math.min(W, H) * 0.008;
-      if (C.border === 'none') {
-        x.drawImage(b.img, -b.jw / 2, -b.jh / 2, b.jw, b.jh);
-      } else {
-        const u = Math.min(b.jw, b.jh);
-        const pad = C.border === 'polaroid' ? u * 0.05 : u * 0.032;
-        const bot = C.border === 'polaroid' ? u * 0.16 : pad;
-        x.fillStyle = '#ffffff';
-        x.fillRect(-b.jw / 2 - pad, -b.jh / 2 - pad, b.jw + pad * 2, b.jh + pad + bot);
-        x.shadowColor = 'transparent';
-        x.drawImage(b.img, -b.jw / 2, -b.jh / 2, b.jw, b.jh);
-      }
-      x.restore();
-      layout[i] = { px: b.px, py: b.py, jw: b.jw, jh: b.jh, rot: b.rot, pile: true };
+      if (skip && skip.has(i)) continue;   /* dragged photos are drawn on the overlay */
+      const b = drawPilePhoto(x, i, W, H);
+      if (b) layout[i] = { px: b.px, py: b.py, jw: b.jw, jh: b.jh, rot: b.rot, pile: true };
     }
     C.layout = layout;
   }
@@ -423,7 +450,7 @@
   }
 
   /* ================= master render ================= */
-  function renderCollage(W, H, sc) {
+  function renderCollage(W, H, sc, skip) {
     const c = document.createElement('canvas');
     c.width = Math.max(2, Math.round(W)); c.height = Math.max(2, Math.round(H));
     W = c.width; H = c.height;
@@ -434,21 +461,10 @@
     if (!n) return c;
     const bi = Math.min(C.bgIdx || 0, n - 1);
     if (C.bgPhoto && C.imgs[bi]) drawBlurredBg(x, C.imgs[bi], W, H);
-    if (C.type === 'mex') {
-      x.globalAlpha = 1 / n;
-      for (const img of C.imgs) drawCover(x, img, 0, 0, W, H);
-      x.globalAlpha = 1;
-      C.layout = null;
-    } else if (C.type === 'pile') {
-      paintPile(x, W, H, sc);
-    } else if (C.type === 'mosaic') {
-      paintMosaic(x, W, H, sc);
-    } else if (C.type === 'frame') {
-      paintFrame(x, W, H, sc);
-    } else if (C.type === 'sheet') {
-      paintCells(x, W, H, sc, true);
+    if (C.type === 'pile') {
+      paintPile(x, W, H, skip);
     } else {
-      paintCells(x, W, H, sc, false);
+      paintPile(x, W, H, skip);   /* v3.15.0: one free-form Picasa pile */
     }
     return c;
   }
@@ -483,18 +499,26 @@
     const hy = -L.jh / 2 - m - hs * 3.2;
     const cos = Math.cos(L.rot), sin = Math.sin(L.rot);
     const sx = L.jw / 2 + m, sy2 = L.jh / 2 + m;
+    /* v3.15.0: clamp both handles inside the canvas — on a photo that sits
+       against the page edge the rotate lollipop used to be drawn (and hit)
+       OFF the canvas, so only resizing seemed possible */
+    const pad = hs + 6;
+    const cl = (p) => ({
+      x: clamp(p.x, pad, el.canvas.width - pad),
+      y: clamp(p.y, pad, el.canvas.height - pad)
+    });
     return {
-      rot: { x: L.px - hy * sin, y: L.py + hy * cos },
-      scale: { x: L.px + sx * cos - sy2 * sin, y: L.py + sx * sin + sy2 * cos }
+      rot: cl({ x: L.px - hy * sin, y: L.py + hy * cos }),
+      scale: cl({ x: L.px + sx * cos - sy2 * sin, y: L.py + sx * sin + sy2 * cos })
     };
   }
-  function paintOverlay() {
+  function paintOverlay(keepBase) {
     const ov = el.overlay;
     if (ov.width !== el.canvas.width || ov.height !== el.canvas.height) {
       ov.width = el.canvas.width; ov.height = el.canvas.height;
     }
     const x = ov.getContext('2d');
-    x.clearRect(0, 0, ov.width, ov.height);
+    if (!keepBase) x.clearRect(0, 0, ov.width, ov.height);
     if (!C.open || !C.layout) return;
     const lw = Math.max(1.5, el.canvas.width * 0.0032);
     const hs = handleSize();
@@ -505,35 +529,36 @@
       x.lineWidth = lw;
       x.strokeStyle = '#2b7cd3';
       x.setLineDash([lw * 3, lw * 2.4]);
-      if (pile) {
-        x.translate(L.px, L.py);
-        x.rotate(L.rot);
-        const m = hs * 0.9;
-        x.strokeRect(-L.jw / 2 - m, -L.jh / 2 - m, L.jw + m * 2, L.jh + m * 2);
-        x.setLineDash([]);
-        if (C.sel.size === 1) {
-          /* rotation lollipop above the top edge */
-          const hy = -L.jh / 2 - m - hs * 3.2;
-          x.beginPath(); x.moveTo(0, -L.jh / 2 - m); x.lineTo(0, hy); x.stroke();
-          x.beginPath(); x.arc(0, hy, hs, 0, Math.PI * 2);
+      /* dashed outline drawn WITH the photo's rotation */
+      x.translate(L.px, L.py);
+      x.rotate(L.rot);
+      const m = hs * 0.9;
+      if (pile) x.strokeRect(-L.jw / 2 - m, -L.jh / 2 - m, L.jw + m * 2, L.jh + m * 2);
+      else x.strokeRect(L.x - lw, L.y - lw, L.w + lw * 2, L.h + lw * 2);
+      x.restore();
+      x.setLineDash([]);
+      if (pile && C.sel.size === 1) {
+        /* handles drawn in canvas space, at the SAME clamped positions the
+           pointerdown hit-test uses — draw == grab zone, always on-canvas */
+        const HP = handlePositions(i);
+        if (HP) {
+          const a = L.jh / 2 + hs * 0.9;
+          const ex = L.px + a * Math.sin(L.rot), ey = L.py - a * Math.cos(L.rot);
+          x.beginPath(); x.moveTo(ex, ey); x.lineTo(HP.rot.x, HP.rot.y); x.stroke();
+          x.beginPath(); x.arc(HP.rot.x, HP.rot.y, hs, 0, Math.PI * 2);
           x.fillStyle = '#ffffff'; x.fill(); x.stroke();
-          /* scale square at the SE corner */
-          const sx2 = L.jw / 2 + m, sy2 = L.jh / 2 + m;
           x.fillStyle = '#2b7cd3';
-          x.fillRect(sx2 - hs / 2, sy2 - hs / 2, hs, hs);
+          x.fillRect(HP.scale.x - hs / 2, HP.scale.y - hs / 2, hs, hs);
           x.strokeStyle = '#ffffff'; x.lineWidth = lw;
-          x.strokeRect(sx2 - hs / 2, sy2 - hs / 2, hs, hs);
+          x.strokeRect(HP.scale.x - hs / 2, HP.scale.y - hs / 2, hs, hs);
         }
-      } else {
-        x.strokeRect(L.x - lw, L.y - lw, L.w + lw * 2, L.h + lw * 2);
-        x.setLineDash([]);
+      } else if (!pile) {
         x.fillStyle = '#2b7cd3';
         const d = Math.max(3, hs * 0.34);
         for (const [hx, hy] of [[L.x, L.y], [L.x + L.w, L.y], [L.x, L.y + L.h], [L.x + L.w, L.y + L.h]]) {
           x.fillRect(hx - d, hy - d, d * 2, d * 2);
         }
       }
-      x.restore();
     }
     /* swap target highlight while dragging in slotted modes */
     if (swapTarget >= 0 && C.layout[swapTarget] && C.layout[swapTarget].w) {
@@ -598,6 +623,38 @@
   const ptrs = new Map();
   let drag = null;
 
+  /* ---- v3.15.0 Picasa-smooth dragging ----
+     While a gesture is active the collage is NOT re-rendered every frame.
+     renderCollage() runs ONCE at gesture start WITHOUT the dragged photos
+     (baseSnap); every pointermove then just recomposites that snapshot plus
+     the moved photos onto the overlay canvas — a ~60fps operation instead of
+     a full re-render (background + blurred photo + every photo). */
+  let baseSnap = null;
+  let dragSet = null;
+  let wheelT = null;
+  function buildBase() {
+    dragSet = (drag.mode === 'move' || drag.mode === 'pinch') ? new Set(C.sel)
+            : new Set([drag.i]);
+    if (!dragSet.size) { baseSnap = null; dragSet = null; return; }
+    baseSnap = renderCollage(el.canvas.width, el.canvas.height, 1, dragSet);
+  }
+  function dragPaint() {
+    if (!baseSnap || !dragSet) return;
+    const ov = el.overlay;
+    if (ov.width !== el.canvas.width || ov.height !== el.canvas.height) {
+      ov.width = el.canvas.width; ov.height = el.canvas.height;
+    }
+    const x = ov.getContext('2d');
+    x.clearRect(0, 0, ov.width, ov.height);
+    x.drawImage(baseSnap, 0, 0);
+    for (const j of dragSet) {
+      const b = drawPilePhoto(x, j, el.canvas.width, el.canvas.height);
+      if (b) C.layout[j] = { px: b.px, py: b.py, jw: b.jw, jh: b.jh, rot: b.rot, pile: true };
+    }
+    paintOverlay(true);   /* outlines + handles on top (no clear) */
+  }
+  function endGesture() { baseSnap = null; dragSet = null; }
+
   function startPinch() {
     const [p1, p2] = [...ptrs.values()];
     let i = hitPhoto(p1);
@@ -612,6 +669,7 @@
       c0: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 },
       start: getPos(i)
     };
+    buildBase();
     el.canvas.style.cursor = 'grabbing';
     paintOverlay();
   }
@@ -629,7 +687,7 @@
       rot: s.rot + (ang - drag.ang0),
       scale: clamp(s.scale * d / drag.d0, 0.2, 4)
     };
-    scheduleRedraw(false);
+    dragPaint();
   }
 
   function wireInteractions() {
@@ -649,12 +707,14 @@
             if (dist(pt, HP.rot) <= handleSize() * 1.7) {
               const L = C.layout[i];
               drag = { mode: 'rot', i, a0: Math.atan2(pt.y - L.py, pt.x - L.px), start: getPos(i) };
+              buildBase();
               cv.style.cursor = 'grabbing';
               return;
             }
             if (dist(pt, HP.scale) <= handleSize() * 1.7) {
               const L = C.layout[i];
               drag = { mode: 'scale', i, d0: Math.max(6, dist(pt, { x: L.px, y: L.py })), start: getPos(i) };
+              buildBase();
               cv.style.cursor = 'grabbing';
               return;
             }
@@ -671,6 +731,7 @@
           const snap = {};
           for (const j of C.sel) snap[j] = getPos(j);
           drag = { mode: 'move', pt, snap };
+          buildBase();
           cv.style.cursor = 'grabbing';
         } else {
           C.sel.clear();
@@ -712,7 +773,7 @@
             C.pos[j] = { x: clamp(s.x + dx, -0.5, 1.5), y: clamp(s.y + dy, -0.5, 1.5), rot: s.rot, scale: s.scale };
           }
           drag.pt = pt;
-          scheduleRedraw(false);
+          dragPaint();
           break;
         }
         case 'rot': {
@@ -723,7 +784,7 @@
           if (Math.abs(rot - snap90) < 4 * DEG) rot = snap90;   /* magnetic 0/90/180/270 */
           C.pos = C.pos || [];
           C.pos[drag.i] = { x: drag.start.x, y: drag.start.y, rot, scale: drag.start.scale };
-          scheduleRedraw(false);
+          dragPaint();
           break;
         }
         case 'scale': {
@@ -732,7 +793,7 @@
           C.pos = C.pos || [];
           C.pos[drag.i] = { x: drag.start.x, y: drag.start.y, rot: drag.start.rot,
                             scale: clamp(drag.start.scale * d / drag.d0, 0.2, 4) };
-          scheduleRedraw(false);
+          dragPaint();
           break;
         }
         case 'swap': {
@@ -759,7 +820,9 @@
       }
       drag = null;
       swapTarget = -1;
-      if (C.open) { el.canvas.style.cursor = 'default'; paintOverlay(); }
+      endGesture();
+      clearTimeout(wheelT);
+      if (C.open) { el.canvas.style.cursor = 'default'; scheduleRedraw(true); }
     };
     cv.addEventListener('pointerup', endDrag);
     cv.addEventListener('pointercancel', endDrag);
@@ -771,12 +834,20 @@
       if (i < 0 && C.sel.size === 1) i = [...C.sel][0];
       if (i < 0) return;
       e.preventDefault();
+      if (!drag) { drag = { mode: 'wheel', i }; buildBase(); }
       const pos = getPos(i);
       if (e.shiftKey) pos.rot += (e.deltaY < 0 ? 1 : -1) * 5 * DEG;
       else pos.scale = clamp(pos.scale * (e.deltaY < 0 ? 1.07 : 0.93), 0.2, 4);
       C.pos = C.pos || [];
       C.pos[i] = pos;
-      scheduleRedraw(false);
+      dragPaint();
+      clearTimeout(wheelT);
+      wheelT = setTimeout(() => {
+        if (drag && drag.mode === 'wheel') {
+          drag = null; endGesture();
+          scheduleRedraw(true);
+        }
+      }, 350);
     }, { passive: false });
   }
 
@@ -903,8 +974,9 @@
       if (!photos.length) return;
       const previewBlob = await new Promise((r) => el.canvas.toBlob(r, C.alphaAny ? 'image/png' : 'image/jpeg', 0.9));
       const proj = {
-        type: C.type, bg: C.bg, spacing: C.spacing, border: C.border,
+        type: 'pile', bg: C.bg, border: C.border,
         landscape: C.landscape, bgPhoto: C.bgPhoto, bgIdx: C.bgIdx, seed: C.seed, fmt: el.fmt.value,
+        custW: C.custW, custH: C.custH,
         exportFmt: el.exportFmt.value,
         pos: C.pos, photos, previewBlob, ts: Date.now()
       };
@@ -916,9 +988,8 @@
     if (!proj || !proj.photos || !proj.photos.length) { toast('The collage project is incomplete', 'err'); return; }
     C.open = true; C.blob = null; C.restored = true;
     C.list = proj.photos.map((ph) => ({ name: ph.name || 'photo', size: 0, lastModified: 0, handle: null, file: null }));
-    C.type = proj.type || 'pile';
+    C.type = 'pile';   /* v3.15.0: one free-form Picasa pile */
     C.bg = proj.bg || '#f5f2ec';
-    C.spacing = proj.spacing == null ? 10 : proj.spacing;
     C.border = proj.border || 'white';
     C.landscape = proj.landscape !== false;
     C.bgPhoto = !!proj.bgPhoto;
@@ -928,10 +999,14 @@
     C.layout = null; C.order = null; C.sel = new Set();
     C.alphaAny = proj.photos.some((ph) => /\.(png|webp|gif)$/i.test(ph.name || '')) ||
                  proj.photos.some((ph) => ph.blob && ph.blob.type === 'image/png');
+    C.custW = (proj.custW && isFinite(proj.custW)) ? proj.custW : 16;
+    C.custH = (proj.custH && isFinite(proj.custH)) ? proj.custH : 9;
     el.root.hidden = false;
     el.fmt.value = proj.fmt || '4x3';
+    el.custRow.hidden = el.fmt.value !== 'custom';
+    el.custW.value = C.custW; el.custH.value = C.custH;
     if (proj.exportFmt) el.exportFmt.value = proj.exportFmt;
-    el.bg.value = C.bg; el.spacing.value = C.spacing; el.border.value = C.border;
+    el.bg.value = C.bg; el.border.value = C.border;
     el.bgPhoto.checked = C.bgPhoto;
     el.cCreate.hidden = false; el.cCancel.hidden = false;
     el.cSaveDir.hidden = true; el.cDownload.hidden = !proj.previewBlob; el.cBack.hidden = true;
@@ -991,21 +1066,13 @@
   }
 
   function updateUI() {
-    for (const b of q('.c-types').querySelectorAll('button[data-ct]')) {
-      b.classList.toggle('on', b.dataset.ct === C.type);
-    }
-    el.spacingRow.hidden = !SLOTTED.includes(C.type);
     el.orient.textContent = 'Orientation: ' + (C.landscape ? 'Landscape' : 'Portrait');
-    const pile = C.type === 'pile';
-    for (const b of [el.bFwd, el.bBack1, el.bRotL, el.bRotR, el.bBigger, el.bSmaller]) b.disabled = !pile;
-    el.toolInfo.textContent = pile
-      ? 'Click to select \u2022 drag to move \u2022 wheel resizes \u2022 Shift+wheel rotates \u2022 ] front \u2022 [ back'
-      : 'Click to select \u2022 drag one photo onto another to swap them';
+    for (const b of [el.bFwd, el.bBack1, el.bRotL, el.bRotR, el.bBigger, el.bSmaller]) b.disabled = false;
+    el.toolInfo.textContent = 'Click to select \u2022 drag to move \u2022 wheel resizes \u2022 Shift+wheel rotates \u2022 ] front \u2022 [ back';
     noteCount();
     if (C.noteBase) {
-      el.note.textContent = C.noteBase + (pile
-        ? ' \u2022 Drag to move \u2014 wheel resizes, Shift+wheel rotates, handles appear when selected'
-        : ' \u2022 Drag any photo onto another to swap their places');
+      el.note.textContent = C.noteBase +
+        ' \u2022 Drag to move \u2014 wheel resizes, Shift+wheel rotates, handles appear when selected';
     }
   }
 
@@ -1015,10 +1082,13 @@
     C.open = true;
     C.blob = null;
     C.restored = false;
+    C.type = 'pile';
     C.pos = null; C.layout = null; C.order = null; C.sel = new Set();
     C.bgIdx = 0;
+    endGesture(); clearTimeout(wheelT);
     if (C.url) { URL.revokeObjectURL(C.url); C.url = null; }
     el.root.hidden = false;
+    el.custRow.hidden = el.fmt.value !== 'custom';
     el.cCreate.hidden = false; el.cCancel.hidden = false;
     el.cSaveDir.hidden = true; el.cDownload.hidden = true; el.cBack.hidden = true;
     C.noteBase = `${C.list.length} ${C.list.length === 1 ? 'photo used' : 'photos used'}${list.length > 40 ? ' (first 40)' : ''}`;
@@ -1033,6 +1103,7 @@
     C.open = false;
     el.root.hidden = true;
     C.sel.clear();
+    endGesture(); clearTimeout(wheelT);
     if (C.url) { URL.revokeObjectURL(C.url); C.url = null; }
     C.blob = null;
   }
@@ -1062,16 +1133,17 @@
   }
 
   function wire() {
-    q('.c-types').addEventListener('click', (e) => {
-      const b = e.target.closest('button[data-ct]');
-      if (!b) return;
-      C.type = b.dataset.ct;
-      C.sel.clear();
-      swapTarget = -1;
-      updateUI();
+    el.fmt.addEventListener('change', () => {
+      el.custRow.hidden = el.fmt.value !== 'custom';
       scheduleRedraw(true);
     });
-    el.fmt.addEventListener('change', () => scheduleRedraw(true));
+    el.custApply.addEventListener('click', () => {
+      const w = parseFloat(el.custW.value), h = parseFloat(el.custH.value);
+      if (!(w > 0) || !(h > 0)) { toast('Ratio needs two numbers bigger than 0', 'err'); return; }
+      C.custW = clamp(w, 0.2, 60); C.custH = clamp(h, 0.2, 60);
+      scheduleRedraw(true);
+      scheduleColSave();
+    });
     el.bg.addEventListener('input', () => { C.bg = el.bg.value; scheduleRedraw(true); });
     q('.presets').addEventListener('click', (e) => {
       const b = e.target.closest('button[data-bg]');
@@ -1080,7 +1152,6 @@
       el.bg.value = C.bg;
       scheduleRedraw(true);
     });
-    el.spacing.addEventListener('input', () => { C.spacing = +el.spacing.value; scheduleRedraw(true); });
     el.shuffle.addEventListener('click', scramble);
     el.border.addEventListener('change', () => { C.border = el.border.value; scheduleRedraw(true); });
     el.orient.addEventListener('click', () => { C.landscape = !C.landscape; updateUI(); scheduleRedraw(true); });
