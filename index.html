@@ -995,7 +995,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.16.1</span>
+      <span class="ver">v3.16.2</span>
     </span>
   </footer>
 
@@ -2701,7 +2701,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.16.1', 'ok', 2500);
+          toast('S H I V A M PIXA v3.16.2', 'ok', 2500);
           break;
       }
     }
@@ -2769,15 +2769,17 @@
     }
 
     /* ================= service worker (auto-update) =================
-       v3.16.1 — updates now work Android-style:
+       v3.16.2 — updates now work Android-style:
        1) The app checks for a new version at every launch, every 15 minutes
           and whenever the window gets focus (an installed PC app can stay
           open for days and still picks up every new release).
        2) When an update is ready a persistent banner appears at the top —
-          "Restart now" applies it instantly. Otherwise it applies itself
-          once the editor is closed — never in the middle of an edit.
-       3) The reload after an update is remembered, and on that reload the
-          splash is skipped — the loading screen never shows twice. */
+          "Restart now" applies it instantly; left alone it applies itself
+          after 9 seconds (or once the editor is closed) — never in the
+          middle of an edit.
+       3) The reload after an update is remembered: the splash is skipped on
+          that reload and a short "updated to vX" toast confirms that ALL
+          changes are now live — the update never disappears silently. */
     if ('serviceWorker' in navigator) {
       const hadController = !!navigator.serviceWorker.controller;
       const banner = document.getElementById('updBanner');
@@ -2792,16 +2794,23 @@
         else location.reload();
       });
       updClose.addEventListener('click', () => { dismissed = true; hideBanner(); });
+      /* v3.16.2: the update was just applied and the page reloaded — say so */
+      if (sessionStorage.getItem('pixsa.up')) {
+        sessionStorage.removeItem('pixsa.up');
+        const v = ((document.querySelector('.ver') || {}).textContent || '').trim();
+        toast(`SHIVAM PIXA updated to ${v || 'the new version'} — all changes are live`, 'ok', 8000);
+      }
       const markReady = (w) => {
         if (!w || waiting === w) return;
         waiting = w;
         if (!dismissed) banner.classList.add('show');
         const applyWhenIdle = () => {
+          if (dismissed) return; /* user said "later" — apply at next launch */
           const busy = window.PixsaEditor && window.PixsaEditor.isOpen();
           if (busy) { setTimeout(applyWhenIdle, 4000); return; }
           try { waiting.postMessage('SKIP_WAITING'); } catch (e) {}
         };
-        setTimeout(applyWhenIdle, 2500);
+        setTimeout(applyWhenIdle, 9000); /* time to read / click Restart */
       };
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').then((reg) => {
@@ -2827,11 +2836,14 @@
       });
     }
 
-    /* ================= v3.16.1: install as a real desktop app =================
+    /* ================= v3.16.2: install as a real desktop app =================
        The "Install App" button shows whenever the app is NOT installed yet.
        After installing, SHIVAM PIXA opens in its own window (no browser
        bars), gets a Start menu + taskbar + desktop entry, and can be
-       uninstalled from Windows Settings — a real PC app, Picasa-style. */
+       uninstalled from Windows Settings — a real PC app, Picasa-style.
+       v3.16.2: the button no longer just vanishes after an install — it
+       switches to a disabled "App installed" state (remembered across
+       restarts) so it is obvious the install worked. */
     (() => {
       const btn = document.getElementById('btnInstall');
       if (!btn) return;
@@ -2841,6 +2853,17 @@
         window.matchMedia('(display-mode: minimal-ui)').matches ||
         window.navigator.standalone === true;
       let deferred = null;
+      let installed = false;
+      try { installed = localStorage.getItem('pixsa.installed') === '1'; } catch (e) {}
+      const setInstalled = () => {
+        installed = true;
+        btn.disabled = true;
+        btn.title = 'Installed — open SHIVAM PIXA from the Start menu or the desktop icon (right-click it there to pin to the taskbar)';
+        let first = true;
+        for (const n of [...btn.childNodes]) {
+          if (n.nodeType === 3) { n.textContent = first ? ' App installed' : ''; first = false; }
+        }
+      };
       const syncBtn = () => { btn.hidden = standalone(); };
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault(); /* our own button instead of the browser bar */
@@ -2848,21 +2871,29 @@
       });
       window.addEventListener('appinstalled', () => {
         deferred = null;
-        btn.hidden = true;
-        toast('SHIVAM PIXA is now a desktop app — find it in the Start menu (right-click it to pin to the taskbar)', 'ok', 7000);
+        try { localStorage.setItem('pixsa.installed', '1'); } catch (e) {}
+        setInstalled();
+        toast('SHIVAM PIXA is now a desktop app — find it in the Start menu or on the desktop (right-click it there to pin to the taskbar)', 'ok', 10000);
       });
       btn.addEventListener('click', async () => {
+        if (installed) return;
         if (deferred) {
           try {
             deferred.prompt();
             const choice = await deferred.userChoice;
-            if (choice && choice.outcome === 'accepted') { deferred = null; btn.hidden = true; return; }
+            if (choice && choice.outcome === 'accepted') {
+              deferred = null;
+              try { localStorage.setItem('pixsa.installed', '1'); } catch (e) {}
+              setInstalled();
+              return;
+            }
           } catch (e) { /* fall through to the manual hint */ }
           return;
         }
         toast('To install: open the browser menu (\u22ee) and choose "Install SHIVAM PIXA" or "Install page as app"', 'ok', 9000);
       });
       try { window.matchMedia('(display-mode: standalone)').addEventListener('change', syncBtn); } catch (e) {}
+      if (installed) setInstalled();
       syncBtn();
     })();
 
