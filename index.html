@@ -157,15 +157,15 @@
     }
     select:focus { border-color: var(--accent); }
     .btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 5px 11px; border-radius: 4px; font-size: 12.5px; font-weight: 500;
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 7px 13px; border-radius: 4px; font-size: 13px; font-weight: 500;
       background: linear-gradient(#ffffff, #e4e4e4);
       border: 1px solid #b3b3b3; color: #333;
       transition: border-color .15s, background .15s;
       white-space: nowrap;
     }
     .btn:hover { border-color: #8f8f8f; background: linear-gradient(#ffffff, #dadada); }
-    .btn svg { width: 14px; height: 14px; }
+    .btn svg { width: 15px; height: 15px; }
     .btn-accent {
       background: linear-gradient(#4a90d9, #2b6fc2);
       border-color: #2264ab; color: #fff; font-weight: 600;
@@ -242,16 +242,12 @@
     .fhead .fname { font-weight: 600; color: #235d9c; font-size: 13.5px; }
     .fhead .fcount { color: #6b7f95; font-size: 12px; margin-left: 2px; }
     .row {
-      /* v3.11.0: Picasa home-screen layout — thumbnails keep their ORIGINAL
-         aspect ratio, all sharing one row height; no boxes, no letterbox */
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-start;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(var(--thumb), 1fr));
       gap: 9px;
     }
     .cell {
-      position: relative; flex: 0 0 auto;
-      height: var(--thumb); aspect-ratio: 1; /* square until the real ratio loads */
+      position: relative; aspect-ratio: 1 / 1;
       border-radius: 4px; overflow: hidden;
       background: #dcdcdc; border: 1px solid #b4b4b4;
       box-shadow: 0 1px 2px rgba(0,0,0,.14);
@@ -265,8 +261,6 @@
     .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .cell .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
     .cell .ph img {
-      /* v3.11.0: the cell itself takes the photo's true ratio (set in JS), so
-         cover now fills it edge-to-edge — the full photo, never a letterbox */
       width: 100%; height: 100%; object-fit: cover; display: block;
       opacity: 0; transition: opacity .2s;
     }
@@ -313,7 +307,7 @@
     .empty h1 { font-size: 21px; font-weight: 600; color: #2c3138; }
     .empty p { color: #5f6773; max-width: 480px; line-height: 1.65; font-size: 13.5px; }
     .empty .row2 { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; justify-content: center; }
-    .empty .row2 .btn { padding: 7px 15px; font-size: 13px; }
+    .empty .row2 .btn { padding: 10px 18px; font-size: 14px; }
     .empty .tip { margin-top: 24px; font-size: 12px; color: #8a919c; max-width: 480px; line-height: 1.6; }
     .empty.small { min-height: 40vh; }
     .empty.small h2 { font-size: 17px; font-weight: 600; }
@@ -501,18 +495,16 @@
       display: flex; align-items: center; gap: 12px; padding: 7px 12px;
       background: linear-gradient(#f8f7f5, #dedcd6); border-bottom: 1px solid #b8b5ae;
     }
-    .e-top .btn-tools { display: none; }
     .btn-green {
       background: linear-gradient(#a4d055, #77ab2e); color: #fff; font-weight: 700;
       border: 1px solid #5d8a20; border-radius: 4px; padding: 7px 14px; font-size: 13px;
       text-shadow: 0 1px 1px rgba(0,0,0,.25); display: inline-flex; align-items: center; gap: 7px;
     }
     .btn-green:hover { background: linear-gradient(#aed95f, #83b836); }
-    .btn-green { white-space: nowrap; }
     .e-name { font-weight: 600; font-size: 13px; color: #33363b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .e-count { font-size: 12px; color: #71747a; white-space: nowrap; }
     .e-nav { margin-left: auto; display: flex; gap: 4px; }
-    .e-body { flex: 1; display: flex; min-height: 0; flex-direction: row-reverse; position: relative; }
+    .e-body { flex: 1; display: flex; min-height: 0; }
     .e-stage {
       flex: 1; min-width: 0; position: relative; background: #4d5055;
       display: grid; place-items: center; overflow: auto; padding: 18px;
@@ -524,28 +516,23 @@
       letter-spacing: .14em; padding: 5px 11px; border-radius: 3px;
     }
     #eHist { width: 100%; height: 84px; display: block; background: #191b1f; border: 1px solid #3a3d42; border-radius: 4px; margin: 0 0 4px; }
-    .e-panel { width: 302px; background: #eceae5; border-right: 1px solid #bcb9b2; display: flex; flex-direction: column; }
+    .e-panel { width: 302px; background: #eceae5; border-left: 1px solid #bcb9b2; display: flex; flex-direction: column; }
     .e-tabs { display: flex; border-bottom: 1px solid #bdbab3; background: #dfddd7; }
     .e-tabs button {
-      flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
-      padding: 7px 2px; font-size: 11.5px; font-weight: 700; color: #55585e;
+      flex: 1; padding: 9px 4px; font-size: 12px; font-weight: 700; color: #55585e;
       border-right: 1px solid #c8c5be; background: linear-gradient(#eceae5, #dedcd6);
     }
-    .e-tabs button svg { width: 13px; height: 13px; opacity: .75; }
-    .e-tabs button.on svg { opacity: 1; }
     .e-tabs button:last-child { border-right: 0; }
     .e-tabs button.on { background: #f8f7f4; color: #1f6fc0; box-shadow: inset 0 -2px 0 var(--accent); }
     .e-tabbody { flex: 1; overflow-y: auto; padding: 10px; }
     .e-tab { display: none; } .e-tab.on { display: block; }
     .fixbtn {
-      display: flex; align-items: center; justify-content: flex-start; gap: 7px; width: 100%;
-      padding: 4px 9px; margin: 0 0 5px; border-radius: 3px;
+      display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+      padding: 8px 11px; margin: 0 0 6px; border-radius: 3px;
       border: 1px solid #c6c3bc; background: linear-gradient(#fdfdfc, #edece7);
-      font-size: 12px; font-weight: 500; color: #2c2f34; text-align: left;
+      font-size: 13px; font-weight: 500; color: #2c2f34; text-align: center;
     }
-    .fixbtn svg { width: 14px; height: 14px; flex: 0 0 14px; opacity: .78; }
     .fixbtn:hover { border-color: #7fa8d8; background: #eaf2fc; }
-    .fixbtn:hover svg { opacity: 1; }
     .fixbtn.on { border-color: var(--accent); background: #dcebfb; font-weight: 700; }
     .rotrow { display: flex; gap: 6px; margin-top: 2px; }
     .rotrow .fixbtn { margin-bottom: 0; }
@@ -555,26 +542,21 @@
     .trow label { flex: 0 0 52px; }
     .trow input[type="range"] { flex: 1; accent-color: var(--accent); }
     .trow .val { flex: 0 0 40px; text-align: right; color: #6d7076; font-variant-numeric: tabular-nums; }
-    .srow { display: flex; align-items: center; gap: 7px; margin: 6px 0; font-size: 12px; }
-    .srow .sname { flex: 0 0 100px; color: #3c3f45; display: inline-flex; align-items: center; gap: 5px; }
-    .srow .sname svg { width: 13px; height: 13px; flex: 0 0 13px; opacity: .72; }
-    .srow input[type="range"] { flex: 1; accent-color: var(--accent); min-width: 0; }
-    .srow .val { flex: 0 0 30px; text-align: right; color: #6d7076; font-variant-numeric: tabular-nums; }
+    .srow { display: flex; align-items: center; gap: 8px; margin: 7px 0; font-size: 12.5px; }
+    .srow .sname { flex: 0 0 96px; color: #3c3f45; }
+    .srow input[type="range"] { flex: 1; accent-color: var(--accent); }
+    .srow .val { flex: 0 0 34px; text-align: right; color: #6d7076; font-variant-numeric: tabular-nums; }
     .asprow { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
     .asprow button { padding: 5px 9px; font-size: 12px; border: 1px solid #c6c3bc; border-radius: 3px; background: linear-gradient(#fdfdfc, #edece7); }
     .asprow button.on { border-color: var(--accent); background: #dcebfb; font-weight: 700; }
     .mrow { display: flex; gap: 6px; margin-top: 10px; }
     .mrow .btn { flex: 1; justify-content: center; }
-    .e-actions { border-top: 1px solid #bdbab3; padding: 7px 8px; display: flex; gap: 5px; background: #e2e0da; }
+    .e-actions { border-top: 1px solid #bdbab3; padding: 9px 10px; display: flex; gap: 6px; background: #e2e0da; }
     .e-actions button {
-      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
-      padding: 5px 2px 4px; font-size: 10.5px; font-weight: 600; border-radius: 3px;
+      flex: 1; padding: 7px 4px; font-size: 12.5px; font-weight: 600; border-radius: 3px;
       border: 1px solid #b9b6ae; background: linear-gradient(#fdfdfc, #e9e7e1); color: #2c2f34;
-      line-height: 1.25; white-space: nowrap;
     }
-    .e-actions button svg { width: 14px; height: 14px; opacity: .8; }
     .e-actions button:hover { border-color: #7fa8d8; background: #eaf2fc; }
-    .e-actions button:hover svg { opacity: 1; }
     .e-actions button:disabled { opacity: .45; cursor: default; }
     .e-actions button.accent { background: linear-gradient(#4d92dc, #2b6fc0); color: #fff; border-color: #1e5a9e; text-shadow: 0 1px 1px rgba(0,0,0,.2); }
     .e-actions button.accent:hover { background: linear-gradient(#5a9de6, #2f79cf); }
@@ -586,28 +568,6 @@
     .e-bottom input[type="range"] { width: 150px; accent-color: var(--accent); }
     .e-zoomlab { white-space: nowrap; }
     .e-dims { margin-left: auto; font-variant-numeric: tabular-nums; }
-    .e-exif { font-variant-numeric: tabular-nums; color: #3c3f45; font-weight: 600; white-space: nowrap; }
-    .e-exif:empty { display: none; }
-
-    /* editor on phones: the photo takes the WHOLE screen — the tool panel
-       becomes a slide-out drawer toggled by the Tools button (Picasa-style
-       full-bleed editing, no more tiny photo box) */
-    @media (max-width: 760px) {
-      .e-top .btn-tools { display: inline-flex; }
-      .e-top { gap: 8px; padding: 6px 8px; }
-      .btn-green { padding: 7px 10px; font-size: 12px; }
-      .e-name { font-size: 12px; }
-      .e-panel {
-        position: absolute; z-index: 30; top: 0; bottom: 0; left: 0; width: min(84vw, 320px);
-        box-shadow: 8px 0 28px rgba(0,0,0,.42);
-        transform: translateX(-103%); transition: transform .22s ease;
-      }
-      .editor.tools-open .e-panel { transform: none; }
-      .e-stage { padding: 10px; }
-      .e-actions { flex-wrap: wrap; }
-      .e-bottom { gap: 8px; padding: 6px 8px; flex-wrap: wrap; }
-      .e-bottom input[type="range"] { width: 110px; }
-    }
 
     /* crop overlay */
     #eCrop { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); cursor: move; z-index: 5; }
@@ -662,11 +622,7 @@
     .fxpager button:hover:not(:disabled) { border-color: var(--accent); background: #dcebfb; }
     .fxpager button:disabled { opacity: .4; cursor: default; }
     .c-prev { flex: 1; display: grid; place-items: center; background: #4d5055; padding: 14px; position: relative; overflow: auto; }
-    #cCanvas { max-width: 100%; max-height: 100%; box-shadow: 0 3px 18px rgba(0,0,0,.5); touch-action: none; }
-    /* v3.11.0: the collage maker is now a FULL-SCREEN editor (Picasa style) —
-       settings rail on the left, huge live preview, photos draggable */
-    #collage { padding: 0; place-items: stretch; }
-    #collage .m-box { width: 100vw; height: 100vh; max-width: none; max-height: none; border-radius: 0; border: none; }
+    #cCanvas { max-width: 100%; max-height: 100%; box-shadow: 0 3px 18px rgba(0,0,0,.5); }
     .c-busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(30,32,36,.35); }
     .m-foot { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid #bdbab3; background: #e2e0da; justify-content: flex-end; }
     .m-foot .btn { min-width: 120px; justify-content: center; }
@@ -677,12 +633,6 @@
     @media (max-width: 900px) {
       .e-panel { width: 258px; }
       .c-side { width: 178px; }
-    }
-
-    /* narrower desktops: keep the Picasa left rail but slim it down */
-    @media (max-width: 900px) and (min-width: 761px) {
-      .e-panel { width: 232px; }
-      .e-tabbody { padding: 8px; }
     }
 
     @media (max-width: 760px) {
@@ -797,11 +747,12 @@
     </div>
   </nav>
 
-  <!-- ===== Restore last folder bar (only shows while Chrome needs one click) ===== -->
+  <!-- ===== Restore last folder bar ===== -->
   <div id="restoreBar" class="restorebar" hidden>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-    <span>Reopening <b id="restoreName"></b> &mdash; click anywhere to allow</span>
-    <button id="btnRestoreDel" class="linkbtn dim" type="button">Remove</button>
+    <span>Last folder: <b id="restoreName"></b> &mdash; reopen the same photos?</span>
+    <button id="btnRestoreOpen" class="linkbtn" type="button">Reopen</button>
+    <button id="btnRestoreDel" class="linkbtn dim" type="button">No thanks</button>
   </div>
 
   <!-- ===== Restore last collage (power-cut safe) ===== -->
@@ -843,7 +794,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
             Choose Folder
           </button>
-          <button id="btnDemo" class="btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3.5" width="7.4" height="7.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13.6" y="3.5" width="7.4" height="7.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="13.1" width="7.4" height="7.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13.6" y="13.1" width="7.4" height="7.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>View Demo Photos</button>
+          <button id="btnDemo" class="btn" type="button">View Demo Photos</button>
         </div>
       </div>
 
@@ -878,7 +829,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.11.0</span>
+      <span class="ver">v3.7.2</span>
     </span>
   </footer>
 
@@ -958,10 +909,6 @@
           <div id="cloudEmail" style="font-size:12px;color:#667;margin-top:3px">Not signed in</div>
         </div>
         <div class="cl-sec">
-          <h5>Sign-in diagnostics</h5>
-          <div id="cloudDiag" style="font-size:11.5px;color:#556;line-height:1.55;white-space:pre-line"></div>
-        </div>
-        <div class="cl-sec">
           <h5>Client ID</h5>
           <div class="cl-row">
             <input id="cloudClientId" type="text" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false" />
@@ -983,10 +930,6 @@
       <button id="eBack" class="btn-green" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Back to Library
-      </button>
-      <button id="eTools" class="btn-tools btn-green" type="button" title="Show or hide the editing tools">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16M4 12h16M4 17.5h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-        Tools
       </button>
       <span id="eName" class="e-name"></span>
       <span id="eCount" class="e-count"></span>
@@ -1014,35 +957,35 @@
       </div>
       <aside class="e-panel">
         <div class="e-tabs">
-          <button type="button" data-tab="basic" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5L13 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 3.5v4M14.5 5.5h4M19 10.5v3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Basic Fixes</button>
-          <button type="button" data-tab="tuning"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M5 10V4M12 20v-9M12 7V4M19 20v-4M19 12V4M2.8 14h4.4M9.8 7h4.4M16.8 16h4.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Tuning</button>
-          <button type="button" data-tab="effects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6-4.6-1.9 4.6-1.9zM18.5 15.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Effects</button>
+          <button type="button" data-tab="basic" class="on">Basic Fixes</button>
+          <button type="button" data-tab="tuning">Tuning</button>
+          <button type="button" data-tab="effects">Effects</button>
         </div>
         <div class="e-tabbody">
           <div id="tab-basic" class="e-tab on">
-            <button class="fixbtn" type="button" data-fix="lucky"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5L13 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 3.5v4M14.5 5.5h4M19 10.5v3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>I'm Feeling Lucky</button>
-            <button class="fixbtn" type="button" data-fix="autocon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.8a8.2 8.2 0 010 16.4z" fill="currentColor"/></svg>Auto Contrast</button>
-            <button class="fixbtn" type="button" data-fix="autocolor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5s6 6.6 6 10.4a6 6 0 11-12 0c0-3.8 6-10.4 6-10.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Auto Color</button>
-            <button class="fixbtn" type="button" data-fix="redeye"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Remove Redeye</button>
-            <button class="fixbtn" type="button" data-fix="retouch"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="9" width="17.6" height="6" rx="3" transform="rotate(-45 12 12)" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="10.3" cy="10.4" r="1" fill="currentColor"/><circle cx="13.7" cy="13.7" r="1" fill="currentColor"/></svg>Retouch (Blur)</button>
-            <button class="fixbtn" type="button" data-fix="crop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 2.5v13a2 2 0 002 2h13M2.5 6.5h13a2 2 0 012 2v13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Crop</button>
-            <button class="fixbtn" type="button" data-fix="straighten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 19.5h17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2.5"/><path d="M5 15.5L19 7.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="5" cy="15.5" r="1.4" fill="currentColor"/><circle cx="19" cy="7.5" r="1.4" fill="currentColor"/></svg>Straighten</button>
-            <button class="fixbtn" type="button" data-fix="text"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7V4.5h14V7M12 4.5v15M9.5 19.5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Add Text</button>
-            <button class="fixbtn" type="button" data-fix="sticker"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8.6" cy="9.4" r="1.6" fill="currentColor"/><path d="M4 16.5l4.8-4.2 3.4 3L15 13l6 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Add Logo / Sticker (PNG)</button>
+            <button class="fixbtn" type="button" data-fix="lucky">I'm Feeling Lucky</button>
+            <button class="fixbtn" type="button" data-fix="autocon">Auto Contrast</button>
+            <button class="fixbtn" type="button" data-fix="autocolor">Auto Color</button>
+            <button class="fixbtn" type="button" data-fix="redeye">Remove Redeye</button>
+            <button class="fixbtn" type="button" data-fix="retouch">Retouch (Blur)</button>
+            <button class="fixbtn" type="button" data-fix="crop">Crop</button>
+            <button class="fixbtn" type="button" data-fix="straighten">Straighten</button>
+            <button class="fixbtn" type="button" data-fix="text">Add Text</button>
+            <button class="fixbtn" type="button" data-fix="sticker">Add Logo / Sticker (PNG)</button>
             <div class="rotrow">
-              <button class="fixbtn" type="button" data-fix="rotl"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5L4 8.7l4.5 4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 8.7H15a5.4 5.4 0 110 10.8h-3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Rotate Left</button>
-              <button class="fixbtn" type="button" data-fix="rotr"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5L20 8.7l-4.5 4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.5 8.7H9a5.4 5.4 0 100 10.8h3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Rotate Right</button>
+              <button class="fixbtn" type="button" data-fix="rotl">Rotate Left</button>
+              <button class="fixbtn" type="button" data-fix="rotr">Rotate Right</button>
             </div>
             <div id="eToolBox" class="toolbox" hidden></div>
           </div>
           <div id="tab-tuning" class="e-tab">
             <canvas id="eHist" width="280" height="84"></canvas>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M5.6 18.4l1.7-1.7M16.7 7.3l1.7-1.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Fill Light</span><input id="adFill" type="range" min="0" max="100" value="0" /><span class="val" id="vFill">0</span></div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 17.5a5 5 0 00-10 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 8.5V2.5M5.5 11L7 12.5M18.5 11L17 12.5M2.5 17.5h2M19.5 17.5h2M2.5 21h19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Highlights</span><input id="adHigh" type="range" min="0" max="100" value="0" /><span class="val" id="vHigh">0</span></div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 13.2A8.5 8.5 0 1110.8 3.5a7 7 0 009.7 9.7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Shadows</span><input id="adShad" type="range" min="0" max="100" value="0" /><span class="val" id="vShad">0</span></div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 14.8V4.5a2.5 2.5 0 00-5 0v9.3a4.6 4.6 0 105 0z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Temperature</span><input id="adTemp" type="range" min="-100" max="100" value="0" /><span class="val" id="vTemp">0</span></div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5s6 6.6 6 10.4a6 6 0 11-12 0c0-3.8 6-10.4 6-10.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Tint</span><input id="adTint" type="range" min="-100" max="100" value="0" /><span class="val" id="vTint">0</span></div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.2 15.9A10 10 0 118.1 2.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M22 12A10 10 0 0012 2v10z" fill="currentColor"/></svg>Saturation</span><input id="adSat" type="range" min="-100" max="100" value="0" /><span class="val" id="vSat">0</span></div>
+            <div class="srow"><span class="sname">Fill Light</span><input id="adFill" type="range" min="0" max="100" value="0" /><span class="val" id="vFill">0</span></div>
+            <div class="srow"><span class="sname">Highlights</span><input id="adHigh" type="range" min="0" max="100" value="0" /><span class="val" id="vHigh">0</span></div>
+            <div class="srow"><span class="sname">Shadows</span><input id="adShad" type="range" min="0" max="100" value="0" /><span class="val" id="vShad">0</span></div>
+            <div class="srow"><span class="sname">Temperature</span><input id="adTemp" type="range" min="-100" max="100" value="0" /><span class="val" id="vTemp">0</span></div>
+            <div class="srow"><span class="sname">Tint</span><input id="adTint" type="range" min="-100" max="100" value="0" /><span class="val" id="vTint">0</span></div>
+            <div class="srow"><span class="sname">Saturation</span><input id="adSat" type="range" min="-100" max="100" value="0" /><span class="val" id="vSat">0</span></div>
           </div>
           <div id="tab-effects" class="e-tab">
             <div class="fxpager">
@@ -1050,16 +993,16 @@
               <span id="fxPageLab">1 / 3</span>
               <button id="fxNext" type="button" title="Next effects page">&#8250;</button>
             </div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5L13 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 3.5v4M14.5 5.5h4M19 10.5v3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Intensity</span><input id="fxStr" type="range" min="5" max="100" value="100" disabled /><span class="val" id="fxStrV">&mdash;</span></div>
+            <div class="srow"><span class="sname">Intensity</span><input id="fxStr" type="range" min="5" max="100" value="100" disabled /><span class="val" id="fxStrV">&mdash;</span></div>
             <div id="fxGrid" class="fxgrid"></div>
           </div>
         </div>
         <div class="e-actions">
-          <button id="eCompare" type="button" title="Before / After — hold to view the original (B)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Before</button>
-          <button id="eUndo" type="button" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 13.5L4 9l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 9H15a5 5 0 015 5v0a5 5 0 01-5 5h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Undo</button>
-          <button id="eRedo" type="button" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 13.5L20 9l-4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.5 9H9a5 5 0 00-5 5v0a5 5 0 005 5h4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Redo</button>
-          <button id="eSave" class="accent" type="button" title="Save into the original file (Ctrl+S)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 20.5H5a1.5 1.5 0 01-1.5-1.5V5A1.5 1.5 0 015 3.5h11L20.5 8v11a1.5 1.5 0 01-1.5 1.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M16.5 20.5v-7h-9v7M7.5 3.5V8h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Save</button>
-          <button id="eSaveCopy" type="button" title="Save as a new copy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 15.5h-1a2 2 0 01-2-2v-9a2 2 0 012-2h9a2 2 0 012 2v1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Save a Copy</button>
+          <button id="eCompare" type="button" title="Before / After — hold to view the original (B)">Before</button>
+          <button id="eUndo" type="button" title="Undo (Ctrl+Z)">Undo</button>
+          <button id="eRedo" type="button" title="Redo (Ctrl+Y)">Redo</button>
+          <button id="eSave" class="accent" type="button" title="Save into the original file (Ctrl+S)">Save</button>
+          <button id="eSaveCopy" type="button" title="Save as a new copy">Save a Copy</button>
         </div>
       </aside>
     </div>
@@ -1067,7 +1010,6 @@
       <span class="e-zoomlab">Zoom</span>
       <input id="eZoom" type="range" min="15" max="300" value="100" />
       <button id="eFit" class="linkbtn" type="button">Fit</button>
-      <span class="e-exif" id="eExif"></span>
       <span class="e-dims" id="eDims"></span>
     </footer>
   </div>
@@ -1177,7 +1119,7 @@
       zoom: $('#zoom'),
       stName: $('#stName'), stCount: $('#stCount'), clearBtn: $('#btnClear'), btnAllF: $('#btnAllF'),
       menubar: $('#menubar'),
-      restore: $('#restoreBar'), restoreName: $('#restoreName'), restoreDel: $('#btnRestoreDel'),
+      restore: $('#restoreBar'), restoreName: $('#restoreName'), restoreOpen: $('#btnRestoreOpen'), restoreDel: $('#btnRestoreDel'),
       notice: $('#noticeBar'), noticeText: $('#noticeText'), btnPop: $('#btnPop'),
       btnSizer: $('#btnSizer'), btnCollage: $('#btnCollage'),
       tray: $('#tray'), trayStrip: $('#trayStrip'), trayCount: $('#trayCount'),
@@ -1287,25 +1229,21 @@
         total++;
         if (UNSUPPORTED_EXT.test(f.name)) { unsup++; continue; }
         if (!IMG_EXT.test(f.name)) continue;
-        const rel = (f.file && f.file.webkitRelativePath) || f.webkitRelativePath || '';
-        const root = rel ? rel.split('/')[0] : 'Imported photos';
-        const sub = rel.split('/').slice(1, -1).join('/');
-        out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: sub ? `${root}/${sub}` : root, root });
+        out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: (f.webkitRelativePath || f.name).split('/').slice(1, -1).join('/') });
       }
       if (!out.length) {
         toast(total ? `${total} files found, but no supported photo among them` : 'No files found', 'err', 6000);
         return;
       }
-      /* v3.11.0: ADD to the library — folders imported before stay */
-      mergePhotos(out, out[0].root);
+      state.photos = out;
       state.dirHandle = null;
-      state.folder = out[0].root;
+      state.folder = ((out[0].file && out[0].file.webkitRelativePath) ? out[0].file.webkitRelativePath.split('/')[0] : '') || 'Imported photos';
       state.folderFilter = '';
       clearSel();
       buildTree();
       applyFilter();
       const nfolders = new Set(out.map((q) => q.folder || '')).size;
-      toast(`Added "${out[0].root}" — ${out.length} photos • library now has ${state.photos.length} photos in all folders${unsup ? ` • ${unsup} HEIC/RAW skipped` : ''}`, 'ok', 5000);
+      toast(`${out.length} photos imported • ${nfolders} folders${unsup ? ` • ${unsup} HEIC/RAW skipped` : ''}`, 'ok', 4000);
       if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged();
     }
     els.fileInput.addEventListener('change', () => {
@@ -1319,21 +1257,13 @@
       if (list.length) addFontFiles(list);
     });
 
-    /* v3.11.0: Picasa-style library — importing a folder ADDS it alongside the
-       folders already in the library (nothing disappears). Re-importing the
-       same root folder replaces only that root's photos, so nothing doubles. */
-    function mergePhotos(files, rootName) {
-      const kept = state.photos.filter((p) => (p.root || '') !== rootName);
-      state.photos = kept.concat(files);
-    }
-
-    async function loadFolder(dir, isRefresh = false, silent = false) {
+    async function loadFolder(dir, isRefresh = false) {
       const files = [];
       const stats = { total: 0, unsupported: 0, count: 0 };
       els.restore.hidden = true;
       setStatus('Scanning...');
       try {
-        await scanDir(dir, 0, files, stats, '', dir.name);
+        await scanDir(dir, 0, files, stats, '');
       } catch (e) {
         toast('Folder scan fail: ' + (e.message || e.name), 'err', 7000);
         setStatus();
@@ -1350,37 +1280,24 @@
         setStatus();
         return;
       }
-      mergePhotos(files, dir.name);
+      state.photos = files;
       state.dirHandle = dir;
       state.folder = dir.name;
-      state.folderFilter = ''; /* show ALL folders in the library */
+      state.folderFilter = '';
       clearSel();
-      if (canPicker) {
-        /* v3.11.0: remember EVERY imported folder so all of them reopen */
-        try {
-          let list = await idbGet('kv', 'lastFolders');
-          if (!Array.isArray(list)) list = [];
-          const legacy = await idbGet('kv', 'lastFolder').catch(() => null);
-          if (legacy && legacy.name) { list.push(legacy); idbDel('kv', 'lastFolder').catch(() => {}); }
-          list = list.filter((h) => h && h.name && h.name !== dir.name);
-          list.push(dir);
-          await idbSet('kv', 'lastFolders', list);
-        } catch (e) {}
-      }
+      if (canPicker) { try { await idbSet('kv', 'lastFolder', dir); } catch (e) {} }
       buildTree();
       applyFilter();
-      if (!silent) {
-        if (!isRefresh) {
-          const nfolders = new Set(files.map((f) => f.folder || '')).size;
-          toast(`Added "${dir.name}" — ${files.length} photos • library now has ${state.photos.length} photos in all folders`, 'ok', 5000);
-        } else {
-          toast(`Refreshed — ${files.length} photos in "${dir.name}"`, 'ok', 3000);
-        }
+      if (!isRefresh) {
+        const nfolders = new Set(files.map((f) => f.folder || '')).size;
+        toast(`${files.length} photos imported • ${nfolders} folders${stats.unsupported ? ` • ${stats.unsupported} HEIC/RAW skipped` : ''}`, 'ok', 4000);
+      } else {
+        toast(`Refreshed — ${files.length} photos`, 'ok', 3000);
       }
       if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged();
     }
 
-    async function scanDir(dir, depth, out, stats, prefix, rootName) {
+    async function scanDir(dir, depth, out, stats, prefix) {
       if (depth > 6 || out.length >= MAX_PHOTOS) return;
       for await (const [name, entry] of dir.entries()) {
         if (out.length >= MAX_PHOTOS) return;
@@ -1391,62 +1308,46 @@
           if (!IMG_EXT.test(name)) continue;
           try {
             const f = await entry.getFile();
-            /* v3.11.0: the tree path starts with the root folder's own name,
-               so two imported folders can never merge into one group */
-            out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: entry, file: null, folder: rootName ? (prefix ? `${rootName}/${prefix}` : rootName) : prefix, root: rootName || dir.name });
+            out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: entry, file: null, folder: prefix });
             stats.count++;
             if (stats.count % 500 === 0) setStatus(`Scanning... ${stats.count} photos`);
           } catch (e) { /* unreadable file — skip */ }
         } else if (entry.kind === 'directory') {
-          await scanDir(entry, depth + 1, out, stats, prefix ? `${prefix}/${name}` : name, rootName);
+          await scanDir(entry, depth + 1, out, stats, prefix ? `${prefix}/${name}` : name);
         }
       }
     }
 
     /* ================= refresh ================= */
     els.btnRefresh.addEventListener('click', async () => {
-      /* v3.11.0: refresh rescans EVERY imported folder, not just the last one */
-      let list = await idbGet('kv', 'lastFolders').catch(() => null);
-      if (!Array.isArray(list) || !list.length) {
-        const legacy = await idbGet('kv', 'lastFolder').catch(() => null);
-        list = legacy && legacy.name ? [legacy] : [];
+      const h = await idbGet('kv', 'lastFolder');
+      if (!h || !h.name) { toast('Import a folder first', 'err'); return; }
+      try {
+        let perm = await h.queryPermission({ mode: 'read' });
+        if (perm !== 'granted') perm = await h.requestPermission({ mode: 'read' });
+        if (perm !== 'granted') { toast('Permission not granted — import the folder again', 'err'); return; }
+        await loadFolder(h, true);
+      } catch (e) {
+        toast('Refresh fail: ' + (e.message || e.name), 'err');
       }
-      list = list.filter((h) => h && h.name);
-      if (!list.length) { toast('Import a folder first', 'err'); return; }
-      let okN = 0, total = 0;
-      for (const h of list) {
-        try {
-          let perm = await h.queryPermission({ mode: 'read' });
-          if (perm !== 'granted') perm = await h.requestPermission({ mode: 'read' });
-          if (perm !== 'granted') continue;
-          await loadFolder(h, true, okN > 0);
-          okN++;
-        } catch (e) { /* skip unreadable folder */ }
-      }
-      total = state.photos.length;
-      if (okN) toast(`Refreshed ${okN} folder${okN > 1 ? 's' : ''} — ${total} photos in the library`, 'ok', 3500);
-      else toast('Refresh fail: folder access was not granted', 'err');
     });
 
-    /* ================= drag & drop =================
-       v3.11.0: dropped folders/photos are ADDED to the library (root-tagged,
-       so repeated drops of the same folder replace, never duplicate) */
-    function walkEntry(entry, depth, out, rootName, prefix) {
+    /* ================= drag & drop ================= */
+    function walkEntry(entry, depth, out) {
       return new Promise((resolve) => {
         if (!entry) return resolve();
         if (entry.isFile) {
           entry.file((f) => {
-            if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: prefix ? `${rootName}/${prefix}` : rootName, root: rootName });
+            if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: '' });
             resolve();
           }, () => resolve());
         } else if (entry.isDirectory && depth < 6) {
           const rd = entry.createReader();
-          const sub = entry.name === rootName ? prefix : (prefix ? `${prefix}/${entry.name}` : entry.name);
           const readBatch = () => rd.readEntries(async (list) => {
             if (!list.length) return resolve();
             for (const en of list) {
               if (out.length >= MAX_PHOTOS) return resolve();
-              if (!en.name.startsWith('.')) await walkEntry(en, depth + 1, out, rootName, sub);
+              if (!en.name.startsWith('.')) await walkEntry(en, depth + 1, out);
             }
             readBatch();
           }, () => resolve());
@@ -1463,86 +1364,23 @@
       setStatus('Scanning dropped files...');
       const items = [...e.dataTransfer.items];
       const entries = items.map((it) => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
-      const root = entries.length && entries[0].isDirectory ? entries[0].name : 'Dropped photos';
       if (entries.length) {
-        for (const en of entries) await walkEntry(en, 0, out, root, '');
+        for (const en of entries) await walkEntry(en, 0, out);
       } else {
         for (const f of e.dataTransfer.files || []) {
-          if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: root, root });
+          if (IMG_EXT.test(f.name)) out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: '' });
         }
       }
       if (!out.length) { toast('No supported photo in the dropped files', 'err', 6000); setStatus(); return; }
-      mergePhotos(out, root);
-      state.folder = root;
+      state.photos = out;
+      state.folder = entries.length && entries[0].isDirectory ? entries[0].name : 'Dropped photos';
       state.folderFilter = '';
       state.dirHandle = null;
       clearSel();
       buildTree();
       applyFilter();
-      toast(`Added "${root}" — ${out.length} photos • library now has ${state.photos.length} photos in all folders`, 'ok', 4500);
-      if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged();
+      toast(`${out.length} photos added from the drop`);
     });
-
-    /* ================= share target receiver (Android: Share → PIXA) =================
-       The service worker stashes shared photos in a cache queue; this side
-       pulls them into the library and cloud sync backs them up to Drive. */
-    const SHARE_QUEUE = `${location.origin}/__shared__/__queue__`;
-    let receivingShared = false;
-    async function addSharedFiles(files) {
-      const fresh = [];
-      const seen = new Set(state.photos.map((p) => `${p.name}|${p.size}`));
-      for (const f of files) {
-        if (UNSUPPORTED_EXT.test(f.name)) continue;
-        if (!IMG_EXT.test(f.name)) continue;
-        if (seen.has(`${f.name}|${f.size}`)) continue; /* already in the library */
-        seen.add(`${f.name}|${f.size}`);
-        fresh.push({ name: f.name, size: f.size, lastModified: f.lastModified || Date.now(), handle: null, file: f, folder: 'Shared from phone', root: 'Shared from phone' });
-      }
-      if (!fresh.length) { toast('Those photos are already in PIXA', 'ok', 3000); return; }
-      state.photos = state.photos.concat(fresh);
-      if (!state.dirHandle && !state.folder) state.folder = 'Shared from phone';
-      clearSel();
-      buildTree();
-      applyFilter();
-      toast(`${fresh.length} photo${fresh.length > 1 ? 's' : ''} received — backing up to Google Drive…`, 'ok', 4500);
-      if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged(); /* → auto upload to Drive */
-    }
-    async function receiveShared(keysFromSw) {
-      if (receivingShared || !('caches' in window)) return;
-      receivingShared = true;
-      try {
-        const cache = await caches.open('shivam-pixa-shared-v1');
-        let keys = (keysFromSw || []).slice();
-        const q = await cache.match(SHARE_QUEUE);
-        if (q) { try { keys = keys.concat((await q.json()).keys || []); } catch (e) {} }
-        keys = [...new Set(keys)];
-        if (!keys.length) return;
-        const files = [];
-        for (const k of keys) {
-          const res = await cache.match(k);
-          if (!res) continue;
-          const blob = await res.blob();
-          const raw = k.split('/__shared__/')[1] || 'photo';
-          const name = decodeURIComponent(raw.replace(/^\d+-\d+-/, ''));
-          files.push(new File([blob], name, { type: blob.type || 'image/jpeg' }));
-          await cache.delete(k);
-        }
-        /* reset the queue so the same photos never arrive twice */
-        await cache.put(SHARE_QUEUE,
-          new Response(JSON.stringify({ keys: [], at: new Date().toISOString() }), { headers: { 'Content-Type': 'application/json' } }));
-        if (files.length) await addSharedFiles(files);
-      } catch (e) { /* best-effort */ } finally { receivingShared = false; }
-    }
-    if (navigator.serviceWorker) {
-      navigator.serviceWorker.addEventListener('message', (e) => {
-        if (e.data && e.data.type === 'SHARED_FILES') receiveShared(e.data.keys || []);
-      });
-    }
-    /* fresh app launch straight from a share — the URL carries ?shared=1 */
-    if (new URLSearchParams(location.search).has('shared')) {
-      try { history.replaceState(null, '', location.pathname); } catch (e) {}
-      receiveShared();
-    }
 
     /* ================= demo photos ================= */
     async function makeDemoPhotos(n = 24) {
@@ -1582,7 +1420,7 @@
         const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.85));
         const name = `Demo-${String(i + 1).padStart(2, '0')}.jpg`;
         const file = new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() - i * 86400000 });
-        out.push({ name, size: file.size, lastModified: file.lastModified, handle: null, file, folder: 'Demo Photos', root: 'Demo Photos' });
+        out.push({ name, size: file.size, lastModified: file.lastModified, handle: null, file, folder: '' });
       }
       return out;
     }
@@ -1681,8 +1519,7 @@
         });
         els.tree.appendChild(b);
       };
-      const multiRoot = new Set(state.photos.map((p) => p.root || p.folder || '·')).size > 1;
-      mk(multiRoot ? 'All photos' : (state.folder || 'Library'), '', state.photos.length, 0);
+      mk(state.folder || 'Library', '', state.photos.length, 0);
       for (const p of paths) {
         if (p === '') continue;
         const parts = p.split('/');
@@ -1809,9 +1646,6 @@
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'cell'; btn.title = entry.p.name;
       btn.dataset.key = photoKey(entry.p);
-      /* v3.11.0: if the photo's true ratio is already known (decoded before),
-         size the cell to it right away — no square flash on re-render */
-      if (entry.p.w && entry.p.h) btn.style.aspectRatio = `${entry.p.w} / ${entry.p.h}`;
       if (selSet().has(btn.dataset.key)) btn.classList.add('sel');
       const ph = document.createElement('span');
       ph.className = 'ph'; ph.dataset.pi = entry.idx;
@@ -1879,9 +1713,6 @@
           });
         }
       } catch (e) { return null; }
-      /* v3.11.0: remember the photo's true aspect ratio — the grid cell uses
-         it so every thumbnail keeps its original shape (Picasa style) */
-      if (src && src.width && src.height) { p.w = src.width; p.h = src.height; }
       const sc = Math.min(1, THUMB / Math.max(src.width, src.height));
       const w = Math.max(1, Math.round(src.width * sc));
       const h = Math.max(1, Math.round(src.height * sc));
@@ -1923,12 +1754,6 @@
         const url = await getThumbURL(p);
         if (!ph.isConnected) return;
         if (url) {
-          /* v3.11.0: resize the cell to the photo's real ratio before the
-             image fades in, so nothing is cropped and no bands are shown */
-          if (p.w && p.h) {
-            const cell = ph.closest('.cell');
-            if (cell) cell.style.aspectRatio = `${p.w} / ${p.h}`;
-          }
           const img = new Image();
           img.alt = p.name; img.decoding = 'async';
           img.onload = () => ph.classList.add('ready');
@@ -2163,72 +1988,32 @@
       }
     });
 
-    /* ================= restore last folder (v3.10.0: automatic) =================
-       The folder now opens ITSELF when the app starts — no more "Reopen?"
-       question bar. Chrome only allows folder access after the user has
-       interacted with the page at least once, so:
-       • permission already granted → photos appear immediately, zero clicks
-       • permission pending → the very first click/keypress anywhere in the
-         app quietly allows it and the folder opens (the small bar is just a
-         status note with a Remove button, not a question) */
+    /* ================= restore last folder ================= */
     async function initRestore() {
-      /* v3.11.0: EVERY imported folder reopens on start — not just the last
-         one. All handles are stored in IndexedDB ('lastFolders'); the legacy
-         single 'lastFolder' key is migrated automatically. */
       if (!canPicker || inIframe) return;
-      let handles = null;
-      try { handles = await idbGet('kv', 'lastFolders'); } catch (e) {}
-      if (!Array.isArray(handles) || !handles.length) {
-        const legacy = await idbGet('kv', 'lastFolder').catch(() => null);
-        if (legacy && legacy.name) {
-          handles = [legacy];
-          idbSet('kv', 'lastFolders', handles).catch(() => {});
-          idbDel('kv', 'lastFolder').catch(() => {});
-        } else return;
-      }
-      handles = handles.filter((h) => h && h.name);
-      if (!handles.length) return;
-
-      const pending = [];
-      let opened = 0;
-      for (const h of handles) {
-        let perm = 'prompt';
-        try { perm = await h.queryPermission({ mode: 'read' }); } catch (e) {}
-        if (perm === 'granted') {
-          try { await loadFolder(h, true, true); opened++; } catch (e) { /* skip */ }
-        } else pending.push(h);
-      }
-      if (opened) els.restore.hidden = true;
-      if (!pending.length) return;
-
-      els.restoreName.textContent = pending.length > 1
-        ? `${pending[0].name} + ${pending.length - 1} more folder${pending.length > 2 ? 's' : ''}`
-        : pending[0].name;
-      els.restore.hidden = false;
-      const tryOpen = async (ev) => {
-        /* ignore clicks on the bar itself (Remove button etc.) */
-        if (ev && ev.target && els.restore.contains(ev.target)) return;
-        document.removeEventListener('pointerdown', tryOpen, true);
-        document.removeEventListener('keydown', tryOpen, true);
-        for (const h of pending) {
-          let p2 = 'denied';
-          try { p2 = await h.requestPermission({ mode: 'read' }); } catch (e) {}
-          if (p2 === 'granted') {
-            try { await loadFolder(h, true, true); } catch (e) { toast('Could not reopen ' + h.name, 'err'); }
-          }
+      try {
+        const h = await idbGet('kv', 'lastFolder');
+        if (h && h.name) {
+          els.restoreName.textContent = h.name;
+          els.restore.hidden = false;
+          els.restoreOpen.onclick = async () => {
+            try {
+              const perm = await h.requestPermission({ mode: 'read' });
+              if (perm === 'granted') {
+                els.restore.hidden = true;
+                await loadFolder(h);
+              } else {
+                toast('Permission not granted — press "Reopen" again or re-import the folder', 'err');
+              }
+            } catch (e) { toast('Could not reopen the folder', 'err'); }
+          };
+          els.restoreDel.onclick = async () => {
+            await idbDel('kv', 'lastFolder').catch(() => {});
+            els.restore.hidden = true;
+            toast('Old folder removed from the list');
+          };
         }
-        els.restore.hidden = true;
-      };
-      document.addEventListener('pointerdown', tryOpen, true);
-      document.addEventListener('keydown', tryOpen, true);
-      els.restoreDel.onclick = async () => {
-        document.removeEventListener('pointerdown', tryOpen, true);
-        document.removeEventListener('keydown', tryOpen, true);
-        await idbDel('kv', 'lastFolders').catch(() => {});
-        await idbDel('kv', 'lastFolder').catch(() => {});
-        els.restore.hidden = true;
-        toast('Folders removed from the app — they will not reopen automatically');
-      };
+      } catch (e) { /* ignore */ }
     }
 
     /* ================= bridge (editor / collage modules) ================= */
@@ -2322,7 +2107,7 @@
         case 'fonts': document.getElementById('fontFile').click(); break;
         case 'refresh': els.btnRefresh.click(); break;
         case 'about':
-          toast('S H I V A M PIXA v3.11.0', 'ok', 2500);
+          toast('S H I V A M PIXA v3.7.2', 'ok', 2500);
           break;
       }
     }
