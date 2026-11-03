@@ -28,7 +28,10 @@
            = remove text & objects, paste as a draggable patch, drag-to-
            move). Selection edits commit as full-res 'patch' ops.
    v3.14.1: (cloud) broken Cloud projects are caught at sign-in with the
-           exact fix shown in-app — see js/cloud.js header. */
+           exact fix shown in-app — see js/cloud.js header.
+   v3.15.0: (collage) Picasa-style free pile only — Layout modes removed;
+           Page Format gained a Custom ratio; dragging is smooth (overlay
+           compositing instead of full re-renders); handles stay on-page. */
 (() => {
   'use strict';
   const P = window.Pixsa;
