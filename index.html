@@ -496,16 +496,15 @@
     .pr-cell.bordered img { border: 1px solid #cfcfcf; box-shadow: 0 0 0 1px #eee; }
     .pr-cell .pname { position: absolute; bottom: 1%; left: 0; right: 0; text-align: center; font-size: 9px; color: #444; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* ---------- v3.24.0 E-Mail + Export + Poster + Album dialogs ---------- */
-    .em-box { width: 460px; }
-    .em-box .em-body, .ex-box .em-body, .po-box .em-body, .al-box .em-body { padding: 14px 16px; overflow: auto; }
-    .em-box h5, .al-box h5 { margin: 10px 0 5px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: #6d7076; }
+    /* ---------- v3.24.0 Export + Poster + Album dialogs ----------
+       (v3.25.6: the E-Mail dialog was removed — 'emails ki hame zaroorat
+       nahi hai hata do'. Its .em-box/.em-sizes styles went with it; the
+       shared .em-body padding rule stays for Export/Poster/Album.) */
+    .ex-box .em-body, .po-box .em-body, .al-box .em-body { padding: 14px 16px; overflow: auto; }
+    .al-box h5 { margin: 10px 0 5px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: #6d7076; }
     .ex-box { width: 500px; }
     .po-box { width: 520px; }
     .al-box { width: 440px; }
-    .em-sizes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-    .em-sizes button { padding: 9px 4px; font-size: 12px; font-weight: 600; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; line-height: 1.35; }
-    .em-sizes button.on { border-color: var(--accent); background: #dcebfb; color: var(--accent-deep); box-shadow: inset 0 0 0 1px var(--accent); }
     .al-list { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow: auto; }
     .al-list button { text-align: left; padding: 7px 10px; font-size: 13px; border: 1px solid #d5d2cb; border-radius: 4px; background: #fff; cursor: pointer; display: flex; gap: 8px; align-items: center; }
     .al-list button.on { border-color: var(--accent); background: #dcebfb; color: var(--accent-deep); font-weight: 700; }
@@ -1014,6 +1013,17 @@
     #updClose { background: transparent; color: #fff; opacity: .75; padding: 4px 8px; border-radius: 6px; }
     #updClose:hover { opacity: 1; background: rgba(255, 255, 255, .18); }
     @keyframes updIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ===== v3.25.6: Picasa rubber-band select on the photo grid =====
+       'Yaha se bhi mouse se ek sath multiple images select hone chahiye' —
+       drag on the grid background; every photo the band TOUCHES is
+       selected. No browser blue text-highlight while dragging. */
+    #grid { position: relative; user-select: none; -webkit-user-select: none; }
+    #grid .grid-rubber {
+      position: absolute; z-index: 90; display: none; pointer-events: none;
+      border: 1px dashed #4a4a4a; background: rgba(0, 0, 0, .06);
+    }
+    .cell.rb .ph { outline: 3px solid var(--accent); outline-offset: -3px; }
   </style>
 </head>
 <body>
@@ -1098,7 +1108,6 @@
         <div class="sep"></div>
         <button type="button" data-act="export">Export Picture to Folder&hellip; (Ctrl+Shift+S)</button>
         <button type="button" data-act="print">Print&hellip; (Ctrl+P)</button>
-        <button type="button" data-act="email">E-Mail&hellip; (Ctrl+E)</button>
         <div class="sep"></div>
         <button type="button" data-act="collage">Create Collage&hellip;</button>
         <button type="button" data-act="cloud">Cloud Sync (Google Drive)&hellip;</button>
@@ -1248,7 +1257,6 @@
       </button>
       <span class="tray-sep"></span>
       <button id="btnTrayPrint" class="btn" type="button" title="Print the tray photos (Picasa Review &amp; Print)">Print</button>
-      <button id="btnTrayEmail" class="btn" type="button" title="E-mail the tray photos at a chosen size">E-Mail</button>
       <button id="btnTrayExport" class="btn" type="button" title="Export the tray photos to a folder — resize + quality options">Export</button>
       <button id="btnTraySizer" class="btn" type="button" title="Make the selected photos smaller (Sizer)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="6" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M20 4L8.6 15.4M14.6 14.4L20 20M8.4 8.6l3.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Sizer</button>
       <button id="btnTrayRemove" class="btn" type="button" title="Remove from library">Remove</button>
@@ -1271,7 +1279,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.25.5</span>
+      <span class="ver">v3.25.6</span>
     </span>
   </footer>
 
@@ -1374,39 +1382,8 @@
     </div>
   </div>
 
-  <!-- ===== E-Mail (v3.24.0 — Picasa E-Mail sizes) ===== -->
-  <div id="email" class="modal" hidden role="dialog" aria-label="E-Mail photos">
-    <div class="m-box em-box">
-      <header class="m-head">
-        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;flex:none"><rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 6.5L12 13l8.5-6.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-        E-Mail Photos
-        <button id="emClose" class="icobtn" type="button" aria-label="Close">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-        </button>
-      </header>
-      <div class="em-body">
-        <h5>Choose a size for the e-mailed photos</h5>
-        <div class="em-sizes" id="emSizes">
-          <button type="button" data-s="640">Small<br>640 px</button>
-          <button type="button" data-s="1024" class="on">Medium<br>1024 px</button>
-          <button type="button" data-s="1600">Large<br>1600 px</button>
-          <button type="button" data-s="0">Original<br>size</button>
-        </div>
-        <h5>JPEG quality</h5>
-        <select id="emQ" style="width:100%">
-          <option value="0.85" selected>E-mail friendly &mdash; 85%</option>
-          <option value="0.92">High &mdash; 92%</option>
-          <option value="0.96">Maximum &mdash; 96%</option>
-        </select>
-        <p class="hint" style="margin-top:9px">PIXA saves the sized copies (they land in your Downloads), then opens your mail program &mdash; drag the saved photos into the message to attach them.</p>
-        <div id="emSummary" class="sz-summary"></div>
-      </div>
-      <footer class="m-foot">
-        <button id="emCancel" class="btn" type="button">Cancel</button>
-        <button id="emStart" class="btn btn-accent" type="button">Save Photos &amp; Open Mail</button>
-      </footer>
-    </div>
-  </div>
+  <!-- v3.25.6: the E-Mail dialog was removed — 'emails ki hame zaroorat
+       nahi hai hata do'. Export / Poster / Album dialogs remain. -->
 
   <!-- ===== Export Picture to Folder (v3.24.0 — Picasa export dialog) ===== -->
   <div id="expd" class="modal" hidden role="dialog" aria-label="Export pictures to a folder">
@@ -2066,7 +2043,7 @@
       btnTrayPin: $('#btnTrayPin'),
       btnTraySizer: $('#btnTraySizer'), btnTrayExport: $('#btnTrayExport'),
       btnTrayRemove: $('#btnTrayRemove'),
-      btnTrayPrint: $('#btnTrayPrint'), btnTrayEmail: $('#btnTrayEmail'),   /* v3.24.0 */
+      btnTrayPrint: $('#btnTrayPrint'),                                    /* v3.24.0 (v3.25.6: btnTrayEmail removed) */
       fileInput: $('#fileFallback'),
       filesInput: $('#filesFallback'),                     /* v3.25.4 */
       toasts: $('#toasts')
@@ -2957,8 +2934,9 @@
 
     /* ================================================================
        v3.24.0 — the full Picasa 3 feature set, one block:
-       Print · E-Mail · Export to Folder · Make a Poster ·
+       Print · Export to Folder · Make a Poster ·
        Albums · Rename (F2) · Delete from Disk
+       (v3.25.6: E-Mail removed — 'emails ki hame zaroorat nahi hai')
        ================================================================ */
 
     let albumsCache = [];
@@ -3153,53 +3131,9 @@
     pr.next.addEventListener('click', () => { if (prPageIdx < prPages.length - 1) { prPageIdx++; prRenderPage(); } });
     pr.start.addEventListener('click', prDoPrint);
 
-    /* ================= E-MAIL ================= */
-    const em = {
-      modal: $('#email'), sizes: $('#emSizes'), q: $('#emQ'),
-      start: $('#emStart'), cancel: $('#emCancel'), close: $('#emClose'), summary: $('#emSummary')
-    };
-    let emSize = 1024;
-    em.sizes.addEventListener('click', (e) => {
-      const b = e.target.closest('button[data-s]');
-      if (!b) return;
-      emSize = +b.dataset.s;
-      em.sizes.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
-    });
-    em.close.addEventListener('click', () => { em.modal.hidden = true; });
-    em.cancel.addEventListener('click', () => { em.modal.hidden = true; });
-    em.modal.addEventListener('click', (e) => { if (e.target === em.modal) em.modal.hidden = true; });
-    function openEmail() {
-      const list = trayTargets();
-      if (!list.length) { toast('Import photos first', 'err'); return; }
-      em.summary.textContent = `${list.length} photo${list.length !== 1 ? 's' : ''} will be saved${emSize ? ` at ${emSize} px on the long edge` : ' at original size'} — then your mail program opens.`;
-      em.modal.hidden = false;
-    }
-    em.start.addEventListener('click', async () => {
-      const list = trayTargets();
-      if (!list.length) return;
-      em.start.disabled = true;
-      let ok = 0;
-      for (const p of list) {
-        try {
-          const file = await getFile(p);
-          let blob = file;
-          if (emSize) {
-            const cv = await scaledCanvas(file, emSize);
-            if (cv) blob = await canvasBlob(cv, +em.q.value || 0.85);
-          }
-          const base = p.name.replace(/\.[^.]+$/, '');
-          dlBlob(blob, `${base}-email.jpg`);
-          ok++;
-          await new Promise((r) => setTimeout(r, 320));
-        } catch (e) { /* skip */ }
-      }
-      em.start.disabled = false;
-      em.modal.hidden = true;
-      toast(`${ok} photo${ok !== 1 ? 's' : ''} saved — attach them in the mail window that just opened`, 'ok', 7000);
-      const subj = encodeURIComponent('Photos from S H I V A M PIXA');
-      const body = encodeURIComponent('Hi,\n\nHere are the photos — they were saved in your Downloads folder, please attach them to this message.\n\n(Sent with S H I V A M PIXA)');
-      location.href = `mailto:?subject=${subj}&body=${body}`;
-    });
+    /* v3.25.6: the E-MAIL feature was removed ('emails ki hame zaroorat
+       nahi hai hata do') — Print, Export, Poster, Albums, Sizer remain.
+       The old #email modal, openEmail() and the mailto: launcher are gone. */
 
     /* ================= EXPORT PICTURE TO FOLDER ================= */
     const ex = {
@@ -3641,6 +3575,90 @@
       if (window.PixsaEditor) window.PixsaEditor.open(idx);
     }
 
+    /* ============ v3.25.6: the photo right-click menu (Picasa) ============
+       'right click se bhi sidha create collage ka option aana chahiye;
+       single image par right click par create collage ke sath edit image
+       ka option aana chahiye' — the menu acts on the whole tray selection:
+       many photos → Create Collage; one photo → Create Collage + Edit. */
+    function photoCtxMenu(x, y, entry) {
+      const n = state.selArr.length;
+      if (!n) return;
+      const items = [{
+        label: n > 1 ? `Create Collage with ${n} Photos\u2026` : 'Create Collage\u2026',
+        fn: () => {
+          if (!window.PixsaCollage) return;
+          toast(`Creating a collage from ${n} photo${n !== 1 ? 's' : ''}\u2026`, 'ok', 2500);
+          window.PixsaCollage.open(state.selArr.slice());
+        }
+      }];
+      if (n === 1) items.push({ label: 'Edit Image\u2026', fn: () => openEditorAt(entry.idx) });
+      ctxMenuAt(x, y, items);
+    }
+
+    /* ===== v3.25.6: Picasa rubber-band select on the photo grid =====
+       Drag on the grid background — every photo the band TOUCHES is
+       selected (the same touch rule the collage maker uses). A plain
+       drag replaces the tray; Ctrl/Cmd+drag adds to it. A plain click
+       on the background changes nothing. */
+    (() => {
+      const grid = els.grid;
+      let band = null, sx = 0, sy = 0, active = false, additive = false;
+      const clearRb = () => grid.querySelectorAll('.cell.rb').forEach((c) => c.classList.remove('rb'));
+      const kill = () => { if (band) { band.remove(); band = null; } clearRb(); active = false; };
+      grid.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;                        /* right-click opens the photo menu */
+        if (e.target.closest('.cell, .fhead, button, a, input, select')) return;
+        active = true; additive = !!(e.ctrlKey || e.metaKey);
+        sx = e.clientX; sy = e.clientY;
+        e.preventDefault();                                /* never start the browser's text-selection */
+      });
+      window.addEventListener('pointermove', (e) => {
+        if (!active) return;
+        if (!band) {
+          if (Math.abs(e.clientX - sx) < 4 && Math.abs(e.clientY - sy) < 4) return;
+          band = document.createElement('div');
+          band.className = 'grid-rubber';
+          grid.appendChild(band);
+        }
+        const vx1 = Math.min(sx, e.clientX), vy1 = Math.min(sy, e.clientY);
+        const vx2 = Math.max(sx, e.clientX), vy2 = Math.max(sy, e.clientY);
+        const g = grid.getBoundingClientRect();
+        band.style.display = 'block';
+        band.style.left = (vx1 - g.left) + 'px'; band.style.top = (vy1 - g.top) + 'px';
+        band.style.width = (vx2 - vx1) + 'px';  band.style.height = (vy2 - vy1) + 'px';
+        grid.querySelectorAll('.cell').forEach((c) => {
+          const r = c.getBoundingClientRect();
+          c.classList.toggle('rb', r.left < vx2 && r.right > vx1 && r.top < vy2 && r.bottom > vy1);
+        });
+      });
+      window.addEventListener('pointerup', (e) => {
+        if (!active) return;
+        if (!band) { active = false; return; }   /* simple background click — the tray is untouched */
+        const vx1 = Math.min(sx, e.clientX), vy1 = Math.min(sy, e.clientY);
+        const vx2 = Math.max(sx, e.clientX), vy2 = Math.max(sy, e.clientY);
+        const picked = [];
+        grid.querySelectorAll('.cell').forEach((c) => {
+          const r = c.getBoundingClientRect();
+          if (r.left < vx2 && r.right > vx1 && r.top < vy2 && r.bottom > vy1) {
+            const ph = c.querySelector('.ph[data-pi]');
+            const p = ph ? state.filtered[+ph.dataset.pi] : null;
+            if (p) picked.push(p);
+          }
+        });
+        kill();
+        if (!picked.length) return;
+        if (additive || state.trayPinned) {
+          const have = selSet();
+          for (const p of picked) if (!have.has(photoKey(p))) state.selArr.push(p);
+        } else {
+          state.selArr = picked;
+        }
+        renderTray();
+      });
+      window.addEventListener('pointercancel', kill);
+      window.addEventListener('blur', kill);
+    })();
+
     function makeCell(entry) {
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'cell'; btn.title = entry.p.name;
@@ -3680,6 +3698,14 @@
         } else {
           toggleSel(entry.p);
         }
+      });
+      /* v3.25.6: Picasa right-click on a photo — Create Collage straight
+         from the grid; a single photo also gets Edit Image. Right-clicking
+         an unselected photo selects it first (Picasa rule). */
+      btn.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        if (!selSet().has(btn.dataset.key)) { state.selArr = [entry.p]; renderTray(); }
+        photoCtxMenu(e.clientX, e.clientY, entry);
       });
       thumbIO.observe(ph);
       return btn;
@@ -4024,7 +4050,7 @@
       if (window.PixsaEditor && window.PixsaEditor.isOpen()) return;
       const inField = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName || '');
       /* v3.24.0: Picasa keyboard shortcuts — F2 rename, Del delete from disk,
-         Ctrl+P print, Ctrl+E e-mail, Ctrl+Shift+S export, Ctrl+N new album */
+         Ctrl+P print, Ctrl+Shift+S export, Ctrl+N new album (v3.25.6: Ctrl+E e-mail removed) */
       if (!inField && e.key === 'F2') {
         if (state.selArr.length) { e.preventDefault(); renamePhoto(state.selArr[0]); }
         return;
@@ -4039,7 +4065,7 @@
       if (e.ctrlKey && !e.altKey) {
         const k = (e.key || '').toLowerCase();
         if (k === 'p') { e.preventDefault(); openPrint(); return; }
-        if (k === 'e') { e.preventDefault(); openEmail(); return; }
+        /* v3.25.6: Ctrl+E e-mail removed with the E-Mail feature */
         if (k === 's' && e.shiftKey) { e.preventDefault(); openExport(); return; }
         if (k === 'n' && !e.shiftKey) {
           const modalOpen = [...document.querySelectorAll('.modal')].some((m) => !m.hidden);
@@ -4179,7 +4205,6 @@
     els.btnTrayCollage.addEventListener('click', () => { if (state.selArr.length && window.PixsaCollage) window.PixsaCollage.open(state.selArr); });
     els.btnTrayExport.addEventListener('click', openExport);   /* v3.24.0: Export dialog */
     els.btnTrayPrint.addEventListener('click', openPrint);     /* v3.24.0 */
-    els.btnTrayEmail.addEventListener('click', openEmail);     /* v3.24.0 */
     els.btnTrayRemove.addEventListener('click', async () => {
       if (!state.selArr.length) return;
       const gone = state.selArr.slice();
@@ -4210,7 +4235,6 @@
         case 'addphotos': importPhotos(); break;      /* v3.25.4: single photos */
         case 'export': openExport(); break;             /* v3.24.0: real Export dialog */
         case 'print': openPrint(); break;               /* v3.24.0 */
-        case 'email': openEmail(); break;               /* v3.24.0 */
         case 'poster': openPoster(); break;             /* v3.24.0 */
         case 'newalbum': newAlbumFlow(); break;         /* v3.24.0 */
         case 'addalbum':                                /* v3.24.0 */
@@ -4317,7 +4341,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.25.5', 'ok', 2500);
+          toast('S H I V A M PIXA v3.25.6', 'ok', 2500);
           break;
       }
     }
