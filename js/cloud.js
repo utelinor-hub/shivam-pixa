@@ -170,6 +170,23 @@
     });
   }
 
+  /* v3.25.9: token storage extracted — BOTH the token-client callback AND
+     askToken's per-call wrapper must store the token. Before this fix the
+     wrapper only RESOLVED the promise: GIS delivers the response to the
+     CURRENT callback (the wrapper), so the original callback that saved
+     C.token never ran — sign-in 'succeeded' with C.token = null and every
+     sync cycle then bailed silently at !hasToken(), leaving the chip on
+     'Syncing…' forever with nothing actually syncing (the user's bug:
+     'login page bhi aata hai bas sync hi hota rehta hai'). */
+  function storeToken(resp) {
+    if (resp && resp.access_token) {
+      C.token = resp.access_token;
+      C.tokenExp = Date.now() + Math.max(60, (Number(resp.expires_in) || 3600) - 90) * 1000;
+      /* keep the session, so a reload never needs the Google window again */
+      sessSet({ token: C.token, exp: C.tokenExp, email: (C.cfg && C.cfg.email) || '' });
+    }
+  }
+
   async function ensureTokenClient() {
     if (!C.cfg || !C.cfg.clientId) throw new Error('Google Client ID is missing — open Cloud Sync setup');
     await loadGis();
@@ -177,14 +194,7 @@
       C.tc = window.google.accounts.oauth2.initTokenClient({
         client_id: C.cfg.clientId,
         scope: SCOPE,
-        callback: (resp) => {
-          if (resp && resp.access_token) {
-            C.token = resp.access_token;
-            C.tokenExp = Date.now() + Math.max(60, (Number(resp.expires_in) || 3600) - 90) * 1000;
-            /* keep the session, so a reload never needs the Google window again */
-            sessSet({ token: C.token, exp: C.tokenExp, email: (C.cfg && C.cfg.email) || '' });
-          }
-        },
+        callback: storeToken,
         error_callback: () => { /* replaced per-call inside askToken */ }
       });
     }
@@ -199,7 +209,7 @@
       const timer = setTimeout(() => { restore(); reject(new Error('Google sign-in timed out — press “Sign in with Google” again and complete the window')); }, 120000);
       tc.callback = (resp) => {
         restore();
-        if (resp && resp.access_token) resolve(resp.access_token);
+        if (resp && resp.access_token) { storeToken(resp); resolve(resp.access_token); }   /* v3.25.9: ALSO store it */
         else if (resp && resp.error) reject(new Error(oauthErrText(resp.error)));
         else reject(new Error('Sign-in was cancelled'));
       };
@@ -339,7 +349,13 @@
   }
 
   function multipartBody(meta, blob) {
-    const boundary = 'pixabnd' + Math.random().toString(36).slice(2);
+    /* v3.25.9: FIXED boundary. The old random boundary mismatched the
+       'Content-Type: multipart/related; boundary=pixabnd' header that
+       uploadNew sends explicitly — fetch lets the header win over the
+       Blob's type, so Google parsed the body with the wrong boundary and
+       answered 400 'Malformed multipart body' to EVERY photo upload
+       (the manifest push worked because it passes no explicit header). */
+    const boundary = 'pixabnd';
     const pre = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${blob.type || 'application/octet-stream'}\r\n\r\n`;
     return new Blob([pre, blob, `\r\n--${boundary}--`], { type: `multipart/related; boundary=${boundary}` });
   }
@@ -727,7 +743,10 @@
   function startPolling() {
     clearInterval(C.timer);
     C.timer = setInterval(() => {
-      if (document.hidden || !C.enabled || !hasToken()) return;
+      if (document.hidden || !C.enabled) return;
+      /* v3.25.9: never leave the chip lying on 'Syncing' when the token is
+         gone — show the honest 'Sign in' state instead of spinning forever */
+      if (!hasToken()) { setStatus_('out', 'Sign in to start syncing'); return; }
       pullCycle().catch(() => {});
     }, POLL_MS);
   }
