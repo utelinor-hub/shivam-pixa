@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>S H I V A M PIXA — Offline Photo Editor & Collage</title>
-  <meta name="description" content="S H I V A M PIXA — offline photo editor + collage maker, just like Picasa. Editing, collage, crop, light adjust, text, effects, Sizer photo resizer. Everything stays 100% on your PC." />
+  <meta name="description" content="S H I V A M PIXA — offline photo editor + collage maker, just like Picasa. Editing, collage, crop, light adjust, text, Sizer photo resizer. Everything stays 100% on your PC." />
   <meta name="theme-color" content="#e8e8e8" />
   <meta name="color-scheme" content="light" />
   <link rel="manifest" href="./manifest.json" />
@@ -263,6 +263,40 @@
     .titem svg { width: 15px; height: 15px; color: #5a7ca6; flex: none; }
     .titem .tname { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .titem .tcount { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+    /* ---------- v3.25.5: PICASA FOLDER LIST ----------
+       Every folder/album row shows a small STACK of its photos (the newest
+       on top, fanned like Picasa's folder list), and moving the mouse over
+       a row peeks that album's images in a floating panel — the main screen
+       shows all albums' images just by moving the cursor around. */
+    .tstack { position: relative; width: 30px; height: 23px; flex: none; }
+    .tstack img {
+      position: absolute; width: 21px; height: 16px; object-fit: cover;
+      background: #fff; border: 1px solid #aeb8c4;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .28); border-radius: 1px;
+    }
+    .tstack img:nth-child(1) { left: 0; top: 7px; transform: rotate(-7deg); }
+    .tstack img:nth-child(2) { left: 4px; top: 3px; transform: rotate(2deg); }
+    .tstack img:nth-child(3) { left: 9px; top: 0; transform: rotate(9deg); z-index: 1; }
+    .titem.hasstack svg { display: none; }   /* the photo stack replaces the folder icon */
+    #treePeek {
+      position: fixed; z-index: 80; pointer-events: none;
+      background: #ffffff; border: 1px solid var(--accent-line); border-radius: 6px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, .30); padding: 8px 9px;
+      max-width: 300px; opacity: 0; transform: translateY(5px);
+      transition: opacity .15s ease, transform .15s ease;
+    }
+    #treePeek.on { opacity: 1; transform: none; }
+    #treePeek .pk-name {
+      font-size: 12px; font-weight: 700; color: #235d9c;
+      margin: 0 1px 6px; max-width: 280px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #treePeek .pk-grid { display: flex; flex-wrap: wrap; gap: 4px; width: 208px; }
+    #treePeek .pk-grid img {
+      width: 66px; height: 50px; object-fit: cover;
+      border: 1px solid #ccd4de; background: #f2f4f7; border-radius: 2px;
+    }
+    #treePeek .pk-more { font-size: 11px; color: #6b7f95; margin-top: 6px; }
 
     main { flex: 1; overflow-y: auto; overscroll-behavior: contain; background: #ffffff; }   /* v3.24.0: Picasa's white photo area */
     main::-webkit-scrollbar { width: 12px; }
@@ -1237,7 +1271,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.25.4</span>
+      <span class="ver">v3.25.5</span>
     </span>
   </footer>
 
@@ -1598,7 +1632,9 @@
         <div class="e-tabs">
           <button type="button" data-tab="basic" class="on" title="Basic Fixes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5L13 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 3.5v4M14.5 5.5h4M19 10.5v3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Basic</button>
           <button type="button" data-tab="tuning" title="Tuning"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M5 10V4M12 20v-9M12 7V4M19 20v-4M19 12V4M2.8 14h4.4M9.8 7h4.4M16.8 16h4.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Tuning</button>
-          <button type="button" data-tab="effects" title="Effects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6-4.6-1.9 4.6-1.9zM18.5 15.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Effects</button>
+          <!-- v3.25.5: the Effects tab was removed (user request — 'hume effect
+               ki zaroorat nahi'). Photos that already carry effects from older
+               versions still render them; no new ones can be added. -->
           <button type="button" data-tab="paint" title="Paint — draw on the photo (Windows Paint style)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5c-3 .8-6.5 3.3-8.6 6l2.6 2.6c2.7-2.1 5.2-5.6 6-8.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M11 11.2c-1.7.2-3 1.5-3 3.2 0 1.5-1 2.4-2.5 2.6 1.1 1.6 2.8 2.5 4.5 2.5 2.1 0 3.9-1.7 3.9-3.9 0-1.7-.9-3.1-2.9-4.4z" fill="currentColor"/></svg>Paint</button>
           <button type="button" data-tab="select" title="Select — copy / cut / delete part of the photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7V5.5a2 2 0 012-2H7M17 3.5h1.5a2 2 0 012 2V7M20.5 17v1.5a2 2 0 01-2 2H17M7 20.5H5.5a2 2 0 01-2-2V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3.5 10.5v3M20.5 10.5v3M10.5 3.5h3M10.5 20.5h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Select</button>
         </div>
@@ -1696,15 +1732,7 @@
             <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5s6 6.6 6 10.4a6 6 0 11-12 0c0-3.8 6-10.4 6-10.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Tint</span><input id="adTint" type="range" min="-100" max="100" value="0" /><span class="val" id="vTint">0</span></div>
             <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.2 15.9A10 10 0 118.1 2.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M22 12A10 10 0 0012 2v10z" fill="currentColor"/></svg>Saturation</span><input id="adSat" type="range" min="-100" max="100" value="0" /><span class="val" id="vSat">0</span></div>
           </div>
-          <div id="tab-effects" class="e-tab">
-            <div class="fxpager">
-              <button id="fxPrev" type="button" title="Previous effects page">&#8249;</button>
-              <span id="fxPageLab">1 / 3</span>
-              <button id="fxNext" type="button" title="Next effects page">&#8250;</button>
-            </div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5L13 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 3.5v4M14.5 5.5h4M19 10.5v3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Intensity</span><input id="fxStr" type="range" min="5" max="100" value="100" disabled /><span class="val" id="fxStrV">&mdash;</span></div>
-            <div id="fxGrid" class="fxgrid"></div>
-          </div>
+          <!-- v3.25.5: #tab-effects removed -->
         </div>
         <!-- v3.24.0: Picasa shows the histogram + camera info at the bottom of
              the tools panel in EVERY tab — it moved out of the Tuning tab -->
@@ -2657,14 +2685,78 @@
       els.btnAllF.hidden = state.folderFilter === '';
     }
 
-    /* ================= sidebar tree (Picasa 3: Albums / Projects / Folders) ================= */
+    /* ================= sidebar tree (Picasa 3: Albums / Projects / Folders) =================
+       v3.25.5 PICASA FOLDER PEEK — 'main screen par mouse cursor ghumane par
+       sare albums images show hon chahiye picasa ki tarha'. Every tree row
+       carries a mini stack of its album's photos, and just HOVERING a row
+       (no click) opens a floating peek panel filled with that album's
+       images, exactly how Picasa's folder list behaved. */
+    const peek = {
+      el: null, showT: 0, hideT: 0,
+      init() {
+        if (this.el) return;
+        this.el = document.createElement('div');
+        this.el.id = 'treePeek';
+        document.body.appendChild(this.el);
+      },
+      hideNow() {
+        clearTimeout(this.showT); clearTimeout(this.hideT);
+        if (this.el) this.el.classList.remove('on');
+      },
+      show(photos, label, row) {
+        this.init();
+        clearTimeout(this.hideT);
+        clearTimeout(this.showT);
+        this.showT = setTimeout(() => {
+          const list = photos.slice(0, 12);
+          if (!list.length) return;
+          this.el.innerHTML = '';
+          const nm = document.createElement('div');
+          nm.className = 'pk-name'; nm.textContent = label;
+          this.el.appendChild(nm);
+          const gr = document.createElement('div'); gr.className = 'pk-grid';
+          for (const p of list) {
+            const im = new Image();
+            im.decoding = 'async'; im.alt = p.name || 'photo';
+            getThumbURL(p).then((u) => { if (u && im.isConnected) im.src = u; }).catch(() => {});
+            gr.appendChild(im);
+          }
+          this.el.appendChild(gr);
+          if (photos.length > list.length) {
+            const more = document.createElement('div');
+            more.className = 'pk-more';
+            more.textContent = `+${photos.length - list.length} more photo${photos.length - list.length !== 1 ? 's' : ''}`;
+            this.el.appendChild(more);
+          }
+          /* place it right of the tree row, clamped inside the window */
+          const r = row.getBoundingClientRect();
+          this.el.classList.add('on');
+          const pw = this.el.offsetWidth, ph2 = this.el.offsetHeight;
+          let x = r.right + 10;
+          if (x + pw > window.innerWidth - 8) x = Math.max(8, window.innerWidth - pw - 8);
+          let y = r.top - 6;
+          if (y + ph2 > window.innerHeight - 8) y = Math.max(8, window.innerHeight - ph2 - 8);
+          this.el.style.left = Math.round(x) + 'px';
+          this.el.style.top = Math.round(y) + 'px';
+        }, 320);
+      }
+    };
     function buildTree() {
+      peek.hideNow();
       els.tree.innerHTML = '';
-      const counts = new Map();
+      /* v3.25.5: folder -> its photos (newest first) — feeds the tree stacks
+         and the hover peek. Replaces the old counts-only Map. */
+      const byFolder = new Map();
       for (const p of state.photos) {
         const k = p.folder || '';
-        counts.set(k, (counts.get(k) || 0) + 1);
+        if (!byFolder.has(k)) byFolder.set(k, []);
+        byFolder.get(k).push(p);
       }
+      for (const arr of byFolder.values()) {
+        if (arr.length > 1) arr.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
+      }
+      const counts = new Map();
+      byFolder.forEach((arr, k) => counts.set(k, arr.length));
       const sec = (label) => {
         const s = document.createElement('span');
         s.className = 'tshead'; s.textContent = label;
@@ -2685,6 +2777,26 @@
         const nm = document.createElement('span'); nm.className = 'tname'; nm.textContent = label;
         const cn = document.createElement('span'); cn.className = 'tcount'; cn.textContent = opts.hideCount ? '' : count;
         b.appendChild(svg); b.appendChild(nm); b.appendChild(cn);
+        /* v3.25.5: the Picasa photo stack — up to 3 thumbs from this row's
+           photos, newest on top; hovering the row peeks all its images */
+        const rowPhotos = opts.photos || [];
+        if (rowPhotos.length) {
+          b.classList.add('hasstack');
+          const st = document.createElement('span'); st.className = 'tstack';
+          for (let i = 0; i < 3 && i < rowPhotos.length; i++) {
+            const im = document.createElement('img');
+            im.decoding = 'async'; im.alt = '';
+            getThumbURL(rowPhotos[i]).then((u) => { if (u && im.isConnected) im.src = u; }).catch(() => {});
+            st.appendChild(im);
+          }
+          b.insertBefore(st, b.firstChild);
+          b.addEventListener('mouseenter', () => {
+            peek.hideNow();
+            peek.show(rowPhotos, label, b);
+          });
+          b.addEventListener('mouseleave', () => peek.hideNow());
+          b.title = `${label} — ${rowPhotos.length} photo${rowPhotos.length !== 1 ? 's' : ''}`;
+        }
         b.addEventListener('click', () => {
           /* v3.24.0: action items (e.g. "+ New Album…") just run and return */
           if (opts.act) { opts.act(); return; }
@@ -2697,14 +2809,21 @@
       };
       const starCount = state.photos.filter((p) => p.star).length;
       const colCount = counts.get('Collages') || 0;
+      /* v3.25.5: photo lists that feed the tree stacks + hover peek */
+      const recentPhotos = state.photos.length > 1
+        ? [...state.photos].sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0))
+        : state.photos.slice();
+      const starredPhotos = state.photos.filter((p) => p.star);
+      const colPhotos = byFolder.get('Collages') || [];
       sec('Albums');
-      mk('Recently Updated', '', Math.min(60, state.photos.length), 0, { special: 'recent' });
-      mk('Starred', '', starCount, 0, { special: 'starred', icon: '<path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6-5.1-2.8-5.1 2.8 1.1-5.6-4.2-3.9 5.7-.7L12 3.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>' });
+      mk('Recently Updated', '', Math.min(60, state.photos.length), 0, { special: 'recent', photos: recentPhotos });
+      mk('Starred', '', starCount, 0, { special: 'starred', photos: starredPhotos, icon: '<path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6-5.1-2.8-5.1 2.8 1.1-5.6-4.2-3.9 5.7-.7L12 3.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>' });
       /* v3.24.0: user albums (File → New Album) live here, Picasa-style */
       for (const al of albumsCache) {
-        const liveN = al.keys.filter((k) => state.photos.some((p) => photoKey(p) === k)).length;
-        mk(al.name, '', liveN, 0, {
+        const live = al.keys.map((k) => state.photos.find((p) => photoKey(p) === k)).filter(Boolean);
+        mk(al.name, '', live.length, 0, {
           special: 'album:' + al.id,
+          photos: live,
           icon: '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10.2v5M9.5 12.7h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
         });
         const btn = els.tree.lastChild;
@@ -2720,10 +2839,10 @@
         act: () => newAlbumFlow()
       });
       sec('Projects');
-      mk('Collages', 'Collages', colCount, 0, { cls: 'pi', icon: '<rect x="3.5" y="3.5" width="17" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 12h17M12 3.5v17" stroke="currentColor" stroke-width="1.4"/>' });
+      mk('Collages', 'Collages', colCount, 0, { cls: 'pi', photos: colPhotos, icon: '<rect x="3.5" y="3.5" width="17" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 12h17M12 3.5v17" stroke="currentColor" stroke-width="1.4"/>' });
       sec('Folders');
       const multiRoot = new Set(state.photos.map((p) => p.root || p.folder || '\u00b7')).size > 1;
-      mk(multiRoot ? 'All photos' : (state.folder || 'Library'), '', state.photos.length, 0);
+      mk(multiRoot ? 'All photos' : (state.folder || 'Library'), '', state.photos.length, 0, { photos: state.photos });
       const paths = [...counts.keys()].sort((a, b) => {
         const da = a ? a.split('/').length : 0, db = b ? b.split('/').length : 0;
         return da - db || a.localeCompare(b, undefined, { numeric: true });
@@ -2736,7 +2855,7 @@
            e.g. "Imported photos / Imported photos". Skip the duplicate. */
         if (!multiRoot && p === state.folder) continue;
         const parts = p.split('/');
-        mk(parts[parts.length - 1], p, counts.get(p), parts.length);
+        mk(parts[parts.length - 1], p, counts.get(p), parts.length, { photos: byFolder.get(p) || [] });
       }
     }
 
@@ -4198,7 +4317,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.25.4', 'ok', 2500);
+          toast('S H I V A M PIXA v3.25.5', 'ok', 2500);
           break;
       }
     }

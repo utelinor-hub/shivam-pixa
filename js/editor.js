@@ -1,5 +1,10 @@
 /* SHIVAM PIXA — editor.js
-   Picasa-style edit view: Basic Fixes | Tuning | Effects
+   Picasa-style edit view: Basic Fixes | Tuning | Paint | Select
+   v3.25.5: the Effects TAB is removed (user request — 'hume effect ki
+   zaroorat nahi, remove kar do'). fx.js stays: it renders every canvas op
+   (crop/tuning/text/paint…), and photos edited in older versions that
+   already carry effect ops keep rendering them — the tab just can't add
+   new effects any more.
    Non-destructive: original + ops list; full-res render on Save.
    v3.3.0: power-cut safe auto-save (IndexedDB 'edits' store), text panel
    (fonts/bold/italic/outline/shadow/align), transparent PNG stickers.
@@ -551,8 +556,11 @@
     }
   }
 
-  /* ---------- effects grid (3 pages, Picasa style) ---------- */
+  /* ---------- effects grid (3 pages, Picasa style) ----------
+     v3.25.5: the Effects tab was removed — #fxGrid no longer exists, so
+     this builds nothing. Kept as a safe no-op for the saved-edit path. */
   function buildFx() {
+    if (!ed.fxGrid) return;
     ed.fxGrid.innerHTML = '';
     const list = FX.EFFECTS.filter((f) => (f.page || 1) === E.fxPage);
     for (const f of list) {

@@ -5,6 +5,12 @@
    knob is a real overlay element (donut ring + knob resting at 3 o'clock),
    dragging is native pointer-dragging anywhere on a photo.
 
+   v3.25.5 — BACK TO THE MAIN SCREEN (user: 'collage create karne ke baad
+   main screen aajani chahiye'): Create Collage now closes the collage
+   maker by itself and drops the user on the main screen — the whole
+   library with every album's images, the finished collage visible in the
+   Collages group (Picasa dropped you back in the library the same way).
+
    v3.25.3 — MULTI-SELECT FIX (user: 'do image ek sath selection nahi
    hoti aur blue color aajata hai jaise browser me select karne par'):
    • the rubber band now selects every photo it TOUCHES (rectangle
@@ -1546,6 +1552,21 @@
       aD.download = `collage-${new Date().toISOString().slice(0, 10)}.${extD}`;
       aD.click();
       toast(`Collage downloaded (${extD.toUpperCase()})`, 'ok', 3000);
+      /* v3.25.5 (user request: 'collage create karne ke baad main screen
+         aajani chahiye'): Create Collage now ENDS on the main screen, the
+         way Picasa dropped you back in the library. The finished collage is
+         already saved in the Collages folder; after a short pause (so the
+         busy spinner and the download click land first) the collage maker
+         closes itself and the whole library is shown — every album with its
+         images, with the new collage visible in the Collages group. */
+      setTimeout(() => {
+        if (S.open) close();
+        try {
+          P.state.special = '';
+          P.state.folderFilter = '';
+          if (P.buildTree && P.applyFilter) { P.buildTree(); P.applyFilter(); }
+        } catch (e) { /* the library keeps its current view */ }
+      }, 1300);
     } finally {
       el.busy.hidden = true;
     }
