@@ -795,25 +795,22 @@
     .m-box { width: 880px; max-width: 96vw; max-height: 92vh; display: flex; flex-direction: column; background: #f1efeb; border: 1px solid #b0ada6; border-radius: 6px; box-shadow: 0 14px 46px rgba(0,0,0,.4); overflow: hidden; }
     .m-head { display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: linear-gradient(#f8f7f5, #dedcd6); border-bottom: 1px solid #b8b5ae; font-weight: 700; font-size: 13.5px; }
     .m-head .icobtn { margin-left: auto; }
-    .c-body { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
-    /* v3.23.0: sidebar-free collage — Picasa-style horizontal control ribbon */
-    .c-ribbon { border-bottom: 1px solid #c8c5be; background: linear-gradient(#f8f6f2, #e9e6df); padding: 7px 12px 8px; display: flex; flex-direction: column; gap: 7px; }
-    .c-rrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .c-group { display: flex; align-items: center; gap: 7px; padding-right: 12px; border-right: 1px solid #d8d4cb; min-width: 0; }
-    .c-rrow .c-group:last-child { border-right: 0; padding-right: 0; }
-    .c-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: #6d7076; font-weight: 700; white-space: nowrap; }
-    .c-rspacer { flex: 1; }
-    .c-actions { display: flex; gap: 6px; }
-    .c-actions button { padding: 7px 12px; font-size: 12.5px; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; white-space: nowrap; }
-    .c-actions button:hover { border-color: var(--accent); background: #eaf2fc; }
-    .c-actions button.accent { background: var(--accent); border-color: var(--accent-deep); color: #fff; font-weight: 700; }
-    .c-actions button.accent:hover { background: var(--accent-deep); }
-    .c-clipbtn { padding: 7px 12px; font-size: 12.5px; font-weight: 600; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; white-space: nowrap; }
+    .c-body { flex: 1; display: flex; flex-direction: row; min-height: 0; position: relative; }
+    /* v3.25.0: Picasa 3 layout — settings in a LEFT SIDEBAR, canvas right */
+    .c-side { width: 270px; flex: none; padding: 10px 12px; border-right: 1px solid #c8c5be; overflow-y: auto; display: flex; flex-direction: column; gap: 11px; background: linear-gradient(#f8f6f2, #e9e6df); }
+    .c-side-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .c-side-actions button { padding: 7px 6px; font-size: 12px; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; white-space: nowrap; }
+    .c-side-actions button:hover { border-color: var(--accent); background: #eaf2fc; }
+    .c-side-actions button.accent { background: var(--accent); border-color: var(--accent-deep); color: #fff; font-weight: 700; }
+    .c-side-actions button.accent:hover { background: var(--accent-deep); }
+    .c-clipbtn { padding: 7px 10px; font-size: 12.5px; font-weight: 600; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; white-space: nowrap; }
     .c-clipbtn:hover, .c-clipbtn.on { border-color: var(--accent); background: #dcebfb; color: var(--accent-deep); }
-    /* v3.23.0: the Clips tray — floating drawer instead of a sidebar tab */
-    .c-drawer { position: absolute; top: 52px; right: 14px; width: 316px; max-width: calc(100% - 28px); background: #fbfaf8; border: 1px solid #b8b5ae; border-radius: 6px; box-shadow: 0 12px 34px rgba(0,0,0,.38); padding: 10px; z-index: 70; }
-    .c-side { width: 212px; padding: 12px; border-right: 1px solid #c8c5be; overflow-y: auto; }
-    .c-side h5 { margin: 10px 0 5px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: #6d7076; }
+    .c-sec { display: flex; flex-direction: column; gap: 6px; }
+    .c-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: #6d7076; font-weight: 700; white-space: nowrap; }
+    .c-sec select { width: 100%; font-size: 12px; padding: 5px 6px; border: 1px solid #c6c3bc; border-radius: 4px; background: #fff; color: #2c2f34; }
+    .c-bgrow { display: flex; align-items: center; gap: 7px; }
+    .c-chkrow2 { flex-direction: row; gap: 14px; align-items: center; }
+    .c-clipspane { margin-top: auto; display: flex; flex-direction: column; gap: 7px; min-height: 110px; border-top: 1px solid #d8d4cb; padding-top: 9px; }
     .c-types { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
     .c-types button { text-align: left; padding: 7px 10px; font-size: 12.5px; border: 1px solid #c6c3bc; border-radius: 3px; background: linear-gradient(#fdfdfc, #edece7); }
     .c-types button.on { border-color: var(--accent); background: #dcebfb; font-weight: 700; }
@@ -908,8 +905,8 @@
     .c-tabs2 button { flex: 1; padding: 9px 4px; font-size: 12.5px; font-weight: 600; color: #4b5158; background: linear-gradient(#f6f5f3, #e7e5e0); border: 0; border-right: 1px solid #c8c5be; border-bottom: 2px solid transparent; cursor: pointer; }
     .c-tabs2 button:last-child { border-right: 0; }
     .c-tabs2 button.on { background: #fdfdfc; border-bottom-color: var(--accent); color: var(--accent-deep); }
-    .c-borders { display: flex; gap: 5px; }
-    .c-borders button { display: flex; flex-direction: row; align-items: center; gap: 5px; padding: 5px 9px; font-size: 11.5px; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; white-space: nowrap; }
+    .c-borders { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .c-borders button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 2px; font-size: 10.5px; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; text-align: center; }
     .c-borders button.on { border-color: var(--accent); background: #dcebfb; font-weight: 700; }
     .bico { width: 26px; height: 21px; background: linear-gradient(135deg, #c9a36a, #a97f45); border: 1px solid #94826a; display: block; }
     .bico-white { border: 3px solid #fff; outline: 1px solid #b5b2ab; }
@@ -932,7 +929,7 @@
     .ctxmenu button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent-deep); }
     .ctxmenu button:disabled { color: #9aa1a9; cursor: default; }
     .ctxmenu .csep { height: 1px; background: #e4e7eb; margin: 4px 6px; }
-    .c-clips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 52vh; overflow-y: auto; padding-right: 2px; }
+    .c-clips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 34vh; overflow-y: auto; padding-right: 2px; }
     .c-clips .clip { position: relative; border: 1px solid #c6c3bc; border-radius: 4px; background: #fff; padding: 0; cursor: pointer; overflow: hidden; }
     .c-clips .clip img { width: 100%; height: 72px; object-fit: contain; display: block; background: #f2f1ed; }
     .c-clips .clip:hover { border-color: var(--accent); box-shadow: 0 1px 5px rgba(43,124,211,.35); }
@@ -959,7 +956,7 @@
 
     @media (max-width: 900px) {
       .e-panel { width: 258px; }
-      .c-side { width: 196px; }
+      .c-side { width: 224px; }
       .c-toolinfo { display: none; }
     }
 
@@ -1249,7 +1246,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.24.2</span>
+      <span class="ver">v3.25.0</span>
     </span>
   </footer>
 
@@ -1877,95 +1874,95 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </button>
       </header>
-      <!-- v3.23.0: SIDEBAR-FREE collage — every control lives in a Picasa-style
-           horizontal ribbon; the Clips tray is a floating drawer -->
+      <!-- v3.25.0: Picasa 3 layout — every control in the LEFT sidebar
+           (Collage Type, Page Format, Borders, Background) with the Clips
+           tray docked at the sidebar bottom; the canvas sits on the right -->
       <div class="c-body">
-        <div class="c-ribbon" id="cPaneSettings">
-          <div class="c-rrow">
-            <div class="c-group">
-              <span class="c-lab">Collage Type</span>
-              <select id="cType" style="width:auto;max-width:250px">
-                <option value="pile" selected>Picture Pile : Looks like a pile of scattered pictures</option>
-                <option value="mosaic">Mosaic : Fits pictures together into a grid automatically</option>
-                <option value="frame">Frame Mosaic : A mosaic with a central framed picture</option>
-                <option value="grid">Grid : Arranges pictures in uniform rows and columns</option>
-                <option value="sheet">Contact Sheet : Thumbnails of all pictures</option>
-              </select>
+        <aside class="c-side" id="cPaneSettings">
+          <div class="c-side-actions">
+            <button id="cDesktop" type="button" title="Use this collage as your desktop wallpaper image">Desktop Background</button>
+            <button id="cReset" type="button" title="Back to the automatic Picasa layout">Reset</button>
+            <button id="cCreate" type="button" class="accent" title="Finish and save this collage">Create Collage</button>
+            <button id="cClose2" type="button" title="Close the collage maker">Close</button>
+            <button id="cTabClips" type="button" class="c-clipbtn on" title="Photo tray — photos waiting to join the collage" style="grid-column:1/-1">Clips (<span id="cClipCount">0</span>)</button>
+          </div>
+          <div class="c-sec">
+            <span class="c-lab">Collage Type</span>
+            <select id="cType">
+              <option value="pile" selected>Picture Pile : Looks like a pile of scattered pictures</option>
+              <option value="mosaic">Mosaic : Fits pictures together into a grid automatically</option>
+              <option value="frame">Frame Mosaic : A mosaic with a central framed picture</option>
+              <option value="grid">Grid : Arranges pictures in uniform rows and columns</option>
+              <option value="sheet">Contact Sheet : Thumbnails of all pictures</option>
+            </select>
+          </div>
+          <div class="c-sec">
+            <span class="c-lab">Page Format</span>
+            <select id="cFormat">
+              <option value="4x3" selected>4:3 (Standard)</option>
+              <option value="16x9">16:9 : HDTV</option>
+              <option value="3x2">3:2 (35mm)</option>
+              <option value="letter">8.5 x 11 : Letter paper</option>
+              <option value="4x6">4 x 6 : Postcard</option>
+              <option value="sq">1:1 : Square</option>
+              <option value="screen">Current Screen Resolution</option>
+              <option value="custom">Custom ratio&hellip;</option>
+            </select>
+            <div class="c-orient">
+              <button id="cOrientL" type="button" class="on" title="Landscape">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+              </button>
+              <button id="cOrientP" type="button" title="Portrait">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3.5" width="12" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+              </button>
             </div>
-            <div class="c-group">
-              <span class="c-lab">Page Format</span>
-              <select id="cFormat" style="width:auto">
-                <option value="4x3" selected>4:3 (Standard)</option>
-                <option value="16x9">16:9 : HDTV</option>
-                <option value="3x2">3:2 (35mm)</option>
-                <option value="letter">8.5 x 11 : Letter paper</option>
-                <option value="4x6">4 x 6 : Postcard</option>
-                <option value="sq">1:1 : Square</option>
-                <option value="screen">Current Screen Resolution</option>
-                <option value="custom">Custom ratio&hellip;</option>
-              </select>
-              <div class="c-orient">
-                <button id="cOrientL" type="button" class="on" title="Landscape">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-                </button>
-                <button id="cOrientP" type="button" title="Portrait">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3.5" width="12" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-                </button>
-              </div>
-            </div>
-            <div class="c-group" id="cCustomRow" hidden>
-              <span class="c-lab">Custom</span>
+          </div>
+          <div class="c-sec" id="cCustomRow" hidden>
+            <span class="c-lab">Custom ratio</span>
+            <div class="c-bgrow">
               <input id="cCustW" type="number" min="1" max="60" step="0.5" value="16" style="width:64px" aria-label="Ratio width" />
               <span style="color:#667">:</span>
               <input id="cCustH" type="number" min="1" max="60" step="0.5" value="9" style="width:64px" aria-label="Ratio height" />
               <button id="cCustApply" class="btn" type="button">Apply</button>
             </div>
-            <div class="c-group">
-              <span class="c-lab">Borders</span>
-              <div class="c-borders" id="cBorders">
-                <button type="button" data-b="none" title="No border"><span class="bico"></span>None</button>
-                <button type="button" data-b="white" class="on" title="Classic white photo border"><span class="bico bico-white"></span>White</button>
-                <button type="button" data-b="polaroid" title="Instant Polaroid — thick bottom border"><span class="bico bico-pol"></span>Polaroid</button>
-              </div>
+          </div>
+          <div class="c-sec">
+            <span class="c-lab">Borders</span>
+            <div class="c-borders" id="cBorders">
+              <button type="button" data-b="none" title="No border"><span class="bico"></span>None</button>
+              <button type="button" data-b="white" class="on" title="Classic white photo border"><span class="bico bico-white"></span>White</button>
+              <button type="button" data-b="polaroid" title="Instant Polaroid — thick bottom border"><span class="bico bico-pol"></span>Polaroid</button>
             </div>
           </div>
-          <div class="c-rrow">
-            <div class="c-group">
-              <span class="c-lab">Background</span>
+          <div class="c-sec">
+            <span class="c-lab">Background</span>
+            <div class="c-bgrow">
               <label class="chkrow"><input type="radio" name="cbgm" id="cBgSolid" checked /> Solid</label>
               <input id="cBg" type="color" value="#f5f2ec" style="height:24px;width:34px;padding:1px" />
               <button id="cEyedropper" class="btn" type="button" title="Pick a color from anywhere on the screen" style="padding:5px 7px">
                 <svg viewBox="0 0 24 24" aria-hidden="true" style="width:15px;height:15px"><path d="M19.3 4.7a2.4 2.4 0 0 0-3.4 0l-2.1 2.1-1.4-1.4-1.5 1.5 6.8 6.8 1.5-1.5-1.4-1.4 2.1-2.1a2.4 2.4 0 0 0 0-3.4M13 10.5L4.6 18.9a1.7 1.7 0 0 0 2.4 2.4l8.4-8.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
               </button>
-              <div class="presets">
-                <button type="button" data-bg="#ffffff" style="background:#ffffff" title="White"></button>
-                <button type="button" data-bg="#000000" style="background:#000000" title="Black"></button>
-                <button type="button" data-bg="#d8d4cc" style="background:#d8d4cc" title="Grey"></button>
-                <button type="button" data-bg="#3e4650" style="background:#3e4650" title="Dark blue"></button>
-                <button type="button" data-bg="#f5f2ec" style="background:#f5f2ec" title="Warm paper"></button>
-              </div>
-              <label class="chkrow"><input type="radio" name="cbgm" id="cBgPhoto" /> Use Image</label>
             </div>
-            <div class="c-group">
-              <label class="chkrow"><input type="checkbox" id="cShadows" checked /> Shadows</label>
-              <label class="chkrow"><input type="checkbox" id="cCaptions" /> Captions</label>
+            <div class="presets">
+              <button type="button" data-bg="#ffffff" style="background:#ffffff" title="White"></button>
+              <button type="button" data-bg="#000000" style="background:#000000" title="Black"></button>
+              <button type="button" data-bg="#d8d4cc" style="background:#d8d4cc" title="Grey"></button>
+              <button type="button" data-bg="#3e4650" style="background:#3e4650" title="Dark blue"></button>
+              <button type="button" data-bg="#f5f2ec" style="background:#f5f2ec" title="Warm paper"></button>
             </div>
-            <span class="c-rspacer"></span>
-            <button id="cTabSettings" type="button" hidden aria-hidden="true" tabindex="-1"></button>
-            <div class="c-actions">
-              <button id="cDesktop" type="button" title="Use this collage as your desktop wallpaper image">Desktop Background</button>
-              <button id="cReset" type="button" title="Back to the automatic Picasa layout">Reset</button>
-              <button id="cCreate" type="button" class="accent" title="Finish and save this collage">Create Collage</button>
-              <button id="cClose2" type="button" title="Close the collage maker">Close</button>
-            </div>
-            <button id="cTabClips" type="button" class="c-clipbtn" title="Photo tray — photos waiting to join the collage">Clips (<span id="cClipCount">0</span>)</button>
+            <label class="chkrow"><input type="radio" name="cbgm" id="cBgPhoto" /> Use Image</label>
           </div>
-        </div>
-        <div class="c-prev">
-          <div id="cPaneClips" class="c-drawer" hidden>
+          <div class="c-sec c-chkrow2">
+            <label class="chkrow"><input type="checkbox" id="cShadows" checked /> Shadows</label>
+            <label class="chkrow"><input type="checkbox" id="cCaptions" /> Captions</label>
+          </div>
+          <button id="cTabSettings" type="button" hidden aria-hidden="true" tabindex="-1"></button>
+          <div id="cPaneClips" class="c-clipspane">
             <div id="cClips" class="c-clips"></div>
-            <button id="cAddPhotos" class="btn" type="button" style="width:100%;justify-content:center;margin-top:9px">Add More Photos&hellip;</button>
+            <button id="cAddPhotos" class="btn" type="button" style="width:100%;justify-content:center">Add More Photos&hellip;</button>
           </div>
+        </aside>
+        <div class="c-prev">
           <div class="c-tools">
             <button id="cSelAll" type="button">Select All</button>
             <button id="cSelNone" type="button">Select None</button>
@@ -4130,7 +4127,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.24.2', 'ok', 2500);
+          toast('S H I V A M PIXA v3.25.0', 'ok', 2500);
           break;
       }
     }

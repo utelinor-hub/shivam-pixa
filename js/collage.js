@@ -380,6 +380,7 @@
       url: URL.createObjectURL(blob)
     }, st || {});
     it.el = makeItemEl(it);
+    keepInside(it);              /* v3.25.0: never place a photo off the page */
     renderItem(it);
     bindItem(it);
     S.items.push(it);
@@ -391,6 +392,29 @@
   }
   function itemById(id) { return S.items.find((i) => i.id === id); }
   const firstSel = () => { for (const id of S.sel) return itemById(id); return null; };
+
+  /* ================= v3.25.0: STAY ON THE PAGE (Picasa rule) =================
+     Picasa 3 never lets a picture hang off the collage page — every move
+     (drag, rotate, zoom, keyboard, layout) keeps the photo's rotated
+     axis-aligned footprint fully inside the stage. Positions are the
+     photo CENTRE in stage fractions, so the clamp is
+     [halfExtent..1-halfExtent] per axis. */
+  function itemExtent(it) {
+    const sw = stage.clientWidth || 800, sh = stage.clientHeight || 600;
+    const w = it.wFrac * sw * it.scale, h = it.hFrac * sh * it.scale;
+    const th = ((it.rot || 0) % 360) * Math.PI / 180;
+    const c = Math.abs(Math.cos(th)), s = Math.abs(Math.sin(th));
+    return { ex: (w * c + h * s) / 2, ey: (w * s + h * c) / 2, sw, sh };
+  }
+  function clampItemPos(it, x, y) {
+    const { ex, ey, sw, sh } = itemExtent(it);
+    const mx = Math.min(ex, sw / 2) / sw, my = Math.min(ey, sh / 2) / sh;
+    return { x: clamp(x, mx, 1 - mx), y: clamp(y, my, 1 - my) };
+  }
+  function keepInside(it) {
+    const p = clampItemPos(it, it.x, it.y);
+    it.x = p.x; it.y = p.y;
+  }
 
   /* ================= selection ================= */
   function select(it) {
@@ -476,8 +500,8 @@
         const dx = (ev.clientX - startX) / rect.width;
         const dy = (ev.clientY - startY) / rect.height;
         for (const o of orig) {
-          o.i.x = clamp(o.x + dx, -0.5, 1.5);
-          o.i.y = clamp(o.y + dy, -0.5, 1.5);
+          const p = clampItemPos(o.i, o.x + dx, o.y + dy);   /* v3.25.0: page clamp */
+          o.i.x = p.x; o.i.y = p.y;
           renderItem(o.i);
         }
         positionWheel();
@@ -523,6 +547,7 @@
           hideSnapBadge(tgt);
         }
         tgt.rot = rot;
+        keepInside(tgt);           /* v3.25.0: rotation/zoom may push it off the page */
         renderItem(tgt);
         positionWheel();
       };
@@ -547,8 +572,8 @@
       const startX = e.clientX, startY = e.clientY;
       const ox = tgt.x, oy = tgt.y;
       const onMove = (ev) => {
-        tgt.x = clamp(ox + (ev.clientX - startX) / rect.width, -0.5, 1.5);
-        tgt.y = clamp(oy + (ev.clientY - startY) / rect.height, -0.5, 1.5);
+        const p = clampItemPos(tgt, ox + (ev.clientX - startX) / rect.width, oy + (ev.clientY - startY) / rect.height);
+        tgt.x = p.x; tgt.y = p.y;    /* v3.25.0: page clamp */
         renderItem(tgt);
         positionWheel();
       };
@@ -568,6 +593,7 @@
       select(it);
       if (e.shiftKey) it.rot += e.deltaY > 0 ? 5 : -5;
       else it.scale = clamp(it.scale * (e.deltaY < 0 ? 1.07 : 0.93), SCALE_MIN, SCALE_MAX);
+      keepInside(it);              /* v3.25.0: page clamp after zoom/rotate */
       renderItem(it);
       positionWheel();
       scheduleColSave();
@@ -597,6 +623,7 @@
   }
   function rotateOne(it, deg) {
     it.rot += deg;
+    keepInside(it);                /* v3.25.0: a rotated corner must not leave the page */
     renderItem(it);
     scheduleColSave();
   }
@@ -927,6 +954,7 @@
       it.rot = (Math.random() - 0.5) * 32;
       it.scale = 1;
     });
+    S.items.forEach(keepInside);   /* v3.25.0: the whole pile stays on the page */
     renderAll();
     positionWheel();
     scheduleColSave();
@@ -937,6 +965,7 @@
     states.sort(() => Math.random() - 0.5);
     S.items.forEach((it, idx) => {
       it.x = states[idx].x; it.y = states[idx].y; it.rot = states[idx].rot;
+      keepInside(it);              /* v3.25.0: a bigger photo in a small photo's spot still fits */
       renderItem(it);
     });
     positionWheel();
@@ -1607,7 +1636,7 @@
         refreshBackground();
       }).catch(() => { /* user pressed Escape */ });
     });
-    q('.c-ribbon .presets').addEventListener('click', (e) => {   /* v3.23.0: presets moved from the sidebar to the ribbon */
+    q('#cPaneSettings .presets').addEventListener('click', (e) => {   /* v3.25.0: presets live in the left sidebar again */
       const b = e.target.closest('button[data-bg]');
       if (!b) return;
       S.bg = b.dataset.bg;
@@ -1742,8 +1771,8 @@
         for (const id of S.sel) {
           const j = itemById(id);
           if (!j) continue;
-          j.x = clamp(j.x + mv[0], -0.5, 1.5);
-          j.y = clamp(j.y + mv[1], -0.5, 1.5);
+          const p = clampItemPos(j, j.x + mv[0], j.y + mv[1]);   /* v3.25.0: page clamp */
+          j.x = p.x; j.y = p.y;
           renderItem(j);
         }
         positionWheel();
