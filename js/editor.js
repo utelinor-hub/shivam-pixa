@@ -79,6 +79,21 @@
            with before/after hold, and non-destructive apply (undoable
            'cutout' op). Picture → Professional Background (Studio)… and
            a Studio BG button next to Remove BG in the Fix tab.
+   v3.22.2: (collage) the four Picasa-behaviour fixes — (1) the "Auto-saved
+           Collage found — reopen it?" bar is GONE (Picasa never nagged):
+           Create Collage now finishes in one click — the final image is
+           saved to the Collages folder, the file downloads immediately and
+           the working auto-save record is cleaned up so nothing can ever
+           ask to "reopen" it; the working collage still auto-saves silently
+           and resumes from the Collage tab. (2) Right-click opens the
+           context menu everywhere on a photo — the round wheel + knob
+           overlay the photo centre, so right-clicks there are forwarded to
+           the menu too (they used to show the browser's own menu).
+           (3) MAGNETIC SNAP: rotating with the wheel knob clicks the photo
+           to exactly 0° inside the -4°..+4° zone, with a small "0°" badge
+           at the photo centre — no more "almost straight". (4) The last
+           Page Format + Landscape/Portrait choice are remembered and
+           applied to every new collage.
    v3.22.1: (library) full Picasa-3 spec audit pass — the library home
            screen (Albums / Projects → Collages / Folders tree, folder
            headers with photo counts + one-click Create Photo Collage

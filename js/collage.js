@@ -5,6 +5,22 @@
    knob is a real overlay element (donut ring + knob resting at 3 o'clock),
    dragging is native pointer-dragging anywhere on a photo.
 
+   v3.22.2 — the four Picasa-behaviour fixes:
+   • Create Collage = one clean action: final image saved to the Collages
+     folder + file downloads immediately + working auto-save record cleaned
+     up (the "Auto-saved Collage found — reopen it?" bar in index.html was
+     deleted — Picasa never nagged; the working collage still resumes
+     silently from the Collage tab).
+   • right-click opens the context menu EVERYWHERE on a photo: the round
+     wheel + knob overlay the photo centre, so contextmenu is now forwarded
+     from them too (before, a right-click on the middle of a photo showed
+     the browser's own menu).
+   • MAGNETIC SNAP while knob-rotating: through the -4°..+4° zone the photo
+     clicks to exactly 0° and a small "0°" badge shows at the photo centre.
+   • the last Page Format + Landscape/Portrait choice are remembered
+     (localStorage pixsa.collageFormat / pixsa.collageOrientation) and
+     applied to every NEW collage.
+
    v3.19.0 — the DOM engine swap:
    • the HTML5-canvas hit-scan renderer is GONE — photos are DOM items now:
      free 60fps dragging, mouse-wheel zoom, Shift+wheel rotate, wheel-knob
@@ -222,6 +238,16 @@
         box-shadow: 0 1px 4px rgba(0,0,0,0.65); touch-action: none;
       }
       #cKnob:hover { background: #ffffff; }
+      /* v3.22.2: MAGNETIC SNAP badge — shows "0°" at the photo centre while
+         the knob drags the photo through the straight zone (Picasa style) */
+      #cSnap {
+        position: absolute; transform: translate(-50%, -50%);
+        background: rgba(28, 28, 30, 0.88); color: #fff;
+        font: 600 13px 'Segoe UI', system-ui, sans-serif;
+        padding: 3px 10px; border-radius: 12px; pointer-events: none;
+        z-index: 100001; box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+        white-space: nowrap;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -395,6 +421,28 @@
     wheelEl.dataset.id = it.id;
   }
 
+  /* ================= v3.22.2 MAGNETIC SNAP "0°" badge ================= */
+  let snapEl = null, snapT = 0;
+  function showSnapBadge(it) {
+    if (!S.open) return;
+    if (!snapEl) {
+      snapEl = document.createElement('div');
+      snapEl.id = 'cSnap';
+      snapEl.textContent = '0\u00b0';
+      snapEl.hidden = true;
+      stage.appendChild(snapEl);
+    }
+    snapEl.style.left = (it.x * stage.clientWidth) + 'px';
+    snapEl.style.top = (it.y * stage.clientHeight - 34) + 'px';
+    snapEl.hidden = false;
+    clearTimeout(snapT);
+    snapT = setTimeout(() => { if (snapEl) snapEl.hidden = true; }, 900);
+  }
+  function hideSnapBadge() {
+    clearTimeout(snapT);
+    if (snapEl) snapEl.hidden = true;
+  }
+
   /* ================= item interactions (the prototype's, 1:1) ================= */
   function bindItem(it) {
     /* 1. SMOOTH FREE DRAGGING (anywhere on the photo) — every selected
@@ -444,14 +492,25 @@
       const onMove = (ev) => {
         const curAngle = Math.atan2(ev.clientY - cy, ev.clientX - cx) * (180 / Math.PI);
         const curDist = Math.hypot(ev.clientX - cx, ev.clientY - cy);
-        tgt.rot = origRot + (curAngle - startAngle);
+        let rot = origRot + (curAngle - startAngle);
         tgt.scale = clamp(origScale * (curDist / Math.max(20, startDist)), SCALE_MIN, SCALE_MAX);
+        /* v3.22.2 MAGNETIC SNAP (Picasa straighten): while the knob drags the
+           rotation through the -4°..+4° zone, the photo clicks to exactly 0°
+           and a "0°" badge flashes at the photo centre — no more "almost
+           straight but not quite" */
+        const norm = ((rot % 360) + 540) % 360 - 180;   /* (-180, 180] */
+        if (Math.abs(norm) <= 4) {
+          if (norm !== 0) showSnapBadge(tgt);
+          rot = 0;
+        }
+        tgt.rot = rot;
         renderItem(tgt);
         positionWheel();
       };
       const onUp = () => {
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
+        hideSnapBadge();
         scheduleColSave();
       };
       window.addEventListener('pointermove', onMove);
@@ -1033,7 +1092,10 @@
     };
   }
   async function saveCollageProject() {
-    if (!S.open || !S.items.length) return;
+    /* v3.22.2: once Create Collage finished, the working auto-save must not
+       resurrect the 'current' record (an in-flight timer could re-write it
+       after create() cleaned it up) */
+    if (!S.open || S.final || !S.items.length) return;
     try {
       const photos = await collectPhotoBlobs();
       if (!photos.length) return;
@@ -1196,6 +1258,21 @@
     if (S.url) { URL.revokeObjectURL(S.url); S.url = null; }
     el.root.hidden = false;
     el.resultBar.hidden = true;
+    /* v3.22.2: a brand-new collage starts with the page format + orientation
+       the user used LAST time (Picasa remembered it too). Saved collages
+       reopened from the library keep their own format (openRestored). */
+    try {
+      const lastFmt = localStorage.getItem('pixsa.collageFormat');
+      if (lastFmt) {
+        let fmtVal2 = NORM_FMT[lastFmt] || lastFmt;
+        for (const o of el.fmt.options) {
+          if (o.value === fmtVal2) { el.fmt.value = fmtVal2; break; }
+        }
+      }
+      const lastOrient = localStorage.getItem('pixsa.collageOrientation');
+      if (lastOrient === 'portrait') S.landscape = false;
+      else if (lastOrient === 'landscape') S.landscape = true;
+    } catch (e) {}
     el.custRow.hidden = fmtVal() !== 'custom';
     clearItems();
     updateUI();
@@ -1231,6 +1308,7 @@
     S.hover = null; S.final = false;
     el.resultBar.hidden = true;
     el.menu.hidden = true;
+    hideSnapBadge();
     clearTimeout(colSaveT);
     if (wheelEl) wheelEl.hidden = true;
     clearItems();
@@ -1321,6 +1399,9 @@
     toast(S.editId ? 'Collage opened for editing' : 'Previous collage restored', 'ok', 3000);
   }
   async function create() {
+    /* v3.22.2: kill any pending auto-save timer so it cannot re-write the
+       working 'current' record after this export cleans it up */
+    clearTimeout(colSaveT);
     el.busy.hidden = false;
     await new Promise((r) => setTimeout(r, 40));
     try {
@@ -1339,6 +1420,17 @@
       el.note.textContent = 'Collage created — download it, save it to a folder, or go back to edit.';
       el.cDesktop.disabled = el.cCreate.disabled = true;
       saveCollage();
+      /* v3.22.2 (Picasa behaviour): Create Collage finishes the job in one
+         click — the JPEG/PNG downloads immediately and the working auto-save
+         ('collage'/'current') is cleaned up, so no "reopen it?" bar can ever
+         appear. The finished collage lives in the library (Collages folder). */
+      try { P.idbDel('collage', 'current'); } catch (e) {}
+      const extD = S.blob.type === 'image/png' ? 'png' : 'jpg';
+      const aD = document.createElement('a');
+      aD.href = S.url;
+      aD.download = `collage-${new Date().toISOString().slice(0, 10)}.${extD}`;
+      aD.click();
+      toast(`Collage downloaded (${extD.toUpperCase()})`, 'ok', 3000);
     } finally {
       el.busy.hidden = true;
     }
@@ -1349,6 +1441,21 @@
     injectStyles();
     /* the context menu must sit above the round wheel overlay */
     el.menu.style.zIndex = '100000';
+    /* v3.22.2 RIGHT-CLICK FIX: the round wheel + knob sit OVER the centre of
+       the hovered/selected photo, so a right-click on the middle of a photo
+       landed on the wheel and showed the BROWSER menu instead of Picasa's
+       context menu. Forward it: right-click anywhere on a photo — centre
+       (wheel/knob) or edges (the photo itself) — always opens the menu. */
+    const ctxFromWheel = (e) => {
+      const tgt = itemById(wheelEl.dataset.id);
+      if (!tgt || S.final) return;
+      e.preventDefault();
+      e.stopPropagation();
+      select(tgt);
+      openMenu(e.clientX, e.clientY, tgt);
+    };
+    wheelEl.addEventListener('contextmenu', ctxFromWheel);
+    knobEl.addEventListener('contextmenu', ctxFromWheel);
     /* hidden file input for "Add Photos from PC" */
     const fileAdd = document.createElement('input');
     fileAdd.type = 'file';
@@ -1364,6 +1471,8 @@
       applyLayout(true);
     });
     el.fmt.addEventListener('change', () => {
+      /* v3.22.2: remember the last page format */
+      try { localStorage.setItem('pixsa.collageFormat', el.fmt.value); } catch (e) {}
       el.custRow.hidden = fmtVal() !== 'custom';
       updateStageGeometry();
       if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
@@ -1376,10 +1485,20 @@
       if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
     });
     el.orientL.addEventListener('click', () => {
-      if (!S.landscape) { S.landscape = true; updateUI(); updateStageGeometry(); if (S.type !== 'pile') applyLayout(true); else scheduleColSave(); }
+      if (!S.landscape) {
+        S.landscape = true;
+        /* v3.22.2: remember the last orientation */
+        try { localStorage.setItem('pixsa.collageOrientation', 'landscape'); } catch (e) {}
+        updateUI(); updateStageGeometry(); if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
+      }
     });
     el.orientP.addEventListener('click', () => {
-      if (S.landscape) { S.landscape = false; updateUI(); updateStageGeometry(); if (S.type !== 'pile') applyLayout(true); else scheduleColSave(); }
+      if (S.landscape) {
+        S.landscape = false;
+        /* v3.22.2: remember the last orientation */
+        try { localStorage.setItem('pixsa.collageOrientation', 'portrait'); } catch (e) {}
+        updateUI(); updateStageGeometry(); if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
+      }
     });
     el.borders.addEventListener('click', (e) => {
       const b = e.target.closest('button[data-b]');

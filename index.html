@@ -1103,14 +1103,9 @@
     <button id="btnRestoreDel" class="linkbtn dim" type="button">Remove</button>
   </div>
 
-  <!-- ===== Restore last collage (power-cut safe) ===== -->
-  <div id="collageBar" class="restorebar" hidden>
-    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 12h17M12 3.5v17" stroke="currentColor" stroke-width="1.4"/></svg>
-    <span>Auto-saved <b>Collage</b> found: <b id="collageInfo"></b> &mdash; reopen it?</span>
-    <button id="btnCollageOpen" class="linkbtn" type="button">Open Collage</button>
-    <button id="btnCollageDl" class="linkbtn" type="button">Download</button>
-    <button id="btnCollageDel" class="linkbtn dim" type="button">Remove</button>
-  </div>
+  <!-- v3.22.2: the "Auto-saved Collage found — reopen it?" bar was removed
+       (Picasa never nagged like this). A working collage still auto-saves
+       silently and resumes when the Collage tab is clicked. -->
 
   <!-- ===== Notice bar (browser/preview issue) ===== -->
   <div id="noticeBar" class="noticebar" hidden>
@@ -1186,7 +1181,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.22.1</span>
+      <span class="ver">v3.22.2</span>
     </span>
   </footer>
 
@@ -3249,7 +3244,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.22.1', 'ok', 2500);
+          toast('S H I V A M PIXA v3.22.2', 'ok', 2500);
           break;
       }
     }
@@ -3587,34 +3582,10 @@
       }
     }
 
-    /* ================= collage restore (power-cut safe) ================= */
-    let lastCollageProj = null;
-    async function initCollageRestore() {
-      try {
-        lastCollageProj = await idbGet('collage', 'current');
-      } catch (e) { return; }
-      if (!lastCollageProj || !lastCollageProj.photos || !lastCollageProj.photos.length) return;
-      document.getElementById('collageInfo').textContent = `${lastCollageProj.photos.length} photos \u2022 ${lastCollageProj.type || 'pile'}`;
-      document.getElementById('collageBar').hidden = false;
-      document.getElementById('btnCollageOpen').onclick = () => {
-        document.getElementById('collageBar').hidden = true;
-        if (window.PixsaCollage) window.PixsaCollage.openRestored(lastCollageProj);
-      };
-      document.getElementById('btnCollageDl').onclick = () => {
-        const b = lastCollageProj && lastCollageProj.previewBlob;
-        if (!b) { toast('Preview not saved yet — open the collage and press Create', 'err'); return; }
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(b);
-        a.download = `SHIVAM-PIXA-collage.${b.type === 'image/png' ? 'png' : 'jpg'}`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      };
-      document.getElementById('btnCollageDel').onclick = async () => {
-        await idbDel('collage', 'current').catch(() => {});
-        document.getElementById('collageBar').hidden = true;
-        toast('Old collage project removed');
-      };
-    }
+    /* v3.22.2: initCollageRestore() was removed together with the
+       "Auto-saved Collage found" bar — the app must never nag on restart.
+       The working collage still auto-saves (collage.js), and clicking the
+       Collage tab silently resumes it. */
 
     /* ================= splash (launch screen) ================= */
     function prefersReducedMotion() {
@@ -3639,7 +3610,6 @@
     loadCustomFonts();
     initRestore();
     restoreCollageItems();   /* v3.16.0: saved collages rejoin the library */
-    initCollageRestore();
     if (window.innerWidth < 760) document.body.classList.add('side-off');
     if (new URLSearchParams(location.search).get('demo') === '1') loadDemo();
   })();
