@@ -79,6 +79,19 @@
            with before/after hold, and non-destructive apply (undoable
            'cutout' op). Picture → Professional Background (Studio)… and
            a Studio BG button next to Remove BG in the Fix tab.
+   v3.22.1: (library) full Picasa-3 spec audit pass — the library home
+           screen (Albums / Projects → Collages / Folders tree, folder
+           headers with photo counts + one-click Create Photo Collage
+           button, photo tray with the green pin + red clear + Create
+           Collage), the Picture-Pile collage editor (free-form drag,
+           centre round wheel + knob: ring drag pans, knob drag rotates
+           + scales, wheel scales, Shift+wheel rotates) and the right-
+           click menu (Set as Background, Bring to Top / Forward /
+           Backward / Bottom, Rotate Right/Left, View and Edit, Remove)
+           were all re-verified end-to-end in a real browser; one bug
+           fixed: with a single folder in the library the sidebar tree
+           listed that folder twice ("Imported photos / Imported
+           photos") — the duplicate entry is gone.
    v3.21.0: (editor) the Cutout tool — a professional Remove-Background
            engine for product photos: border-connected background detection
            (colour clusters sampled from the photo edges, so shiny parts

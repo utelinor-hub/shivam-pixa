@@ -1186,7 +1186,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.22.0</span>
+      <span class="ver">v3.22.1</span>
     </span>
   </footer>
 
@@ -2360,6 +2360,11 @@
       });
       for (const p of paths) {
         if (p === '' || p === 'Collages') continue;
+        /* v3.22.1 FIX: with a single folder in the library the root item above
+           already shows that folder ("All photos" label never applies) — the
+           loop used to list the same folder a second time, so the tree showed
+           e.g. "Imported photos / Imported photos". Skip the duplicate. */
+        if (!multiRoot && p === state.folder) continue;
         const parts = p.split('/');
         mk(parts[parts.length - 1], p, counts.get(p), parts.length);
       }
@@ -3244,7 +3249,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.22.0', 'ok', 2500);
+          toast('S H I V A M PIXA v3.22.1', 'ok', 2500);
           break;
       }
     }
