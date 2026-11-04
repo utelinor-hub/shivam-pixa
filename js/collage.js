@@ -5,6 +5,27 @@
    knob is a real overlay element (donut ring + knob resting at 3 o'clock),
    dragging is native pointer-dragging anywhere on a photo.
 
+   v3.23.0 — the collage maker is SIDEBAR-FREE (user request): every control
+   (Collage Type, Page Format + orientation, Borders, Background, Shadows,
+   Captions, Create Collage / Reset / Desktop Background / Close) now lives
+   in a Picasa-style horizontal ribbon at the top of the dialog, the Clips
+   tray became a floating drawer toggled by the "Clips (n)" button, and the
+   status note moved to the bottom bar. Zero wiring changes: all element IDs
+   are unchanged, showPane() now only toggles the drawer.
+
+   v3.22.4 — "Set as Background" is a true Picasa 3 action now:
+   • the chosen photo LEAVES the pile (back to the Clips tray) and becomes
+     the background — right-click menu or stage toolbar, same flow.
+   • the background is an independent SNAPSHOT (S.bgSrc blob URL + S.bgImg
+     canvas), never a live index into the pile — moving, rearranging or
+     removing photos can no longer shift or change the backdrop.
+   • refreshBackground() only paints CSS (backgroundColor + backgroundImage);
+     the stage box is dictated by the Page Format alone (updateStageGeometry
+     is never triggered by a background change), so the stage keeps its
+     exact size/ratio and every other photo keeps its aspect ratio.
+   • the background travels with saved records (bgBlob) and survives
+     reopen; records from older versions adopt their bgIdx pile photo.
+
    v3.22.3 — magnetic-snap badge refined to the user's variant: the "0°"
    .snap-text badge is a child of the PHOTO element (sits at the photo's
    centre, travels and rotates with it) and is removed the moment the knob
@@ -93,6 +114,7 @@
   const S = {
     open: false, list: [], items: [], sel: new Set(), hover: null,
     type: 'pile', bg: '#f5f2ec', bgImage: false, bgIdx: 0,
+    bgSrc: null, bgImg: null,               /* v3.22.4 background snapshot */
     border: 'white', landscape: true, shadows: true, captions: false,
     fmt: '4x3', custW: 16, custH: 9, seed: 7,
     alphaAny: false, restored: false, final: false,
@@ -211,7 +233,8 @@
       .c-prev .c-stage { align-self: stretch; width: auto; }
       #cStage {
         position: relative; background-color: #f5f2ec; background-size: cover;
-        background-position: center; box-shadow: 0 5px 22px rgba(0,0,0,0.42);
+        background-position: center; background-repeat: no-repeat;
+        box-shadow: 0 5px 22px rgba(0,0,0,0.42);
         overflow: visible; flex: none; touch-action: none;
       }
       .c-item {
@@ -271,15 +294,14 @@
   }
 
   /* ================= background ================= */
+  /* v3.22.4: PAINT ONLY — cover/center live in the #cStage CSS, the stage
+     box is dictated by the Page Format alone, and the image comes from the
+     snapshot S.bgSrc (never a live pile index). This function must never
+     resize the stage or touch the pile items. */
   function refreshBackground() {
     if (!stage) return;
-    if (S.bgImage && S.items.length) {
-      const it = S.items[Math.min(S.bgIdx, S.items.length - 1)];
-      if (it && it.url) stage.style.backgroundImage = `url("${it.url}")`;
-    } else {
-      stage.style.backgroundImage = 'none';
-      stage.style.backgroundColor = S.bg;
-    }
+    stage.style.backgroundColor = S.bg;
+    stage.style.backgroundImage = (S.bgImage && S.bgSrc) ? `url("${S.bgSrc}")` : 'none';
   }
 
   /* ================= items ================= */
@@ -588,7 +610,6 @@
     S.items.splice(S.items.indexOf(it), 1);
     S.sel.delete(it.id);
     S.hover = null;
-    if (S.bgImage && S.bgIdx >= S.items.length) S.bgIdx = 0;
     syncClips();
     noteCount();
     refreshBackground();
@@ -611,13 +632,20 @@
   }
   function setAsBackground() {
     const it = firstSel();
-    if (!it) return;
-    S.bgIdx = S.items.indexOf(it);
+    if (!it || S.final) return;
+    /* v3.22.4 (Picasa 3): the chosen photo LEAVES the pile and becomes the
+       background. Ownership of its blob URL is transferred to the background
+       snapshot (it.url = null) so destroyItem() cannot revoke it while the
+       stage still displays it; S.bgImg keeps the canvas for the exporter. */
+    if (S.bgSrc && S.bgSrc !== it.url) URL.revokeObjectURL(S.bgSrc);
+    S.bgSrc = it.url || null;
+    S.bgImg = it.img || null;
+    it.url = null;
     S.bgImage = true;
-    el.bgPhoto.checked = true;
+    el.bgPhoto.checked = true;               /* auto-check "Use Image" */
     el.bgSolid.checked = false;
-    refreshBackground();
-    scheduleColSave();
+    refreshBackground();                     /* paint only — never resizes the stage */
+    removeSelected();                        /* out of the pile, back to the Clips tray */
   }
   function viewAndEdit() {
     const it = firstSel();
@@ -1104,6 +1132,10 @@
         photos, previewBlob, ts: Date.now(),
         editId: S.editId, editName: S.editName   /* an interrupted re-edit reopens linked */
       });
+      /* v3.22.4: the background travels with the record (it is no longer one
+         of the pile photos) — saved even while Solid is toggled on, so the
+         photo is remembered when Use Image is checked again */
+      if (S.bgImg) proj.bgBlob = await imgToBlob(S.bgImg);
       await P.idbSet('collage', 'current', proj);
       S.savedProj = true;
     } catch (e) { /* storage full — Create/Download still work */ }
@@ -1125,6 +1157,7 @@
       const rec = Object.assign(stateSnapshot(), {
         id, name, ts: Date.now(), blob: S.blob, w: S.outW || 0, h: S.outH || 0, photos
       });
+      if (S.bgImg) rec.bgBlob = await imgToBlob(S.bgImg);   /* v3.22.4 */
       await P.idbSet('collages', id, rec);
       if (P.addCollageItem) P.addCollageItem(rec);
       S.editId = id; S.editName = name;
@@ -1147,13 +1180,14 @@
     const x = c.getContext('2d');
     x.fillStyle = S.bg;
     x.fillRect(0, 0, W, H);
+    /* Use Image background: the snapshot canvas, cover-fitted (the
+       prototype's way) — v3.22.4: independent of the pile contents, so it
+       paints even when the pile is empty (the bg photo left the pile) */
+    if (S.bgImage && S.bgImg) {
+      drawCover(x, S.bgImg, 0, 0, W, H);
+    }
     const n = S.items.length;
     if (!n) return c;
-    /* Use Image background: the chosen photo, cover-fitted (the prototype's way) */
-    if (S.bgImage) {
-      const bi = S.items[Math.min(S.bgIdx, n - 1)];
-      if (bi && bi.img) drawCover(x, bi.img, 0, 0, W, H);
-    }
     const k = W;   /* slots are proportional — fractions map straight over */
     const sorted = [...S.items].sort((a, b) => a.z - b.z);
     const sheet = S.type === 'sheet';
@@ -1250,6 +1284,8 @@
     S.bgIdx = 0;
     /* a brand-new collage always starts on Solid Color */
     S.bgImage = false;
+    if (S.bgSrc) { URL.revokeObjectURL(S.bgSrc); S.bgSrc = null; }
+    S.bgImg = null;
     S.final = false;
     clearTimeout(colSaveT);
     if (S.url) { URL.revokeObjectURL(S.url); S.url = null; }
@@ -1309,6 +1345,8 @@
     clearTimeout(colSaveT);
     if (wheelEl) wheelEl.hidden = true;
     clearItems();
+    if (S.bgSrc) { URL.revokeObjectURL(S.bgSrc); S.bgSrc = null; }   /* v3.22.4 */
+    S.bgImg = null;
     if (S.url) { URL.revokeObjectURL(S.url); S.url = null; }
     S.blob = null;
   }
@@ -1381,6 +1419,26 @@
       S.items.forEach((it, i) => { it.z = proj.zarr[i]; });
       zTop = Math.max(...proj.zarr, 20);
       renderAll();
+    }
+    /* v3.22.4: resolve the background BEFORE the first paint — new records
+       carry it as bgBlob (independent of the pile); records from older
+       versions kept the bg photo inside the pile (bgIdx): adopt that
+       photo's canvas once, as a snapshot. */
+    if (S.bgSrc) { URL.revokeObjectURL(S.bgSrc); S.bgSrc = null; }
+    S.bgImg = null;
+    if (proj.bgBlob) {
+      try {
+        S.bgImg = await decodeToCanvas(proj.bgBlob);
+        S.bgSrc = URL.createObjectURL(proj.bgBlob);
+      } catch (e) { S.bgImg = null; S.bgSrc = null; }
+    } else if (S.bgIdx >= 0 && S.bgIdx < S.items.length) {
+      const bi = S.items[S.bgIdx];
+      if (bi && bi.img) {
+        try {
+          const bb = await imgToBlob(bi.img);
+          if (bb) { S.bgImg = bi.img; S.bgSrc = URL.createObjectURL(bb); }
+        } catch (e) { /* background falls back to the solid color */ }
+      }
     }
     updateStageGeometry();
     syncClips();
@@ -1518,10 +1576,25 @@
     el.bgPhoto.addEventListener('change', () => {
       S.bgImage = el.bgPhoto.checked;
       el.bgSolid.checked = !S.bgImage;
-      if (S.bgImage && !S.items.length) {
-        toast('Add photos first — then one can become the background', 'err');
-        S.bgImage = false; el.bgPhoto.checked = false; el.bgSolid.checked = true;
-        return;
+      /* v3.22.4: with no background captured yet, snapshot the current bg
+         photo (bgIdx) into an independent one — after this moment the pile
+         can change freely without ever moving the backdrop. A background
+         captured earlier (Set as Background) is simply shown again. */
+      if (S.bgImage && !S.bgSrc) {
+        if (!S.items.length) {
+          toast('Add photos first — then one can become the background', 'err');
+          S.bgImage = false; el.bgPhoto.checked = false; el.bgSolid.checked = true;
+          return;
+        }
+        const bi = S.items[Math.min(S.bgIdx, S.items.length - 1)];
+        if (bi && bi.img) {
+          bi.img.toBlob((b) => {
+            if (b && S.bgImage && !S.bgSrc) {
+              S.bgImg = bi.img; S.bgSrc = URL.createObjectURL(b);
+              refreshBackground(); scheduleColSave();
+            }
+          }, 'image/jpeg', 0.92);
+        }
       }
       refreshBackground();
       scheduleColSave();
@@ -1534,7 +1607,7 @@
         refreshBackground();
       }).catch(() => { /* user pressed Escape */ });
     });
-    q('.c-side .presets').addEventListener('click', (e) => {
+    q('.c-ribbon .presets').addEventListener('click', (e) => {   /* v3.23.0: presets moved from the sidebar to the ribbon */
       const b = e.target.closest('button[data-bg]');
       if (!b) return;
       S.bg = b.dataset.bg;
@@ -1561,13 +1634,14 @@
     /* header tabs: Library | Collage */
     el.tabLib.addEventListener('click', close);
     el.tabSettings.addEventListener('click', () => showPane(true));
-    el.tabClips.addEventListener('click', () => showPane(false));
+    el.tabClips.addEventListener('click', () => showPane(!el.paneClips.hidden));
+    /* v3.23.0: no sidebar — Settings stay permanently in the top ribbon, so
+       showPane(true) just closes the drawer; showPane(false) opens it and
+       refreshes the Clips tray. (cTabSettings is kept hidden for wiring.) */
     function showPane(settings) {
-      el.paneSettings.hidden = !settings;
-      el.paneClips.hidden = settings;
-      el.tabSettings.classList.toggle('on', settings);
-      el.tabClips.classList.toggle('on', !settings);
-      if (!settings) syncClips();
+      el.paneClips.hidden = !!settings;
+      el.tabClips.classList.toggle('on', !el.paneClips.hidden);
+      if (!el.paneClips.hidden) syncClips();
     }
 
     /* sidebar 2x2: Desktop Background | Create Collage | Reset | Close */

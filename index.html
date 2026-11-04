@@ -462,13 +462,12 @@
     .pr-cell.bordered img { border: 1px solid #cfcfcf; box-shadow: 0 0 0 1px #eee; }
     .pr-cell .pname { position: absolute; bottom: 1%; left: 0; right: 0; text-align: center; font-size: 9px; color: #444; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* ---------- v3.24.0 E-Mail + Export + Poster + Movie + Album dialogs ---------- */
+    /* ---------- v3.24.0 E-Mail + Export + Poster + Album dialogs ---------- */
     .em-box { width: 460px; }
-    .em-box .em-body, .ex-box .em-body, .po-box .em-body, .mv-box .em-body, .al-box .em-body { padding: 14px 16px; overflow: auto; }
+    .em-box .em-body, .ex-box .em-body, .po-box .em-body, .al-box .em-body { padding: 14px 16px; overflow: auto; }
     .em-box h5, .al-box h5 { margin: 10px 0 5px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: #6d7076; }
     .ex-box { width: 500px; }
     .po-box { width: 520px; }
-    .mv-box { width: 520px; }
     .al-box { width: 440px; }
     .em-sizes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
     .em-sizes button { padding: 9px 4px; font-size: 12px; font-weight: 600; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; line-height: 1.35; }
@@ -1127,7 +1126,6 @@
         <button type="button" data-act="collage">Picture Collage&hellip;</button>
         <button type="button" data-act="collagetray">Collage from Tray&hellip;</button>
         <button type="button" data-act="poster">Make a Poster&hellip;</button>
-        <button type="button" data-act="movie">Movie&hellip; (photos to a video)</button>
         <div class="sep"></div>
         <button type="button" data-act="deskbg">Set Desktop Background&hellip;</button>
       </div>
@@ -1229,7 +1227,6 @@
       <span class="tray-sep"></span>
       <button id="btnTrayPrint" class="btn" type="button" title="Print the tray photos (Picasa Review &amp; Print)">Print</button>
       <button id="btnTrayEmail" class="btn" type="button" title="E-mail the tray photos at a chosen size">E-Mail</button>
-      <button id="btnTrayMovie" class="btn" type="button" title="Make a movie (.webm video) from the tray photos">Movie</button>
       <button id="btnTrayExport" class="btn" type="button" title="Export the tray photos to a folder — resize + quality options">Export</button>
       <button id="btnTraySizer" class="btn" type="button" title="Make the selected photos smaller (Sizer)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="6" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M20 4L8.6 15.4M14.6 14.4L20 20M8.4 8.6l3.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Sizer</button>
       <button id="btnTrayRemove" class="btn" type="button" title="Remove from library">Remove</button>
@@ -1252,7 +1249,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.24.0</span>
+      <span class="ver">v3.24.2</span>
     </span>
   </footer>
 
@@ -1470,45 +1467,6 @@
       <footer class="m-foot">
         <button id="poCancel" class="btn" type="button">Cancel</button>
         <button id="poStart" class="btn btn-accent" type="button">Create Poster</button>
-      </footer>
-    </div>
-  </div>
-
-  <!-- ===== Movie (v3.24.0 — Create &rarr; Movie: a real .webm video file) ===== -->
-  <div id="movie" class="modal" hidden role="dialog" aria-label="Make a movie">
-    <div class="m-box mv-box">
-      <header class="m-head">
-        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;flex:none"><rect x="3" y="5.5" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 5.5v13M16 5.5v13M3 9.5h5M3 14.5h5M16 9.5h5M16 14.5h5" stroke="currentColor" stroke-width="1.2"/></svg>
-        Movie &mdash; photos to a video file
-        <button id="mvClose" class="icobtn" type="button" aria-label="Close">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-        </button>
-      </header>
-      <div class="em-body">
-        <div id="mvSummary" class="sz-summary"></div>
-        <div class="trow" style="margin-top:8px"><label>Slide time</label><input id="mvDur" type="range" min="1" max="8" step="0.5" value="3" /><span class="val" id="mvDurV">3.0 s</span></div>
-        <div class="trow"><label>Transition</label>
-          <select id="mvTrans" style="flex:1">
-            <option value="fade" selected>Crossfade (0.8 s)</option>
-            <option value="cut">Straight cut</option>
-          </select>
-        </div>
-        <div class="trow"><label>Video size</label>
-          <select id="mvSize" style="flex:1">
-            <option value="1280" selected>1280 x 720 (HD)</option>
-            <option value="1920">1920 x 1080 (Full HD)</option>
-          </select>
-        </div>
-        <label class="chkrow" style="margin-top:8px"><input type="checkbox" id="mvZoom" checked /> Gentle zoom (Ken Burns) on every slide</label>
-        <p class="hint" style="margin-top:8px">Creates a real video file (.webm) &mdash; plays in Windows, phones and WhatsApp. Photos appear in the order they were selected.</p>
-        <div id="mvProg" class="sz-prog" hidden>
-          <div class="sz-bar"><i id="mvBarFill"></i></div>
-          <span id="mvProgTxt"></span>
-        </div>
-      </div>
-      <footer class="m-foot">
-        <button id="mvCancel" class="btn" type="button">Cancel</button>
-        <button id="mvStart" class="btn btn-accent" type="button">Create Movie</button>
       </footer>
     </div>
   </div>
@@ -2087,7 +2045,7 @@
       btnTrayPin: $('#btnTrayPin'),
       btnTraySizer: $('#btnTraySizer'), btnTrayExport: $('#btnTrayExport'),
       btnTrayRemove: $('#btnTrayRemove'),
-      btnTrayPrint: $('#btnTrayPrint'), btnTrayEmail: $('#btnTrayEmail'), btnTrayMovie: $('#btnTrayMovie'),   /* v3.24.0 */
+      btnTrayPrint: $('#btnTrayPrint'), btnTrayEmail: $('#btnTrayEmail'),   /* v3.24.0 */
       fileInput: $('#fileFallback'),
       toasts: $('#toasts')
     };
@@ -2814,7 +2772,7 @@
 
     /* ================================================================
        v3.24.0 — the full Picasa 3 feature set, one block:
-       Print · E-Mail · Export to Folder · Make a Poster · Movie ·
+       Print · E-Mail · Export to Folder · Make a Poster ·
        Albums · Rename (F2) · Delete from Disk
        ================================================================ */
 
@@ -3198,121 +3156,6 @@
       } catch (e) {
         po.start.disabled = false;
         toast('Poster failed: ' + (e.message || e.name), 'err', 6000);
-      }
-    });
-
-    /* ================= MOVIE (.webm video via MediaRecorder) ================= */
-    const mv = {
-      modal: $('#movie'), dur: $('#mvDur'), durV: $('#mvDurV'), trans: $('#mvTrans'),
-      size: $('#mvSize'), zoom: $('#mvZoom'), start: $('#mvStart'), cancel: $('#mvCancel'),
-      close: $('#mvClose'), summary: $('#mvSummary'), prog: $('#mvProg'),
-      barFill: $('#mvBarFill'), progTxt: $('#mvProgTxt')
-    };
-    let mvBusy = false, mvStop = null;
-    mv.dur.addEventListener('input', () => { mv.durV.textContent = (+mv.dur.value).toFixed(1) + ' s'; });
-    mv.close.addEventListener('click', () => { if (!mvBusy) mv.modal.hidden = true; });
-    mv.cancel.addEventListener('click', () => { if (mvBusy && mvStop) mvStop(); else mv.modal.hidden = true; });
-    mv.modal.addEventListener('click', (e) => { if (e.target === mv.modal && !mvBusy) mv.modal.hidden = true; });
-    function openMovie() {
-      const list = trayTargets();
-      if (!list.length) { toast('Import photos first', 'err'); return; }
-      if (typeof MediaRecorder === 'undefined') {
-        toast('This browser cannot record video — Movie needs Chrome or Edge', 'err', 6000);
-        return;
-      }
-      mv.summary.textContent = `${list.length} photo${list.length !== 1 ? 's' : ''} · about ${(list.length * +mv.dur.value).toFixed(0)} s of video (in selection order).`;
-      mv.prog.hidden = true; mv.barFill.style.width = '0%';
-      mv.modal.hidden = false;
-    }
-    mv.start.addEventListener('click', async () => {
-      if (mvBusy) return;
-      const list = trayTargets().slice(0, 200);
-      if (!list.length) return;
-      const W = +mv.size.value || 1280, H = W === 1920 ? 1080 : 720;
-      const durS = +mv.dur.value || 3;
-      const xf = mv.trans.value === 'fade' ? 0.8 : 0;
-      const zoomOn = mv.zoom.checked;
-      mvBusy = true; mv.start.disabled = true;
-      mv.prog.hidden = false;
-      mv.progTxt.textContent = 'Loading the photos…';
-      try {
-        /* decode + cover-draw each photo once */
-        const slides = [];
-        for (let i = 0; i < list.length; i++) {
-          mv.progTxt.textContent = `Loading ${i + 1} / ${list.length}…`;
-          mv.barFill.style.width = `${Math.round((i / list.length) * 8)}%`;
-          try {
-            const file = await getFile(list[i]);
-            slides.push(await decodeToBmp(file));
-          } catch (e) { /* unreadable — skip */ }
-        }
-        if (slides.length < 1) throw new Error('no photos could be read');
-        const cv = document.createElement('canvas');
-        cv.width = W; cv.height = H;
-        const g = cv.getContext('2d');
-        const cover = (bmp, k) => {
-          /* draw bmp covering the frame, scaled by extra factor k */
-          const s = Math.max(W / bmp.width, H / bmp.height) * k;
-          const w = bmp.width * s, h = bmp.height * s;
-          g.drawImage(bmp, (W - w) / 2, (H - h) / 2, w, h);
-        };
-        g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
-        const stream = cv.captureStream(30);
-        const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
-          .find((m) => MediaRecorder.isTypeSupported(m)) || '';
-        const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 6_000_000 } : undefined);
-        const chunks = [];
-        rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-        const done = new Promise((res) => { rec.onstop = res; });
-        rec.start(250);
-        const total = slides.length * durS - (slides.length - 1) * xf;
-        const t0 = performance.now();
-        let stopReq = false;
-        mvStop = () => { stopReq = true; };
-        await new Promise((res) => {
-          const frame = () => {
-            const t = (performance.now() - t0) / 1000;
-            if (stopReq || t >= total) { res(); return; }
-            mv.progTxt.textContent = `Recording… ${t.toFixed(0)} / ${total.toFixed(0)} s`;
-            mv.barFill.style.width = `${Math.round((t / total) * 100)}%`;
-            /* which slide pair is live? a slide owns durS, the next one
-               starts xf seconds early (that overlap IS the crossfade) */
-            let acc = 0, i = 0;
-            while (i < slides.length - 1 && t >= acc + durS - xf) { acc += durS - xf; i++; }
-            i = Math.min(i, slides.length - 1);
-            const tIn = Math.max(0, t - acc);
-            g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
-            const drawSlide = (idx, prog) => {
-              const k = zoomOn ? 1 + 0.07 * prog : 1;
-              cover(slides[idx], k);
-            };
-            if (xf && tIn < xf && i > 0) {
-              /* crossfade: previous slide still fading out under this one */
-              g.globalAlpha = 1;
-              drawSlide(i - 1, Math.min(1, (acc - (durS - xf) + tIn) / durS));
-              g.globalAlpha = tIn / xf;
-              drawSlide(i, tIn / durS);
-              g.globalAlpha = 1;
-            } else {
-              drawSlide(i, Math.min(1, tIn / durS));
-            }
-            requestAnimationFrame(frame);
-          };
-          requestAnimationFrame(frame);
-        });
-        rec.stop();
-        await done;
-        mv.barFill.style.width = '100%';
-        mv.progTxt.textContent = 'Saving the video…';
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        const d = new Date();
-        const pad = (n) => String(n).padStart(2, '0');
-        dlBlob(blob, `PIXA-Movie-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.webm`);
-        toast(`Movie created — ${(blob.size / 1048576).toFixed(1)} MB, saved to Downloads`, 'ok', 7000);
-        setTimeout(() => { mv.modal.hidden = true; mv.start.disabled = false; mvBusy = false; mvStop = null; }, 600);
-      } catch (e) {
-        mvBusy = false; mv.start.disabled = false; mvStop = null;
-        toast('Movie failed: ' + (e.message || e.name), 'err', 6000);
       }
     });
 
@@ -4145,7 +3988,6 @@
     els.btnTrayExport.addEventListener('click', openExport);   /* v3.24.0: Export dialog */
     els.btnTrayPrint.addEventListener('click', openPrint);     /* v3.24.0 */
     els.btnTrayEmail.addEventListener('click', openEmail);     /* v3.24.0 */
-    els.btnTrayMovie.addEventListener('click', openMovie);     /* v3.24.0 */
     els.btnTrayRemove.addEventListener('click', async () => {
       if (!state.selArr.length) return;
       const gone = state.selArr.slice();
@@ -4177,7 +4019,6 @@
         case 'print': openPrint(); break;               /* v3.24.0 */
         case 'email': openEmail(); break;               /* v3.24.0 */
         case 'poster': openPoster(); break;             /* v3.24.0 */
-        case 'movie': openMovie(); break;               /* v3.24.0 */
         case 'newalbum': newAlbumFlow(); break;         /* v3.24.0 */
         case 'addalbum':                                /* v3.24.0 */
           if (!trayTargets().length) { toast('Add photos to the Tray first (use the + button on a photo)', 'err'); break; }
@@ -4289,7 +4130,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.24.0', 'ok', 2500);
+          toast('S H I V A M PIXA v3.24.2', 'ok', 2500);
           break;
       }
     }
@@ -4503,8 +4344,26 @@
                 } else if (reg.installing && Date.now() - started < 6000) {
                   setTimeout(poll, 400);
                 } else {
+                  /* v3.24.2: explain WHY nothing was found — probe the
+                     server's sw.js directly (cache-busting) and compare
+                     its version with the running one, so a stale site or
+                     a lost internet connection is never a mystery */
                   checkNow.busy = false;
-                  toast(`You're on the latest version (${verText() || 'all good'})`, 'ok', 4000);
+                  const mine = verText() || 'this version';
+                  fetch('./sw.js?probe=' + Date.now(), { cache: 'no-store' })
+                    .then((r) => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)))
+                    .then((t) => {
+                      const m = t.match(/VERSION\s*=\s*'([^']+)'/);
+                      const srv = m && m[1];
+                      if (srv && srv !== mine) {
+                        toast(`Update server has ${srv} — close and reopen the app to pick it up`, 'ok', 9000);
+                      } else {
+                        toast(`You're on the latest version (${mine}) — the update server also has ${srv || 'this version'}. New releases appear here automatically as soon as the site files are updated.`, 'ok', 10000);
+                      }
+                    })
+                    .catch(() => {
+                      toast("Can't reach the update server right now — check your internet connection and try again", 'err', 7000);
+                    });
                 }
               };
               setTimeout(poll, 300);
