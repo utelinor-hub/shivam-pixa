@@ -287,7 +287,11 @@
         position: relative; background-color: #f5f2ec; background-size: cover;
         background-position: center; background-repeat: no-repeat;
         box-shadow: 0 5px 22px rgba(0,0,0,0.42);
-        overflow: visible; flex: none; touch-action: none;
+        /* v3.25.8: Picasa clipping — the page CUTS whatever hangs over its
+           edge (user: 'naa lock honi chahiye bas extra hisa cut ho jaana
+           chahiye hide ho jaana chahiye'). Photos are no longer clamped
+           fully inside; only their centre stays on the page. */
+        overflow: hidden; flex: none; touch-action: none;
       }
       .c-item {
         position: absolute; box-sizing: border-box; cursor: grab; touch-action: none;
@@ -362,11 +366,20 @@
     if (!it.el || !stage) return;
     const sw = stage.clientWidth || 800, sh = stage.clientHeight || 600;
     const bw = it.wFrac * sw, bh = it.hFrac * sh;
-    const u = Math.min(bw, bh);
     const sheet = S.type === 'sheet';
     let pad = 0, bot = 0;
     if (sheet) { pad = bw * 0.045; bot = pad; }
-    else if (S.border !== 'none') { pad = S.type === 'pile' ? u * 0.032 : u * 0.035; bot = pad; }
+    else if (S.border !== 'none') {
+      /* v3.25.8: PICASA BORDER RULE — ONE uniform width for EVERY photo
+         (user: 'Picasa me border to border dono same rehti hai'): a fixed
+         fraction of the PAGE, never of the photo, and zooming a photo no
+         longer thickens its frame (multi-select resize made borders scale
+         and overlap each other). The element is transform-scaled, so the
+         style value divides by it.scale; the canvas export paints the
+         same page fraction directly. */
+      pad = Math.min(sw, sh) * 0.012 / (it.scale || 1);
+      bot = pad;
+    }
     it.el.style.width = bw + 'px';
     it.el.style.height = bh + 'px';
     it.el.style.left = (it.x * 100) + '%';
@@ -423,12 +436,15 @@
   function itemById(id) { return S.items.find((i) => i.id === id); }
   const firstSel = () => { for (const id of S.sel) return itemById(id); return null; };
 
-  /* ================= v3.25.0: STAY ON THE PAGE (Picasa rule) =================
-     Picasa 3 never lets a picture hang off the collage page — every move
-     (drag, rotate, zoom, keyboard, layout) keeps the photo's rotated
-     axis-aligned footprint fully inside the stage. Positions are the
-     photo CENTRE in stage fractions, so the clamp is
-     [halfExtent..1-halfExtent] per axis. */
+  /* ================= page position clamp =================
+     v3.25.8: Picasa clipping (user: 'College edit box lock hai ab image
+     bahar nahi nikalti magar hame picasa jaisa chahiye ... naa lock honi
+     chahiye bas extra hisa cut ho jaana chahiye hide ho jaana chahiye').
+     A photo MAY hang over the page edge — the overhang is simply cut off
+     (#cStage overflow:hidden on screen, canvas bounds in the export).
+     Only the photo CENTRE (stage fractions) must stay on the page, so a
+     photo can never be dragged completely out of sight. The old
+     v3.25.0 full-footprint lock is gone. */
   function itemExtent(it) {
     const sw = stage.clientWidth || 800, sh = stage.clientHeight || 600;
     const w = it.wFrac * sw * it.scale, h = it.hFrac * sh * it.scale;
@@ -437,9 +453,8 @@
     return { ex: (w * c + h * s) / 2, ey: (w * s + h * c) / 2, sw, sh };
   }
   function clampItemPos(it, x, y) {
-    const { ex, ey, sw, sh } = itemExtent(it);
-    const mx = Math.min(ex, sw / 2) / sw, my = Math.min(ey, sh / 2) / sh;
-    return { x: clamp(x, mx, 1 - mx), y: clamp(y, my, 1 - my) };
+    /* v3.25.8: centre-only clamp — the page clips the overhang */
+    return { x: clamp(x, 0, 1), y: clamp(y, 0, 1) };
   }
   function keepInside(it) {
     const p = clampItemPos(it, it.x, it.y);
@@ -1287,10 +1302,12 @@
       const bw = it.wFrac * k * it.scale;
       const bh = it.hFrac * H * it.scale;
       const cx = it.x * W, cy = it.y * H;
-      const u = Math.min(bw, bh);
       let pad = 0, bot = 0;
       if (sheet) { pad = bw * 0.045; bot = pad; }
-      else if (S.border !== 'none') { pad = S.type === 'pile' ? u * 0.032 : u * 0.035; bot = pad; }
+      else if (S.border !== 'none') {
+        /* v3.25.8: uniform page-fraction border — matches the live view */
+        pad = Math.min(W, H) * 0.012; bot = pad;
+      }
       x.save();
       x.translate(cx, cy);
       x.rotate(it.rot * DEG);
