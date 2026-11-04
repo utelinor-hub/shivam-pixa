@@ -57,8 +57,9 @@
     .topbar {
       display: flex; align-items: center; gap: 10px;
       padding: 8px 14px;
-      background: linear-gradient(#fdfdfd, #e6e6e6);
-      border-bottom: 1px solid #c4c4c4;
+      /* v3.24.0: Picasa's blue-silver header chrome */
+      background: linear-gradient(#fdfeff, #e3e9f0);
+      border-bottom: 1px solid #b9c4d1;
       flex-wrap: wrap;
     }
     .brand { display: flex; align-items: center; gap: 8px; user-select: none; padding-right: 4px; }
@@ -136,8 +137,8 @@
     /* ---------- menu bar (Picasa style) ---------- */
     .menubar {
       display: flex; gap: 2px; padding: 0 8px;
-      background: #f7f7f7;
-      border-bottom: 1px solid var(--border);
+      background: linear-gradient(#f4f7fb, #e8edf4);
+      border-bottom: 1px solid #c9d2dd;
       position: relative; z-index: 60;
       user-select: none;
     }
@@ -239,7 +240,7 @@
 
     .sidebar {
       width: 220px; flex: none;
-      background: #f7f7f7; border-right: 1px solid #d4d4d4;
+      background: #fbfcfd; border-right: 1px solid #ccd4de;
       display: flex; flex-direction: column; overflow-y: auto;
     }
     .side-head {
@@ -263,9 +264,9 @@
     .titem .tname { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .titem .tcount { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
 
-    main { flex: 1; overflow-y: auto; overscroll-behavior: contain; background: #f1f1f1; }
+    main { flex: 1; overflow-y: auto; overscroll-behavior: contain; background: #ffffff; }   /* v3.24.0: Picasa's white photo area */
     main::-webkit-scrollbar { width: 12px; }
-    main::-webkit-scrollbar-thumb { background: #c2c2c2; border: 3px solid #f1f1f1; border-radius: 8px; }
+    main::-webkit-scrollbar-thumb { background: #c3cbd6; border: 3px solid #ffffff; border-radius: 8px; }
     main::-webkit-scrollbar-track { background: transparent; }
 
     /* ---------- grid (Picasa folders) ---------- */
@@ -392,8 +393,8 @@
     .statusbar {
       display: flex; align-items: center; gap: 12px;
       padding: 6px 14px; font-size: 12px; color: #555b64;
-      background: linear-gradient(#f4f4f4, #e4e4e4);
-      border-top: 1px solid #c4c4c4;
+      background: linear-gradient(#f4f7fb, #e5eaf1);
+      border-top: 1px solid #bcc6d2;
     }
     .statusbar .right { margin-left: auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .zoomwrap { display: flex; align-items: center; gap: 7px; color: #6b7280; }
@@ -442,6 +443,40 @@
     .sz-bar { height: 9px; border-radius: 99px; background: #e2e0da; overflow: hidden; border: 1px solid #c9c6bf; }
     .sz-bar i { display: block; height: 100%; width: 0%; border-radius: 99px; background: linear-gradient(90deg, #2f7ad0, #8cc0ff); transition: width .2s; }
     .sz-prog span { display: block; margin-top: 6px; font-size: 12px; color: #555b64; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ---------- v3.24.0 Print — Review & Print (Picasa) ---------- */
+    .pr-box { width: 940px; max-width: 96vw; }
+    .pr-body { display: flex; gap: 18px; padding: 14px 16px; overflow: auto; }
+    .pr-col { min-width: 0; }
+    .pr-col:first-child { width: 300px; flex: none; }
+    .pr-col:last-child { flex: 1; display: flex; flex-direction: column; }
+    .pr-col h5 { margin: 10px 0 5px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: #6d7076; }
+    .pr-layouts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .pr-layouts button { padding: 9px 6px; font-size: 12px; font-weight: 600; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; line-height: 1.35; }
+    .pr-layouts button.on { border-color: var(--accent); background: #dcebfb; color: var(--accent-deep); box-shadow: inset 0 0 0 1px var(--accent); }
+    .pr-pagehead { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #4b5158; margin: 4px 0 8px; }
+    .pr-page { flex: 1; min-height: 340px; aspect-ratio: 8.5 / 11; background: #fff; border: 1px solid #b5b2ab; box-shadow: 0 3px 14px rgba(0,0,0,.14); margin: 0 auto; position: relative; overflow: hidden; }
+    .pr-page:empty::after { content: 'Preview'; position: absolute; inset: 0; display: grid; place-items: center; color: #c9c6bf; font-size: 13px; }
+    .pr-cell { position: absolute; display: grid; place-items: center; }
+    .pr-cell img { max-width: 100%; max-height: 100%; display: block; }
+    .pr-cell.bordered img { border: 1px solid #cfcfcf; box-shadow: 0 0 0 1px #eee; }
+    .pr-cell .pname { position: absolute; bottom: 1%; left: 0; right: 0; text-align: center; font-size: 9px; color: #444; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ---------- v3.24.0 E-Mail + Export + Poster + Movie + Album dialogs ---------- */
+    .em-box { width: 460px; }
+    .em-box .em-body, .ex-box .em-body, .po-box .em-body, .mv-box .em-body, .al-box .em-body { padding: 14px 16px; overflow: auto; }
+    .em-box h5, .al-box h5 { margin: 10px 0 5px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: #6d7076; }
+    .ex-box { width: 500px; }
+    .po-box { width: 520px; }
+    .mv-box { width: 520px; }
+    .al-box { width: 440px; }
+    .em-sizes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .em-sizes button { padding: 9px 4px; font-size: 12px; font-weight: 600; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; line-height: 1.35; }
+    .em-sizes button.on { border-color: var(--accent); background: #dcebfb; color: var(--accent-deep); box-shadow: inset 0 0 0 1px var(--accent); }
+    .al-list { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow: auto; }
+    .al-list button { text-align: left; padding: 7px 10px; font-size: 13px; border: 1px solid #d5d2cb; border-radius: 4px; background: #fff; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+    .al-list button.on { border-color: var(--accent); background: #dcebfb; color: var(--accent-deep); font-weight: 700; }
+    .al-list .al-empty { font-size: 12px; color: #7a776f; padding: 4px 2px; }
     .sz-log { margin-top: 12px; max-height: 220px; overflow: auto; background: #fff; border: 1px solid #d5d2cb; border-radius: 4px; padding: 8px 10px; font-size: 11.5px; line-height: 1.7; }
     .sz-log .ok { color: #2e6b2e; }
     .sz-log .skip { color: #8a5a1f; }
@@ -559,13 +594,13 @@
     .tray {
       display: flex; align-items: center; gap: 10px;
       padding: 7px 14px;
-      background: linear-gradient(#f3f2ef, #e4e2dd);
-      border-top: 1px solid #c2bfb8;
+      background: linear-gradient(#f3f6fa, #e4e9f0);
+      border-top: 1px solid #bcc6d2;
       min-height: 76px;
     }
-    .tray-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6d7076; white-space: nowrap; }
-    .tray-count { font-size: 12px; color: #6d7076; white-space: nowrap; }
-    .tray-strip { display: flex; gap: 6px; overflow-x: auto; flex: 1; padding: 3px; min-height: 64px; align-items: center; background: #edece8; border: 1px solid #cfccc5; border-radius: 3px; box-shadow: inset 0 1px 3px rgba(0,0,0,.08); }
+    .tray-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #5d6a7a; white-space: nowrap; }
+    .tray-count { font-size: 12px; color: #5d6a7a; white-space: nowrap; }
+    .tray-strip { display: flex; gap: 6px; overflow-x: auto; flex: 1; padding: 3px; min-height: 64px; align-items: center; background: #eef1f5; border: 1px solid #cdd5df; border-radius: 3px; box-shadow: inset 0 1px 3px rgba(30,45,70,.08); }
     .tthumb { position: relative; flex: 0 0 auto; width: 58px; height: 58px; border-radius: 3px; background: #d9d7d2; box-shadow: 0 1px 2px rgba(0,0,0,.25); overflow: hidden; border: 2px solid #fff; }
     .tthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .tthumb .tx { position: absolute; top: 1px; right: 1px; z-index: 2; width: 16px; height: 16px; border-radius: 50%; background: rgba(20,20,20,.72); color: #fff; font-size: 10px; line-height: 15px; text-align: center; padding: 0; }
@@ -613,6 +648,11 @@
     .e-tabs button:last-child { border-right: 0; }
     .e-tabs button.on { background: #f8f7f4; color: #1f6fc0; box-shadow: inset 0 -2px 0 var(--accent); }
     .e-tabbody { flex: 1; overflow-y: auto; padding: 10px; }
+    /* v3.24.0: permanent histogram + camera info block (Picasa position) */
+    .e-histbox { border-top: 1px solid #bcb9b2; background: #e4e2dc; padding: 9px 10px 8px; }
+    .e-histbox canvas { width: 100%; height: auto; display: block; border: 1px solid #a5a29b; }
+    .e-cam { display: block; font-size: 10.5px; color: #565b63; margin-top: 5px; line-height: 1.45; min-height: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .e-cam:empty { display: none; }
     .e-tab { display: none; } .e-tab.on { display: block; }
     .fixbtn {
       display: flex; align-items: center; justify-content: flex-start; gap: 7px; width: 100%;
@@ -756,7 +796,23 @@
     .m-box { width: 880px; max-width: 96vw; max-height: 92vh; display: flex; flex-direction: column; background: #f1efeb; border: 1px solid #b0ada6; border-radius: 6px; box-shadow: 0 14px 46px rgba(0,0,0,.4); overflow: hidden; }
     .m-head { display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: linear-gradient(#f8f7f5, #dedcd6); border-bottom: 1px solid #b8b5ae; font-weight: 700; font-size: 13.5px; }
     .m-head .icobtn { margin-left: auto; }
-    .c-body { flex: 1; display: flex; min-height: 0; }
+    .c-body { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
+    /* v3.23.0: sidebar-free collage — Picasa-style horizontal control ribbon */
+    .c-ribbon { border-bottom: 1px solid #c8c5be; background: linear-gradient(#f8f6f2, #e9e6df); padding: 7px 12px 8px; display: flex; flex-direction: column; gap: 7px; }
+    .c-rrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .c-group { display: flex; align-items: center; gap: 7px; padding-right: 12px; border-right: 1px solid #d8d4cb; min-width: 0; }
+    .c-rrow .c-group:last-child { border-right: 0; padding-right: 0; }
+    .c-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: #6d7076; font-weight: 700; white-space: nowrap; }
+    .c-rspacer { flex: 1; }
+    .c-actions { display: flex; gap: 6px; }
+    .c-actions button { padding: 7px 12px; font-size: 12.5px; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; white-space: nowrap; }
+    .c-actions button:hover { border-color: var(--accent); background: #eaf2fc; }
+    .c-actions button.accent { background: var(--accent); border-color: var(--accent-deep); color: #fff; font-weight: 700; }
+    .c-actions button.accent:hover { background: var(--accent-deep); }
+    .c-clipbtn { padding: 7px 12px; font-size: 12.5px; font-weight: 600; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; white-space: nowrap; }
+    .c-clipbtn:hover, .c-clipbtn.on { border-color: var(--accent); background: #dcebfb; color: var(--accent-deep); }
+    /* v3.23.0: the Clips tray — floating drawer instead of a sidebar tab */
+    .c-drawer { position: absolute; top: 52px; right: 14px; width: 316px; max-width: calc(100% - 28px); background: #fbfaf8; border: 1px solid #b8b5ae; border-radius: 6px; box-shadow: 0 12px 34px rgba(0,0,0,.38); padding: 10px; z-index: 70; }
     .c-side { width: 212px; padding: 12px; border-right: 1px solid #c8c5be; overflow-y: auto; }
     .c-side h5 { margin: 10px 0 5px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: #6d7076; }
     .c-types { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
@@ -853,13 +909,13 @@
     .c-tabs2 button { flex: 1; padding: 9px 4px; font-size: 12.5px; font-weight: 600; color: #4b5158; background: linear-gradient(#f6f5f3, #e7e5e0); border: 0; border-right: 1px solid #c8c5be; border-bottom: 2px solid transparent; cursor: pointer; }
     .c-tabs2 button:last-child { border-right: 0; }
     .c-tabs2 button.on { background: #fdfdfc; border-bottom-color: var(--accent); color: var(--accent-deep); }
-    .c-borders { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
-    .c-borders button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 2px 5px; font-size: 10.5px; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; }
+    .c-borders { display: flex; gap: 5px; }
+    .c-borders button { display: flex; flex-direction: row; align-items: center; gap: 5px; padding: 5px 9px; font-size: 11.5px; color: #2c2f34; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); cursor: pointer; white-space: nowrap; }
     .c-borders button.on { border-color: var(--accent); background: #dcebfb; font-weight: 700; }
     .bico { width: 26px; height: 21px; background: linear-gradient(135deg, #c9a36a, #a97f45); border: 1px solid #94826a; display: block; }
     .bico-white { border: 3px solid #fff; outline: 1px solid #b5b2ab; }
     .bico-pol { border: 3px solid #fff; border-bottom: 7px solid #fff; outline: 1px solid #b5b2ab; }
-    .c-orient { display: flex; gap: 6px; margin-top: 8px; }
+    .c-orient { display: flex; gap: 6px; margin-top: 0; }
     .c-orient button { flex: 1; display: grid; place-items: center; padding: 6px 0; border: 1px solid #c6c3bc; border-radius: 4px; background: linear-gradient(#fdfdfc, #edece7); color: #33383f; cursor: pointer; }
     .c-orient button.on { border-color: var(--accent); background: #dcebfb; color: var(--accent-deep); }
     .c-orient svg { width: 24px; height: 17px; }
@@ -898,7 +954,7 @@
     .tray-create svg { width: 16px; height: 16px; }
     .c-busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(30,32,36,.35); }
     .m-foot { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid #bdbab3; background: #e2e0da; justify-content: flex-end; align-items: center; }
-    .presets { display: flex; gap: 5px; margin-top: 6px; }
+    .presets { display: flex; gap: 5px; margin-top: 0; }
     .presets button { width: 22px; height: 22px; border-radius: 3px; border: 1px solid #9c9992; }
     .spin.big { width: 34px; height: 34px; border-width: 4px; }
 
@@ -1010,8 +1066,18 @@
     <div class="menu" data-m="file">
       <button type="button">File</button>
       <div class="dd">
-        <button type="button" data-act="import">Import Folder&hellip;</button>
-        <button type="button" data-act="export">Export Selected&hellip;</button>
+        <button type="button" data-act="newalbum">New Album&hellip; (Ctrl+N)</button>
+        <button type="button" data-act="addalbum">Add Selected to Album&hellip;</button>
+        <button type="button" data-act="import">Add Folder to PIXA&hellip;</button>
+        <div class="sep"></div>
+        <button type="button" data-act="edit">Open File(s) in an Editor</button>
+        <button type="button" data-act="rename">Rename&hellip; (F2)</button>
+        <button type="button" data-act="deldisk">Delete from Disk (Del)</button>
+        <div class="sep"></div>
+        <button type="button" data-act="export">Export Picture to Folder&hellip; (Ctrl+Shift+S)</button>
+        <button type="button" data-act="print">Print&hellip; (Ctrl+P)</button>
+        <button type="button" data-act="email">E-Mail&hellip; (Ctrl+E)</button>
+        <div class="sep"></div>
         <button type="button" data-act="collage">Create Collage&hellip;</button>
         <button type="button" data-act="cloud">Cloud Sync (Google Drive)&hellip;</button>
         <div class="sep"></div>
@@ -1060,6 +1126,8 @@
       <div class="dd">
         <button type="button" data-act="collage">Picture Collage&hellip;</button>
         <button type="button" data-act="collagetray">Collage from Tray&hellip;</button>
+        <button type="button" data-act="poster">Make a Poster&hellip;</button>
+        <button type="button" data-act="movie">Movie&hellip; (photos to a video)</button>
         <div class="sep"></div>
         <button type="button" data-act="deskbg">Set Desktop Background&hellip;</button>
       </div>
@@ -1159,7 +1227,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
       </button>
       <span class="tray-sep"></span>
-      <button id="btnTrayExport" class="btn" type="button" title="Copy selected photos to another folder">Export</button>
+      <button id="btnTrayPrint" class="btn" type="button" title="Print the tray photos (Picasa Review &amp; Print)">Print</button>
+      <button id="btnTrayEmail" class="btn" type="button" title="E-mail the tray photos at a chosen size">E-Mail</button>
+      <button id="btnTrayMovie" class="btn" type="button" title="Make a movie (.webm video) from the tray photos">Movie</button>
+      <button id="btnTrayExport" class="btn" type="button" title="Export the tray photos to a folder — resize + quality options">Export</button>
       <button id="btnTraySizer" class="btn" type="button" title="Make the selected photos smaller (Sizer)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="6" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M20 4L8.6 15.4M14.6 14.4L20 20M8.4 8.6l3.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Sizer</button>
       <button id="btnTrayRemove" class="btn" type="button" title="Remove from library">Remove</button>
       <button id="btnTrayCollage" class="btn btn-accent tray-create" type="button" title="Create a collage from the tray photos">
@@ -1181,7 +1252,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.22.3</span>
+      <span class="ver">v3.24.0</span>
     </span>
   </footer>
 
@@ -1240,6 +1311,228 @@
       <footer class="m-foot">
         <button id="szCancel" class="btn" type="button">Close</button>
         <button id="szStart" class="btn btn-accent" type="button">Resize Photos</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ===== Print (v3.24.0 — Picasa "Review & Print") ===== -->
+  <div id="print" class="modal" hidden role="dialog" aria-label="Print photos">
+    <div class="m-box pr-box">
+      <header class="m-head">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;flex:none"><path d="M6.5 8.5V3.5h11v5M6.5 16.5H4.5v-6a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v6h-2M7 12.5h10v8H7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        Print &mdash; Review &amp; Print
+        <button id="prClose" class="icobtn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="pr-body">
+        <div class="pr-col">
+          <h5>Print Layout</h5>
+          <div class="pr-layouts" id="prLayouts">
+            <button type="button" data-l="full" class="on">Full page</button>
+            <button type="button" data-l="4x6">4 x 6 (2-up)</button>
+            <button type="button" data-l="5x7">5 x 7</button>
+            <button type="button" data-l="8x10">8 x 10</button>
+            <button type="button" data-l="wallet">Wallet (8-up)</button>
+            <button type="button" data-l="contact">Contact Sheet</button>
+          </div>
+          <h5>Copies of each photo</h5>
+          <div class="sz-custom"><input id="prCopies" type="number" min="1" max="10" value="1" style="width:64px" /><span>copy / photo</span></div>
+          <h5>Options</h5>
+          <label class="chkrow"><input type="checkbox" id="prBorder" checked /> Thin border around each photo</label>
+          <label class="chkrow"><input type="checkbox" id="prNames" /> Print photo names (contact sheet always does)</label>
+        </div>
+        <div class="pr-col">
+          <div id="prSummary" class="sz-summary"></div>
+          <div class="pr-pagehead"><button id="prPrev" class="linkbtn" type="button">&larr; Prev</button><span id="prPageLab">Page 1 / 1</span><button id="prNext" class="linkbtn" type="button">Next &rarr;</button></div>
+          <div class="pr-page" id="prPage"></div>
+        </div>
+      </div>
+      <footer class="m-foot">
+        <button id="prCancel" class="btn" type="button">Close</button>
+        <button id="prStart" class="btn btn-accent" type="button">Print&hellip;</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ===== E-Mail (v3.24.0 — Picasa E-Mail sizes) ===== -->
+  <div id="email" class="modal" hidden role="dialog" aria-label="E-Mail photos">
+    <div class="m-box em-box">
+      <header class="m-head">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;flex:none"><rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 6.5L12 13l8.5-6.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        E-Mail Photos
+        <button id="emClose" class="icobtn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="em-body">
+        <h5>Choose a size for the e-mailed photos</h5>
+        <div class="em-sizes" id="emSizes">
+          <button type="button" data-s="640">Small<br>640 px</button>
+          <button type="button" data-s="1024" class="on">Medium<br>1024 px</button>
+          <button type="button" data-s="1600">Large<br>1600 px</button>
+          <button type="button" data-s="0">Original<br>size</button>
+        </div>
+        <h5>JPEG quality</h5>
+        <select id="emQ" style="width:100%">
+          <option value="0.85" selected>E-mail friendly &mdash; 85%</option>
+          <option value="0.92">High &mdash; 92%</option>
+          <option value="0.96">Maximum &mdash; 96%</option>
+        </select>
+        <p class="hint" style="margin-top:9px">PIXA saves the sized copies (they land in your Downloads), then opens your mail program &mdash; drag the saved photos into the message to attach them.</p>
+        <div id="emSummary" class="sz-summary"></div>
+      </div>
+      <footer class="m-foot">
+        <button id="emCancel" class="btn" type="button">Cancel</button>
+        <button id="emStart" class="btn btn-accent" type="button">Save Photos &amp; Open Mail</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ===== Export Picture to Folder (v3.24.0 — Picasa export dialog) ===== -->
+  <div id="expd" class="modal" hidden role="dialog" aria-label="Export pictures to a folder">
+    <div class="m-box ex-box">
+      <header class="m-head">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;flex:none"><path d="M12 15.5V3.5m0 0L8 7.5m4-4l4 4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 13.5v5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        Export Pictures to Folder
+        <button id="exClose" class="icobtn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="em-body">
+        <h5>Destination folder</h5>
+        <div class="cl-row">
+          <button id="exPick" class="btn" type="button">Choose Folder&hellip;</button>
+          <span id="exDir" style="font-size:12.5px;color:#333">Browser Downloads</span>
+        </div>
+        <h5>Resize the exported pictures</h5>
+        <div class="cl-row">
+          <label class="chkrow" style="margin:0"><input type="checkbox" id="exResize" /> Resize to</label>
+          <select id="exSize" disabled style="flex:1">
+            <option value="640">640 px &mdash; small (screen)</option>
+            <option value="800">800 px &mdash; medium</option>
+            <option value="1024">1024 px &mdash; large</option>
+            <option value="1600" selected>1600 px &mdash; very large</option>
+            <option value="2048">2048 px &mdash; huge</option>
+          </select>
+        </div>
+        <h5>JPEG quality (only for resized copies)</h5>
+        <select id="exQ" style="width:100%">
+          <option value="0.92" selected>High &mdash; 92% (recommended)</option>
+          <option value="0.96">Maximum &mdash; 96%</option>
+          <option value="0.85">Smallest file &mdash; 85%</option>
+        </select>
+        <div id="exSummary" class="sz-summary"></div>
+        <div id="exProg" class="sz-prog" hidden>
+          <div class="sz-bar"><i id="exBarFill"></i></div>
+          <span id="exProgTxt"></span>
+        </div>
+      </div>
+      <footer class="m-foot">
+        <button id="exCancel" class="btn" type="button">Cancel</button>
+        <button id="exStart" class="btn btn-accent" type="button">Export Photos</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ===== Make a Poster (v3.24.0 — Create &rarr; Make a Poster) ===== -->
+  <div id="poster" class="modal" hidden role="dialog" aria-label="Make a poster">
+    <div class="m-box po-box">
+      <header class="m-head">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;flex:none"><rect x="4" y="3" width="16" height="18" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M7 16.5l3.2-4 2.3 2.6L15 12l2 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="9.4" cy="7.6" r="1.5" fill="currentColor"/></svg>
+        Make a Poster
+        <button id="poClose" class="icobtn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="em-body">
+        <p class="hint" style="margin:0 0 8px">Turns the selected photo into one very large image &mdash; a poster you can print at a photo shop.</p>
+        <h5>Poster size (long edge)</h5>
+        <div class="sz-pcts" id="poSizes">
+          <button type="button" data-px="3000">A3 &mdash; 3000 px</button>
+          <button type="button" data-px="4200" class="on">A2 &mdash; 4200 px</button>
+          <button type="button" data-px="5940">A1 &mdash; 5940 px</button>
+          <button type="button" data-px="8410">A0 &mdash; 8410 px</button>
+        </div>
+        <div class="sz-custom"><span>Custom:</span><input id="poPx" type="number" min="600" max="16000" step="100" value="4200" /><span>px wide</span></div>
+        <h5>JPEG quality</h5>
+        <select id="poQ" style="width:100%">
+          <option value="0.92" selected>High &mdash; 92% (recommended)</option>
+          <option value="0.96">Maximum &mdash; 96%</option>
+        </select>
+        <label class="chkrow" style="margin-top:9px"><input type="checkbox" id="poTiles" /> Also split into A4 print pages (150 DPI tiles)</label>
+        <div id="poSummary" class="sz-summary"></div>
+        <div id="poProg" class="sz-prog" hidden>
+          <div class="sz-bar"><i id="poBarFill"></i></div>
+          <span id="poProgTxt"></span>
+        </div>
+      </div>
+      <footer class="m-foot">
+        <button id="poCancel" class="btn" type="button">Cancel</button>
+        <button id="poStart" class="btn btn-accent" type="button">Create Poster</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ===== Movie (v3.24.0 — Create &rarr; Movie: a real .webm video file) ===== -->
+  <div id="movie" class="modal" hidden role="dialog" aria-label="Make a movie">
+    <div class="m-box mv-box">
+      <header class="m-head">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;flex:none"><rect x="3" y="5.5" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 5.5v13M16 5.5v13M3 9.5h5M3 14.5h5M16 9.5h5M16 14.5h5" stroke="currentColor" stroke-width="1.2"/></svg>
+        Movie &mdash; photos to a video file
+        <button id="mvClose" class="icobtn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="em-body">
+        <div id="mvSummary" class="sz-summary"></div>
+        <div class="trow" style="margin-top:8px"><label>Slide time</label><input id="mvDur" type="range" min="1" max="8" step="0.5" value="3" /><span class="val" id="mvDurV">3.0 s</span></div>
+        <div class="trow"><label>Transition</label>
+          <select id="mvTrans" style="flex:1">
+            <option value="fade" selected>Crossfade (0.8 s)</option>
+            <option value="cut">Straight cut</option>
+          </select>
+        </div>
+        <div class="trow"><label>Video size</label>
+          <select id="mvSize" style="flex:1">
+            <option value="1280" selected>1280 x 720 (HD)</option>
+            <option value="1920">1920 x 1080 (Full HD)</option>
+          </select>
+        </div>
+        <label class="chkrow" style="margin-top:8px"><input type="checkbox" id="mvZoom" checked /> Gentle zoom (Ken Burns) on every slide</label>
+        <p class="hint" style="margin-top:8px">Creates a real video file (.webm) &mdash; plays in Windows, phones and WhatsApp. Photos appear in the order they were selected.</p>
+        <div id="mvProg" class="sz-prog" hidden>
+          <div class="sz-bar"><i id="mvBarFill"></i></div>
+          <span id="mvProgTxt"></span>
+        </div>
+      </div>
+      <footer class="m-foot">
+        <button id="mvCancel" class="btn" type="button">Cancel</button>
+        <button id="mvStart" class="btn btn-accent" type="button">Create Movie</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ===== Add to Album (v3.24.0 — File &rarr; New Album / Add to Album) ===== -->
+  <div id="albd" class="modal" hidden role="dialog" aria-label="Add to album">
+    <div class="m-box al-box">
+      <header class="m-head">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;flex:none"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10.2v5M9.5 12.7h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Add to Album
+        <button id="alClose" class="icobtn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="em-body">
+        <div id="alList" class="al-list"></div>
+        <h5 style="margin-top:10px">Or make a new album</h5>
+        <div class="cl-row">
+          <input id="alNew" type="text" placeholder="Album name&hellip;" style="flex:1" maxlength="60" />
+        </div>
+      </div>
+      <footer class="m-foot">
+        <button id="alCancel" class="btn" type="button">Cancel</button>
+        <button id="alAdd" class="btn btn-accent" type="button">Add to Album</button>
       </footer>
     </div>
   </div>
@@ -1447,7 +1740,9 @@
             <p class="hint">Magic Wand = select by colour &bull; Delete removes text/objects and fills the spot with the surrounding colour &bull; Copy &rarr; Paste clones a part &bull; drag inside a selection to move those pixels &bull; Delete key also works.</p>
           </div>
           <div id="tab-tuning" class="e-tab">
-            <canvas id="eHist" width="280" height="84"></canvas>
+            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5v15M4.5 12h15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>Brightness</span><input id="adBr" type="range" min="-100" max="100" value="0" /><span class="val" id="vBr">0</span></div>
+            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.4" fill="currentColor"/></svg>Contrast</span><input id="adCon" type="range" min="-100" max="100" value="0" /><span class="val" id="vCon">0</span></div>
+            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 19.5L13 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 3.5v4M14.5 5.5h4M19 10.5v3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Sharpness</span><input id="adShp" type="range" min="0" max="100" value="0" /><span class="val" id="vShp">0</span></div>
             <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M5.6 18.4l1.7-1.7M16.7 7.3l1.7-1.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Fill Light</span><input id="adFill" type="range" min="0" max="100" value="0" /><span class="val" id="vFill">0</span></div>
             <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 17.5a5 5 0 00-10 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 8.5V2.5M5.5 11L7 12.5M18.5 11L17 12.5M2.5 17.5h2M19.5 17.5h2M2.5 21h19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Highlights</span><input id="adHigh" type="range" min="0" max="100" value="0" /><span class="val" id="vHigh">0</span></div>
             <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 13.2A8.5 8.5 0 1110.8 3.5a7 7 0 009.7 9.7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Shadows</span><input id="adShad" type="range" min="0" max="100" value="0" /><span class="val" id="vShad">0</span></div>
@@ -1464,6 +1759,13 @@
             <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5L13 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 3.5v4M14.5 5.5h4M19 10.5v3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Intensity</span><input id="fxStr" type="range" min="5" max="100" value="100" disabled /><span class="val" id="fxStrV">&mdash;</span></div>
             <div id="fxGrid" class="fxgrid"></div>
           </div>
+        </div>
+        <!-- v3.24.0: Picasa shows the histogram + camera info at the bottom of
+             the tools panel in EVERY tab — it moved out of the Tuning tab -->
+        <div class="e-histbox">
+          <div class="sechead">Histogram &amp; Camera Information</div>
+          <canvas id="eHist" width="280" height="84"></canvas>
+          <span class="e-cam" id="eCam"></span>
         </div>
         <div class="e-actions">
           <button id="eCompare" type="button" title="Before / After — hold to view the original (B)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Before</button>
@@ -1617,86 +1919,95 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </button>
       </header>
+      <!-- v3.23.0: SIDEBAR-FREE collage — every control lives in a Picasa-style
+           horizontal ribbon; the Clips tray is a floating drawer -->
       <div class="c-body">
-        <div class="c-side">
-          <div class="c-tabs2" role="tablist">
-            <button id="cTabSettings" type="button" class="on">Settings</button>
-            <button id="cTabClips" type="button">Clips (<span id="cClipCount">0</span>)</button>
-          </div>
-          <div id="cPaneSettings">
-            <h5>Collage Type</h5>
-            <select id="cType" style="width:100%">
-              <option value="pile" selected>Picture Pile : Looks like a pile of scattered pictures</option>
-              <option value="mosaic">Mosaic : Fits pictures together into a grid automatically</option>
-              <option value="frame">Frame Mosaic : A mosaic with a central framed picture</option>
-              <option value="grid">Grid : Arranges pictures in uniform rows and columns</option>
-              <option value="sheet">Contact Sheet : Thumbnails of all pictures</option>
-            </select>
-            <h5>Picture Borders</h5>
-            <div class="c-borders" id="cBorders">
-              <button type="button" data-b="none" title="No border"><span class="bico"></span>None</button>
-              <button type="button" data-b="white" class="on" title="Classic white photo border"><span class="bico bico-white"></span>White</button>
-              <button type="button" data-b="polaroid" title="Instant Polaroid — thick bottom border"><span class="bico bico-pol"></span>Polaroid</button>
+        <div class="c-ribbon" id="cPaneSettings">
+          <div class="c-rrow">
+            <div class="c-group">
+              <span class="c-lab">Collage Type</span>
+              <select id="cType" style="width:auto;max-width:250px">
+                <option value="pile" selected>Picture Pile : Looks like a pile of scattered pictures</option>
+                <option value="mosaic">Mosaic : Fits pictures together into a grid automatically</option>
+                <option value="frame">Frame Mosaic : A mosaic with a central framed picture</option>
+                <option value="grid">Grid : Arranges pictures in uniform rows and columns</option>
+                <option value="sheet">Contact Sheet : Thumbnails of all pictures</option>
+              </select>
             </div>
-            <h5>Background</h5>
-            <label class="chkrow"><input type="radio" name="cbgm" id="cBgSolid" checked /> Solid Color</label>
-            <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
-              <input id="cBg" type="color" value="#f5f2ec" style="height:26px;flex:1;min-width:0" />
+            <div class="c-group">
+              <span class="c-lab">Page Format</span>
+              <select id="cFormat" style="width:auto">
+                <option value="4x3" selected>4:3 (Standard)</option>
+                <option value="16x9">16:9 : HDTV</option>
+                <option value="3x2">3:2 (35mm)</option>
+                <option value="letter">8.5 x 11 : Letter paper</option>
+                <option value="4x6">4 x 6 : Postcard</option>
+                <option value="sq">1:1 : Square</option>
+                <option value="screen">Current Screen Resolution</option>
+                <option value="custom">Custom ratio&hellip;</option>
+              </select>
+              <div class="c-orient">
+                <button id="cOrientL" type="button" class="on" title="Landscape">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+                </button>
+                <button id="cOrientP" type="button" title="Portrait">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3.5" width="12" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="c-group" id="cCustomRow" hidden>
+              <span class="c-lab">Custom</span>
+              <input id="cCustW" type="number" min="1" max="60" step="0.5" value="16" style="width:64px" aria-label="Ratio width" />
+              <span style="color:#667">:</span>
+              <input id="cCustH" type="number" min="1" max="60" step="0.5" value="9" style="width:64px" aria-label="Ratio height" />
+              <button id="cCustApply" class="btn" type="button">Apply</button>
+            </div>
+            <div class="c-group">
+              <span class="c-lab">Borders</span>
+              <div class="c-borders" id="cBorders">
+                <button type="button" data-b="none" title="No border"><span class="bico"></span>None</button>
+                <button type="button" data-b="white" class="on" title="Classic white photo border"><span class="bico bico-white"></span>White</button>
+                <button type="button" data-b="polaroid" title="Instant Polaroid — thick bottom border"><span class="bico bico-pol"></span>Polaroid</button>
+              </div>
+            </div>
+          </div>
+          <div class="c-rrow">
+            <div class="c-group">
+              <span class="c-lab">Background</span>
+              <label class="chkrow"><input type="radio" name="cbgm" id="cBgSolid" checked /> Solid</label>
+              <input id="cBg" type="color" value="#f5f2ec" style="height:24px;width:34px;padding:1px" />
               <button id="cEyedropper" class="btn" type="button" title="Pick a color from anywhere on the screen" style="padding:5px 7px">
                 <svg viewBox="0 0 24 24" aria-hidden="true" style="width:15px;height:15px"><path d="M19.3 4.7a2.4 2.4 0 0 0-3.4 0l-2.1 2.1-1.4-1.4-1.5 1.5 6.8 6.8 1.5-1.5-1.4-1.4 2.1-2.1a2.4 2.4 0 0 0 0-3.4M13 10.5L4.6 18.9a1.7 1.7 0 0 0 2.4 2.4l8.4-8.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
               </button>
-            </div>
-            <div class="presets">
-              <button type="button" data-bg="#ffffff" style="background:#ffffff" title="White"></button>
-              <button type="button" data-bg="#000000" style="background:#000000" title="Black"></button>
-              <button type="button" data-bg="#d8d4cc" style="background:#d8d4cc" title="Grey"></button>
-              <button type="button" data-bg="#3e4650" style="background:#3e4650" title="Dark blue"></button>
-              <button type="button" data-bg="#f5f2ec" style="background:#f5f2ec" title="Warm paper"></button>
-            </div>
-            <label class="chkrow" style="margin-top:9px"><input type="radio" name="cbgm" id="cBgPhoto" /> Use Image</label>
-            <h5>Page Format</h5>
-            <select id="cFormat" style="width:100%">
-              <option value="4x3" selected>4:3 (Standard)</option>
-              <option value="16x9">16:9 : HDTV</option>
-              <option value="3x2">3:2 (35mm)</option>
-              <option value="letter">8.5 x 11 : Letter paper</option>
-              <option value="4x6">4 x 6 : Postcard</option>
-              <option value="sq">1:1 : Square</option>
-              <option value="screen">Current Screen Resolution</option>
-              <option value="custom">Custom ratio&hellip;</option>
-            </select>
-            <div id="cCustomRow" hidden style="margin-top:8px">
-              <div style="display:flex;align-items:center;gap:6px">
-                <input id="cCustW" type="number" min="1" max="60" step="0.5" value="16" style="width:70px" aria-label="Ratio width" />
-                <span style="color:#667">:</span>
-                <input id="cCustH" type="number" min="1" max="60" step="0.5" value="9" style="width:70px" aria-label="Ratio height" />
-                <button id="cCustApply" class="btn" type="button">Apply</button>
+              <div class="presets">
+                <button type="button" data-bg="#ffffff" style="background:#ffffff" title="White"></button>
+                <button type="button" data-bg="#000000" style="background:#000000" title="Black"></button>
+                <button type="button" data-bg="#d8d4cc" style="background:#d8d4cc" title="Grey"></button>
+                <button type="button" data-bg="#3e4650" style="background:#3e4650" title="Dark blue"></button>
+                <button type="button" data-bg="#f5f2ec" style="background:#f5f2ec" title="Warm paper"></button>
               </div>
+              <label class="chkrow"><input type="radio" name="cbgm" id="cBgPhoto" /> Use Image</label>
             </div>
-            <div class="c-orient">
-              <button id="cOrientL" type="button" class="on" title="Landscape">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-              </button>
-              <button id="cOrientP" type="button" title="Portrait">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3.5" width="12" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-              </button>
+            <div class="c-group">
+              <label class="chkrow"><input type="checkbox" id="cShadows" checked /> Shadows</label>
+              <label class="chkrow"><input type="checkbox" id="cCaptions" /> Captions</label>
             </div>
-            <label class="chkrow" style="margin-top:10px"><input type="checkbox" id="cShadows" checked /> Draw Shadows</label>
-            <label class="chkrow" style="margin-top:6px"><input type="checkbox" id="cCaptions" /> Show Captions</label>
-            <div class="c-grid4">
+            <span class="c-rspacer"></span>
+            <button id="cTabSettings" type="button" hidden aria-hidden="true" tabindex="-1"></button>
+            <div class="c-actions">
               <button id="cDesktop" type="button" title="Use this collage as your desktop wallpaper image">Desktop Background</button>
-              <button id="cCreate" type="button" class="accent" title="Finish and save this collage">Create Collage</button>
               <button id="cReset" type="button" title="Back to the automatic Picasa layout">Reset</button>
+              <button id="cCreate" type="button" class="accent" title="Finish and save this collage">Create Collage</button>
               <button id="cClose2" type="button" title="Close the collage maker">Close</button>
             </div>
+            <button id="cTabClips" type="button" class="c-clipbtn" title="Photo tray — photos waiting to join the collage">Clips (<span id="cClipCount">0</span>)</button>
           </div>
-          <div id="cPaneClips" hidden>
+        </div>
+        <div class="c-prev">
+          <div id="cPaneClips" class="c-drawer" hidden>
             <div id="cClips" class="c-clips"></div>
             <button id="cAddPhotos" class="btn" type="button" style="width:100%;justify-content:center;margin-top:9px">Add More Photos&hellip;</button>
           </div>
-          <p class="cnote" id="cNote"></p>
-        </div>
-        <div class="c-prev">
           <div class="c-tools">
             <button id="cSelAll" type="button">Select All</button>
             <button id="cSelNone" type="button">Select None</button>
@@ -1712,6 +2023,7 @@
             </div>
           </div>
           <div class="c-below">
+            <span class="cnote" id="cNote" style="margin-right:auto;align-self:center"></span>
             <button id="cScramble" class="btn" type="button" title="Re-lay the whole collage">Scramble Collage</button>
             <button id="cShufflePics" class="btn" type="button" title="Shuffle the order of the photos">Shuffle Pictures</button>
             <button id="cViewEdit" class="btn" type="button" title="Open the selected photo in the editor">View and Edit</button>
@@ -1775,6 +2087,7 @@
       btnTrayPin: $('#btnTrayPin'),
       btnTraySizer: $('#btnTraySizer'), btnTrayExport: $('#btnTrayExport'),
       btnTrayRemove: $('#btnTrayRemove'),
+      btnTrayPrint: $('#btnTrayPrint'), btnTrayEmail: $('#btnTrayEmail'), btnTrayMovie: $('#btnTrayMovie'),   /* v3.24.0 */
       fileInput: $('#fileFallback'),
       toasts: $('#toasts')
     };
@@ -1818,7 +2131,7 @@
     let dbP = null;
     function db() {
       if (!dbP) dbP = new Promise((resolve, reject) => {
-        const rq = indexedDB.open('pixsa', 4);
+        const rq = indexedDB.open('pixsa', 5);
         rq.onupgradeneeded = () => {
           const d = rq.result;
           if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
@@ -1828,6 +2141,8 @@
           if (!d.objectStoreNames.contains('collages')) d.createObjectStore('collages');
           if (!d.objectStoreNames.contains('fonts')) d.createObjectStore('fonts');
           if (!d.objectStoreNames.contains('cloudblobs')) d.createObjectStore('cloudblobs');
+          /* v3.24.0: user albums (File → New Album) */
+          if (!d.objectStoreNames.contains('albums')) d.createObjectStore('albums');
         };
         rq.onsuccess = () => resolve(rq.result);
         rq.onerror = () => reject(rq.error);
@@ -2037,7 +2352,9 @@
             const f = await entry.getFile();
             /* v3.11.0: the tree path starts with the root folder's own name,
                so two imported folders can never merge into one group */
-            out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: entry, file: null, folder: rootName ? (prefix ? `${rootName}/${prefix}` : rootName) : prefix, root: rootName || dir.name });
+            /* v3.24.0: pdir = the folder that contains this file — Rename
+               (F2) and Delete from Disk write/remove through it */
+            out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: entry, file: null, pdir: dir, folder: rootName ? (prefix ? `${rootName}/${prefix}` : rootName) : prefix, root: rootName || dir.name });
             stats.count++;
             if (stats.count % 500 === 0) setStatus(`Scanning... ${stats.count} photos`);
           } catch (e) { /* unreadable file — skip */ }
@@ -2250,6 +2567,11 @@
         arr = arr.slice().sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0)).slice(0, 60);
       } else if (state.special === 'starred') {
         arr = arr.filter((p) => p.star);
+      } else if (state.special && state.special.startsWith('album:')) {
+        /* v3.24.0: a user album — only photos whose key is in the album */
+        const al = albumsCache.find((a) => a.id === state.special.slice(6));
+        const keys = al ? new Set(al.keys) : new Set();
+        arr = arr.filter((p) => keys.has(photoKey(p)));
       } else if (state.folderFilter !== '') arr = arr.filter((p) => (p.folder || '') === state.folderFilter);
       const s = state.sort;
       arr = arr.slice().sort((a, b) => {
@@ -2283,12 +2605,19 @@
     function setStatus(scanMsg) {
       if (scanMsg) { els.stName.textContent = scanMsg; els.stCount.textContent = ''; return; }
       els.stName.innerHTML = '';
-      const label = state.folderFilter !== '' ? `${state.folder}/${state.folderFilter}`.replace(/^\//, '') : '';
+      let label = state.folderFilter !== '' ? `${state.folder}/${state.folderFilter}`.replace(/^\//, '') : '';
+      /* v3.24.0: album views show the album name in the status bar */
+      let isAlbum = false;
+      if (state.special && state.special.startsWith('album:')) {
+        const al = albumsCache.find((a) => a.id === state.special.slice(6));
+        if (al) { label = al.name; isAlbum = true; }
+      } else if (state.special === 'recent') { label = 'Recently Updated'; isAlbum = true; }
+      else if (state.special === 'starred') { label = 'Starred'; isAlbum = true; }
       if (state.folder || label) {
         const b = document.createElement('b');
         b.textContent = label ? label : state.folder;
         els.stName.appendChild(b);
-        if (label && state.folderFilter !== '') {
+        if (label && state.folderFilter !== '' && !isAlbum) {
           const s = document.createElement('span');
           s.textContent = '  (folder filter ON)';
           els.stName.appendChild(s);
@@ -2321,7 +2650,8 @@
         opts = opts || {};
         const b = document.createElement('button');
         b.type = 'button'; b.className = 'titem' + (opts.cls ? ' ' + opts.cls : '');
-        const on = opts.special ? state.special === opts.special
+        const on = opts.act ? false
+          : opts.special ? state.special === opts.special
                                 : (path === state.folderFilter && !state.special);
         if (on) b.classList.add('sel');
         b.style.paddingLeft = (10 + depth * 16) + 'px';
@@ -2332,6 +2662,8 @@
         const cn = document.createElement('span'); cn.className = 'tcount'; cn.textContent = opts.hideCount ? '' : count;
         b.appendChild(svg); b.appendChild(nm); b.appendChild(cn);
         b.addEventListener('click', () => {
+          /* v3.24.0: action items (e.g. "+ New Album…") just run and return */
+          if (opts.act) { opts.act(); return; }
           state.special = opts.special || '';
           state.folderFilter = opts.special ? '' : path;
           buildTree();
@@ -2344,6 +2676,25 @@
       sec('Albums');
       mk('Recently Updated', '', Math.min(60, state.photos.length), 0, { special: 'recent' });
       mk('Starred', '', starCount, 0, { special: 'starred', icon: '<path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6-5.1-2.8-5.1 2.8 1.1-5.6-4.2-3.9 5.7-.7L12 3.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>' });
+      /* v3.24.0: user albums (File → New Album) live here, Picasa-style */
+      for (const al of albumsCache) {
+        const liveN = al.keys.filter((k) => state.photos.some((p) => photoKey(p) === k)).length;
+        mk(al.name, '', liveN, 0, {
+          special: 'album:' + al.id,
+          icon: '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10.2v5M9.5 12.7h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
+        });
+        const btn = els.tree.lastChild;
+        btn.title = 'Right-click: Rename album / Delete album / Remove from library';
+        btn.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          albumCtxMenu(e, al);
+        });
+      }
+      mk('+ New Album\u2026', '', 0, 0, {
+        hideCount: true,
+        icon: '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10.2v5M9.5 12.7h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+        act: () => newAlbumFlow()
+      });
       sec('Projects');
       mk('Collages', 'Collages', colCount, 0, { cls: 'pi', icon: '<rect x="3.5" y="3.5" width="17" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 12h17M12 3.5v17" stroke="currentColor" stroke-width="1.4"/>' });
       sec('Folders');
@@ -2461,28 +2812,680 @@
       } catch (e) {}
     })();
 
-    async function exportSelected() {
-      if (!state.selArr.length) return;
-      let target = null;
-      if (canPicker) {
-        try { target = await window.showDirectoryPicker({ id: 'pixsa-export', mode: 'readwrite' }); } catch (e) { if (e && e.name === 'AbortError') return; }
+    /* ================================================================
+       v3.24.0 — the full Picasa 3 feature set, one block:
+       Print · E-Mail · Export to Folder · Make a Poster · Movie ·
+       Albums · Rename (F2) · Delete from Disk
+       ================================================================ */
+
+    let albumsCache = [];
+    async function loadAlbums() {
+      try { albumsCache = (await idbGetAll('albums')) || []; } catch (e) { albumsCache = []; }
+      albumsCache = albumsCache.filter(Boolean).sort((a, b) => (a.created || 0) - (b.created || 0));
+    }
+    const saveAlbum = (al) => idbSet('albums', al.id, al).catch(() => {});
+
+    const dlBlob = (blob, name) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 8000);
+    };
+
+    async function decodeToBmp(file) {
+      try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+      catch (e) { return await createImageBitmap(file); }
+    }
+
+    async function canvasBlob(cv, q) {
+      return new Promise((res) => cv.toBlob((b) => res(b), 'image/jpeg', q));
+    }
+
+    /* draws `file` into a canvas whose LONGEST edge is maxPx (0 = original) */
+    async function scaledCanvas(file, maxPx) {
+      let bmp;
+      try { bmp = await decodeToBmp(file); } catch (e) { return null; }
+      const s = maxPx ? Math.min(1, maxPx / Math.max(bmp.width, bmp.height)) : 1;
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(bmp.width * s));
+      cv.height = Math.max(1, Math.round(bmp.height * s));
+      const g = cv.getContext('2d');
+      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      g.drawImage(bmp, 0, 0, cv.width, cv.height);
+      if (bmp.close) bmp.close();
+      return cv;
+    }
+
+    const trayTargets = () => (state.selArr.length ? state.selArr : state.filtered);
+
+    /* tiny generic context menu (reuses the .ctxmenu skin) */
+    function ctxMenuAt(x, y, items) {
+      const m = document.createElement('div');
+      m.className = 'ctxmenu';
+      const close = () => { m.remove(); document.removeEventListener('pointerdown', close, true); window.removeEventListener('blur', close); };
+      for (const it of items) {
+        if (it === '-') { const s = document.createElement('div'); s.className = 'csep'; m.appendChild(s); continue; }
+        const b = document.createElement('button');
+        b.type = 'button'; b.textContent = it.label;
+        b.addEventListener('click', () => { close(); it.fn(); });
+        m.appendChild(b);
       }
-      let ok = 0, fail = 0;
-      for (const p of state.selArr) {
+      document.body.appendChild(m);
+      const r = m.getBoundingClientRect();
+      m.style.left = Math.min(x, window.innerWidth - r.width - 8) + 'px';
+      m.style.top = Math.min(y, window.innerHeight - r.height - 8) + 'px';
+      setTimeout(() => document.addEventListener('pointerdown', close, true), 0);
+      window.addEventListener('blur', close);
+      return m;
+    }
+
+    /* ================= PRINT — Review & Print ================= */
+    const pr = {
+      modal: $('#print'), layouts: $('#prLayouts'), copies: $('#prCopies'),
+      border: $('#prBorder'), names: $('#prNames'), page: $('#prPage'),
+      pageLab: $('#prPageLab'), prev: $('#prPrev'), next: $('#prNext'),
+      start: $('#prStart'), cancel: $('#prCancel'), close: $('#prClose'), summary: $('#prSummary')
+    };
+    let prLayout = 'full', prPages = [], prPageIdx = 0, prUrls = [];
+
+    /* cell rectangles in % of a Letter page (8.5 x 11 in, portrait) */
+    const PR_CELLS = {
+      full: [{ x: 3, y: 3, w: 94, h: 94 }],
+      '4x6': [{ x: 14.7, y: 4, w: 70.6, h: 36.4 }, { x: 14.7, y: 59.6, w: 70.6, h: 36.4 }],
+      '5x7': [{ x: 20.6, y: 18.2, w: 58.8, h: 63.6 }],
+      '8x10': [{ x: 3, y: 4.5, w: 94, h: 90.9 }],
+      wallet: [0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({
+        x: 3.5 + (i % 4) * 23.6, y: 6 + Math.floor(i / 4) * 45, w: 22, h: 42
+      })),
+      contact: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => ({
+        x: 3.5 + (i % 4) * 23.6, y: 4 + Math.floor(i / 4) * 31, w: 22, h: 27
+      }))
+    };
+
+    async function prBuild() {
+      const list = trayTargets();
+      const copies = Math.max(1, Math.min(10, Math.round(+pr.copies.value || 1)));
+      const flat = [];
+      for (const p of list) for (let c = 0; c < copies; c++) flat.push(p);
+      const cap = PR_CELLS[prLayout].length;
+      const maxPages = 60;
+      prPages = [];
+      for (let i = 0; i < flat.length && prPages.length < maxPages; i += cap) {
+        prPages.push(flat.slice(i, i + cap));
+      }
+      prPageIdx = 0;
+      pr.summary.textContent = `${list.length} photo${list.length !== 1 ? 's' : ''} · ${copies} cop${copies > 1 ? 'ies' : 'y'} each · layout "${pr.layouts.querySelector('.on').textContent}" · ${prPages.length} page${prPages.length !== 1 ? 's' : ''} (max 60)`;
+      await prRenderPage();
+    }
+
+    async function prRenderPage() {
+      prUrls.forEach((u) => URL.revokeObjectURL(u)); prUrls = [];
+      const page = pr.page;
+      page.innerHTML = '';
+      pr.pageLab.textContent = `Page ${prPageIdx + 1} / ${prPages.length || 1}`;
+      const cells = PR_CELLS[prLayout];
+      const items = prPages[prPageIdx] || [];
+      for (let i = 0; i < cells.length; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'pr-cell' + (pr.border.checked && prLayout !== 'contact' ? ' bordered' : '');
+        cell.style.cssText = `left:${cells[i].x}%;top:${cells[i].y}%;width:${cells[i].w}%;height:${cells[i].h}%;`;
+        const it = items[i];
+        if (it) {
+          try {
+            const file = await getFile(it);
+            const url = URL.createObjectURL(file); prUrls.push(url);
+            const img = document.createElement('img');
+            img.src = url; img.alt = it.name; img.draggable = false;
+            cell.appendChild(img);
+            if (prLayout === 'contact' || pr.names.checked) {
+              const nm = document.createElement('span');
+              nm.className = 'pname'; nm.textContent = it.name;
+              cell.appendChild(nm);
+            }
+          } catch (e) { /* unreadable — leave the cell empty */ }
+        }
+        page.appendChild(cell);
+      }
+    }
+
+    function prDoPrint() {
+      if (!prPages.length) { toast('Nothing to print', 'err'); return; }
+      const borderCss = pr.border.checked ? 'border:1px solid #bbb;' : '';
+      const nameIt = prLayout === 'contact' || pr.names.checked;
+      let html = `<!doctype html><html><head><meta charset="utf-8"><style>
+        @page { size: letter portrait; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #fff; }
+        .pg { position: relative; width: 8.5in; height: 11in; overflow: hidden; page-break-after: always; background: #fff; }
+        .cell { position: absolute; display: flex; align-items: center; justify-content: center; }
+        .cell img { max-width: 100%; max-height: 100%; ${borderCss} }
+        .cell .pname { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font: 8pt "Segoe UI", sans-serif; color: #333; }
+        </style></head><body>`;
+      for (const pg of prPages) {
+        html += '<div class="pg">';
+        const cells = PR_CELLS[prLayout];
+        pg.forEach((it, i) => {
+          const c = cells[i];
+          html += `<div class="cell" style="left:${c.x}%;top:${c.y}%;width:${c.w}%;height:${c.h}%"><img src="${it._url}">${nameIt ? `<span class="pname">${it.name.replace(/</g, '&lt;')}</span>` : ''}</div>`;
+        });
+        html += '</div>';
+      }
+      html += '</body></html>';
+      const f = document.createElement('iframe');
+      f.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;visibility:hidden;';
+      document.body.appendChild(f);
+      const doc = f.contentDocument;
+      doc.open(); doc.write(html); doc.close();
+      const go = () => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) {} setTimeout(() => f.remove(), 90000); };
+      if (f.contentWindow.document.readyState === 'complete') setTimeout(go, 350);
+      else f.onload = () => setTimeout(go, 350);
+      toast('The print dialog opens in a moment — choose your printer', 'ok', 5000);
+    }
+
+    async function openPrint() {
+      const list = trayTargets();
+      if (!list.length) { toast('Import photos first', 'err'); return; }
+      /* resolve every file once so pages + printing share blob URLs */
+      for (const p of list) {
+        try { p._url = URL.createObjectURL(await getFile(p)); } catch (e) { p._url = null; }
+      }
+      pr.modal.hidden = false;
+      await prBuild();
+    }
+    pr.close.addEventListener('click', () => { pr.modal.hidden = true; cleanupUrls(); });
+    pr.cancel.addEventListener('click', () => { pr.modal.hidden = true; cleanupUrls(); });
+    function cleanupUrls() {
+      for (const p of trayTargets()) { if (p._url) { try { URL.revokeObjectURL(p._url); } catch (e) {} delete p._url; } }
+    }
+    pr.layouts.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-l]');
+      if (!b) return;
+      prLayout = b.dataset.l;
+      pr.layouts.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+      prBuild();
+    });
+    pr.copies.addEventListener('change', prBuild);
+    pr.border.addEventListener('change', prRenderPage);
+    pr.names.addEventListener('change', prRenderPage);
+    pr.prev.addEventListener('click', () => { if (prPageIdx > 0) { prPageIdx--; prRenderPage(); } });
+    pr.next.addEventListener('click', () => { if (prPageIdx < prPages.length - 1) { prPageIdx++; prRenderPage(); } });
+    pr.start.addEventListener('click', prDoPrint);
+
+    /* ================= E-MAIL ================= */
+    const em = {
+      modal: $('#email'), sizes: $('#emSizes'), q: $('#emQ'),
+      start: $('#emStart'), cancel: $('#emCancel'), close: $('#emClose'), summary: $('#emSummary')
+    };
+    let emSize = 1024;
+    em.sizes.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-s]');
+      if (!b) return;
+      emSize = +b.dataset.s;
+      em.sizes.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    });
+    em.close.addEventListener('click', () => { em.modal.hidden = true; });
+    em.cancel.addEventListener('click', () => { em.modal.hidden = true; });
+    em.modal.addEventListener('click', (e) => { if (e.target === em.modal) em.modal.hidden = true; });
+    function openEmail() {
+      const list = trayTargets();
+      if (!list.length) { toast('Import photos first', 'err'); return; }
+      em.summary.textContent = `${list.length} photo${list.length !== 1 ? 's' : ''} will be saved${emSize ? ` at ${emSize} px on the long edge` : ' at original size'} — then your mail program opens.`;
+      em.modal.hidden = false;
+    }
+    em.start.addEventListener('click', async () => {
+      const list = trayTargets();
+      if (!list.length) return;
+      em.start.disabled = true;
+      let ok = 0;
+      for (const p of list) {
         try {
           const file = await getFile(p);
-          if (target) {
-            const fh = await target.getFileHandle(file.name, { create: true });
-            const w = await fh.createWritable(); await w.write(file); await w.close();
+          let blob = file;
+          if (emSize) {
+            const cv = await scaledCanvas(file, emSize);
+            if (cv) blob = await canvasBlob(cv, +em.q.value || 0.85);
+          }
+          const base = p.name.replace(/\.[^.]+$/, '');
+          dlBlob(blob, `${base}-email.jpg`);
+          ok++;
+          await new Promise((r) => setTimeout(r, 320));
+        } catch (e) { /* skip */ }
+      }
+      em.start.disabled = false;
+      em.modal.hidden = true;
+      toast(`${ok} photo${ok !== 1 ? 's' : ''} saved — attach them in the mail window that just opened`, 'ok', 7000);
+      const subj = encodeURIComponent('Photos from S H I V A M PIXA');
+      const body = encodeURIComponent('Hi,\n\nHere are the photos — they were saved in your Downloads folder, please attach them to this message.\n\n(Sent with S H I V A M PIXA)');
+      location.href = `mailto:?subject=${subj}&body=${body}`;
+    });
+
+    /* ================= EXPORT PICTURE TO FOLDER ================= */
+    const ex = {
+      modal: $('#expd'), pick: $('#exPick'), dirLab: $('#exDir'), resize: $('#exResize'),
+      size: $('#exSize'), q: $('#exQ'), start: $('#exStart'), cancel: $('#exCancel'),
+      close: $('#exClose'), summary: $('#exSummary'), prog: $('#exProg'),
+      barFill: $('#exBarFill'), progTxt: $('#exProgTxt')
+    };
+    let exDir = null, exBusy = false;
+    ex.resize.addEventListener('change', () => { ex.size.disabled = !ex.resize.checked; });
+    ex.close.addEventListener('click', () => { if (!exBusy) ex.modal.hidden = true; });
+    ex.cancel.addEventListener('click', () => { if (!exBusy) ex.modal.hidden = true; });
+    ex.modal.addEventListener('click', (e) => { if (e.target === ex.modal && !exBusy) ex.modal.hidden = true; });
+    ex.pick.addEventListener('click', async () => {
+      if (!canPicker) { toast('This browser has no folder picker — files will be saved to Downloads', 'err', 5000); return; }
+      try {
+        exDir = await window.showDirectoryPicker({ id: 'pixsa-export', mode: 'readwrite' });
+        ex.dirLab.textContent = exDir.name;
+      } catch (e) { /* cancelled */ }
+    });
+    function openExport() {
+      const list = trayTargets();
+      if (!list.length) { toast('Add photos to the Tray first (use the + button on a photo)', 'err'); return; }
+      ex.summary.textContent = `${list.length} photo${list.length !== 1 ? 's' : ''} ready to export.`;
+      ex.prog.hidden = true; ex.barFill.style.width = '0%';
+      ex.modal.hidden = false;
+    }
+    ex.start.addEventListener('click', async () => {
+      const list = trayTargets();
+      if (!list.length || exBusy) return;
+      const wantResize = ex.resize.checked;
+      const maxPx = wantResize ? (+ex.size.value || 1600) : 0;
+      const q = +ex.q.value || 0.92;
+      exBusy = true; ex.start.disabled = true;
+      ex.prog.hidden = false;
+      let ok = 0, fail = 0;
+      for (let i = 0; i < list.length; i++) {
+        const p = list[i];
+        ex.progTxt.textContent = `Exporting ${i + 1} / ${list.length} — ${p.name}`;
+        ex.barFill.style.width = `${Math.round((i / list.length) * 100)}%`;
+        try {
+          const file = await getFile(p);
+          let out = file, outName = file.name;
+          if (wantResize) {
+            const cv = await scaledCanvas(file, maxPx);
+            if (cv) {
+              out = await canvasBlob(cv, q);
+              outName = p.name.replace(/\.[^.]+$/, '') + '.jpg';
+            }
+          }
+          if (exDir) {
+            const fh = await exDir.getFileHandle(outName, { create: true });
+            const w = await fh.createWritable(); await w.write(out); await w.close();
           } else {
-            const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; a.click();
-            setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-            await new Promise((r) => setTimeout(r, 350));
+            dlBlob(out, outName);
+            await new Promise((r) => setTimeout(r, 320));
           }
           ok++;
         } catch (e) { fail++; }
       }
-      toast(`Export: ${ok} photos${fail ? `, ${fail} failed` : ''}${target ? ` — into "${target.name}"` : ' — into Downloads'}`, ok ? 'ok' : 'err', 6000);
+      ex.barFill.style.width = '100%';
+      exBusy = false; ex.start.disabled = false;
+      setTimeout(() => { ex.modal.hidden = true; }, 450);
+      toast(`Export: ${ok} photo${ok !== 1 ? 's' : ''}${fail ? `, ${fail} failed` : ''}${exDir ? ` — into "${exDir.name}"` : ' — into Downloads'}`, ok ? 'ok' : 'err', 6000);
+    });
+
+    /* ================= MAKE A POSTER ================= */
+    const po = {
+      modal: $('#poster'), sizes: $('#poSizes'), px: $('#poPx'), q: $('#poQ'),
+      tiles: $('#poTiles'), start: $('#poStart'), cancel: $('#poCancel'),
+      close: $('#poClose'), summary: $('#poSummary'), prog: $('#poProg'),
+      barFill: $('#poBarFill'), progTxt: $('#poProgTxt')
+    };
+    po.sizes.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-px]');
+      if (!b) return;
+      po.px.value = b.dataset.px;
+      po.sizes.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    });
+    po.close.addEventListener('click', () => { po.modal.hidden = true; });
+    po.cancel.addEventListener('click', () => { po.modal.hidden = true; });
+    po.modal.addEventListener('click', (e) => { if (e.target === po.modal) po.modal.hidden = true; });
+    function openPoster() {
+      const p = state.selArr[0] || state.filtered[0];
+      if (!p) { toast('Import photos first', 'err'); return; }
+      const pxv = Math.round(+po.px.value || 4200);
+      po.summary.textContent = `Poster from: ${p.name} — output about ${pxv} px wide (a JPEG any print shop can enlarge).`;
+      po.prog.hidden = true; po.barFill.style.width = '0%';
+      po.modal.hidden = false;
+    }
+    po.start.addEventListener('click', async () => {
+      const p = state.selArr[0] || state.filtered[0];
+      if (!p) return;
+      const pxv = Math.max(600, Math.min(16000, Math.round(+po.px.value || 4200)));
+      const q = +po.q.value || 0.92;
+      po.start.disabled = true; po.prog.hidden = false;
+      po.progTxt.textContent = 'Rendering the poster…';
+      po.barFill.style.width = '12%';
+      try {
+        const file = await getFile(p);
+        let bmp = await decodeToBmp(file);
+        const s = pxv / Math.max(bmp.width, bmp.height);
+        const cv = document.createElement('canvas');
+        cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s);
+        const g = cv.getContext('2d');
+        g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+        g.drawImage(bmp, 0, 0, cv.width, cv.height);
+        if (bmp.close) bmp.close();
+        const base = p.name.replace(/\.[^.]+$/, '');
+        po.progTxt.textContent = 'Saving the poster JPEG…';
+        po.barFill.style.width = '55%';
+        const blob = await canvasBlob(cv, q);
+        dlBlob(blob, `${base}-poster-${pxv}px.jpg`);
+        if (po.tiles.checked) {
+          const TW = 1240, TH = 1754;             /* A4 @ 150 DPI */
+          const cols = Math.ceil(cv.width / TW), rows = Math.ceil(cv.height / TH);
+          const pages = [];
+          for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) pages.push([r, c]);
+          let done = 0;
+          for (const [r, c] of pages) {
+            const t = document.createElement('canvas');
+            t.width = TW; t.height = TH;
+            const tg = t.getContext('2d');
+            tg.fillStyle = '#fff'; tg.fillRect(0, 0, TW, TH);
+            tg.drawImage(cv, c * TW, r * TH, TW, TH, 0, 0, TW, TH);
+            tg.fillStyle = '#999'; tg.font = '11px sans-serif';
+            tg.fillText(`${base}  —  tile ${r + 1}/${rows} x ${c + 1}/${cols}`, 10, TH - 8);
+            dlBlob(await canvasBlob(t, 0.9), `${base}-poster-tile-r${r + 1}c${c + 1}.jpg`);
+            done++;
+            po.progTxt.textContent = `Saving A4 tiles… ${done} / ${pages.length}`;
+            po.barFill.style.width = `${55 + Math.round((done / pages.length) * 45)}%`;
+            await new Promise((r2) => setTimeout(r2, 260));
+          }
+        }
+        po.barFill.style.width = '100%';
+        po.progTxt.textContent = 'Done — check your Downloads';
+        toast(`Poster created (${cv.width} x ${cv.height} px) — saved to Downloads`, 'ok', 6000);
+        setTimeout(() => { po.modal.hidden = true; po.start.disabled = false; }, 700);
+      } catch (e) {
+        po.start.disabled = false;
+        toast('Poster failed: ' + (e.message || e.name), 'err', 6000);
+      }
+    });
+
+    /* ================= MOVIE (.webm video via MediaRecorder) ================= */
+    const mv = {
+      modal: $('#movie'), dur: $('#mvDur'), durV: $('#mvDurV'), trans: $('#mvTrans'),
+      size: $('#mvSize'), zoom: $('#mvZoom'), start: $('#mvStart'), cancel: $('#mvCancel'),
+      close: $('#mvClose'), summary: $('#mvSummary'), prog: $('#mvProg'),
+      barFill: $('#mvBarFill'), progTxt: $('#mvProgTxt')
+    };
+    let mvBusy = false, mvStop = null;
+    mv.dur.addEventListener('input', () => { mv.durV.textContent = (+mv.dur.value).toFixed(1) + ' s'; });
+    mv.close.addEventListener('click', () => { if (!mvBusy) mv.modal.hidden = true; });
+    mv.cancel.addEventListener('click', () => { if (mvBusy && mvStop) mvStop(); else mv.modal.hidden = true; });
+    mv.modal.addEventListener('click', (e) => { if (e.target === mv.modal && !mvBusy) mv.modal.hidden = true; });
+    function openMovie() {
+      const list = trayTargets();
+      if (!list.length) { toast('Import photos first', 'err'); return; }
+      if (typeof MediaRecorder === 'undefined') {
+        toast('This browser cannot record video — Movie needs Chrome or Edge', 'err', 6000);
+        return;
+      }
+      mv.summary.textContent = `${list.length} photo${list.length !== 1 ? 's' : ''} · about ${(list.length * +mv.dur.value).toFixed(0)} s of video (in selection order).`;
+      mv.prog.hidden = true; mv.barFill.style.width = '0%';
+      mv.modal.hidden = false;
+    }
+    mv.start.addEventListener('click', async () => {
+      if (mvBusy) return;
+      const list = trayTargets().slice(0, 200);
+      if (!list.length) return;
+      const W = +mv.size.value || 1280, H = W === 1920 ? 1080 : 720;
+      const durS = +mv.dur.value || 3;
+      const xf = mv.trans.value === 'fade' ? 0.8 : 0;
+      const zoomOn = mv.zoom.checked;
+      mvBusy = true; mv.start.disabled = true;
+      mv.prog.hidden = false;
+      mv.progTxt.textContent = 'Loading the photos…';
+      try {
+        /* decode + cover-draw each photo once */
+        const slides = [];
+        for (let i = 0; i < list.length; i++) {
+          mv.progTxt.textContent = `Loading ${i + 1} / ${list.length}…`;
+          mv.barFill.style.width = `${Math.round((i / list.length) * 8)}%`;
+          try {
+            const file = await getFile(list[i]);
+            slides.push(await decodeToBmp(file));
+          } catch (e) { /* unreadable — skip */ }
+        }
+        if (slides.length < 1) throw new Error('no photos could be read');
+        const cv = document.createElement('canvas');
+        cv.width = W; cv.height = H;
+        const g = cv.getContext('2d');
+        const cover = (bmp, k) => {
+          /* draw bmp covering the frame, scaled by extra factor k */
+          const s = Math.max(W / bmp.width, H / bmp.height) * k;
+          const w = bmp.width * s, h = bmp.height * s;
+          g.drawImage(bmp, (W - w) / 2, (H - h) / 2, w, h);
+        };
+        g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+        const stream = cv.captureStream(30);
+        const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+          .find((m) => MediaRecorder.isTypeSupported(m)) || '';
+        const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 6_000_000 } : undefined);
+        const chunks = [];
+        rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+        const done = new Promise((res) => { rec.onstop = res; });
+        rec.start(250);
+        const total = slides.length * durS - (slides.length - 1) * xf;
+        const t0 = performance.now();
+        let stopReq = false;
+        mvStop = () => { stopReq = true; };
+        await new Promise((res) => {
+          const frame = () => {
+            const t = (performance.now() - t0) / 1000;
+            if (stopReq || t >= total) { res(); return; }
+            mv.progTxt.textContent = `Recording… ${t.toFixed(0)} / ${total.toFixed(0)} s`;
+            mv.barFill.style.width = `${Math.round((t / total) * 100)}%`;
+            /* which slide pair is live? a slide owns durS, the next one
+               starts xf seconds early (that overlap IS the crossfade) */
+            let acc = 0, i = 0;
+            while (i < slides.length - 1 && t >= acc + durS - xf) { acc += durS - xf; i++; }
+            i = Math.min(i, slides.length - 1);
+            const tIn = Math.max(0, t - acc);
+            g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+            const drawSlide = (idx, prog) => {
+              const k = zoomOn ? 1 + 0.07 * prog : 1;
+              cover(slides[idx], k);
+            };
+            if (xf && tIn < xf && i > 0) {
+              /* crossfade: previous slide still fading out under this one */
+              g.globalAlpha = 1;
+              drawSlide(i - 1, Math.min(1, (acc - (durS - xf) + tIn) / durS));
+              g.globalAlpha = tIn / xf;
+              drawSlide(i, tIn / durS);
+              g.globalAlpha = 1;
+            } else {
+              drawSlide(i, Math.min(1, tIn / durS));
+            }
+            requestAnimationFrame(frame);
+          };
+          requestAnimationFrame(frame);
+        });
+        rec.stop();
+        await done;
+        mv.barFill.style.width = '100%';
+        mv.progTxt.textContent = 'Saving the video…';
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        dlBlob(blob, `PIXA-Movie-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.webm`);
+        toast(`Movie created — ${(blob.size / 1048576).toFixed(1)} MB, saved to Downloads`, 'ok', 7000);
+        setTimeout(() => { mv.modal.hidden = true; mv.start.disabled = false; mvBusy = false; mvStop = null; }, 600);
+      } catch (e) {
+        mvBusy = false; mv.start.disabled = false; mvStop = null;
+        toast('Movie failed: ' + (e.message || e.name), 'err', 6000);
+      }
+    });
+
+    /* ================= ALBUMS ================= */
+    const alb = {
+      modal: $('#albd'), list: $('#alList'), nw: $('#alNew'),
+      add: $('#alAdd'), cancel: $('#alCancel'), close: $('#alClose')
+    };
+    let alSelId = null;
+    alb.list.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-id]');
+      if (!b) return;
+      alSelId = b.dataset.id;
+      alb.nw.value = '';
+      alb.list.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    });
+    alb.nw.addEventListener('input', () => {
+      if (alb.nw.value.trim()) { alSelId = null; alb.list.querySelectorAll('button').forEach((x) => x.classList.remove('on')); }
+    });
+    alb.close.addEventListener('click', () => { alb.modal.hidden = true; });
+    alb.cancel.addEventListener('click', () => { alb.modal.hidden = true; });
+    alb.modal.addEventListener('click', (e) => { if (e.target === alb.modal) alb.modal.hidden = true; });
+    async function openAlbumPicker() {
+      const list = trayTargets();
+      alb.list.innerHTML = albumsCache.length
+        ? albumsCache.map((a) => {
+            const live = a.keys.filter((k) => state.photos.some((p) => photoKey(p) === k)).length;
+            return `<button type="button" data-id="${a.id}">${String(a.name).replace(/</g, '&lt;')} <span style="margin-left:auto;color:#788">(${live})</span></button>`;
+          }).join('')
+        : '<span class="al-empty">No albums yet — type a name below to make the first one.</span>';
+      alSelId = null; alb.nw.value = '';
+      alb.modal.hidden = false;
+      setTimeout(() => alb.nw.focus(), 60);
+    }
+    /* File → New Album (Ctrl+N): same dialog, works with or without photos */
+    function newAlbumFlow() { openAlbumPicker(); }
+    alb.add.addEventListener('click', async () => {
+      const name = alb.nw.value.trim();
+      const list = trayTargets();
+      if (name) {
+        const rec = { id: 'a' + Date.now().toString(36), name, created: Date.now(), keys: list.map(photoKey) };
+        albumsCache.push(rec);
+        await saveAlbum(rec);
+        alb.modal.hidden = true;
+        buildTree();
+        toast(`Album "${name}" created${list.length ? ` with ${list.length} photo${list.length !== 1 ? 's' : ''}` : ''}`, 'ok');
+        return;
+      }
+      if (!alSelId) { toast('Pick an album or type a new name', 'err'); return; }
+      if (!list.length) { toast('Add photos to the Tray first', 'err'); return; }
+      const rec = albumsCache.find((a) => a.id === alSelId);
+      if (!rec) return;
+      const have = new Set(rec.keys);
+      let added = 0;
+      for (const p of list) { const k = photoKey(p); if (!have.has(k)) { rec.keys.push(k); added++; } }
+      await saveAlbum(rec);
+      alb.modal.hidden = true;
+      buildTree();
+      if (state.special === 'album:' + rec.id) applyFilter();
+      toast(`${added} photo${added !== 1 ? 's' : ''} added to "${rec.name}"`, 'ok');
+    });
+    function albumCtxMenu(e, al) {
+      ctxMenuAt(e.clientX, e.clientY, [
+        { label: 'Rename Album\u2026', fn: async () => {
+            const n = prompt('Album name:', al.name);
+            if (n && n.trim()) { al.name = n.trim(); await saveAlbum(al); buildTree(); setStatus(); }
+          } },
+        { label: 'Delete Album', fn: async () => {
+            if (!confirm(`Delete the album "${al.name}"? (The photos themselves stay in the library and on your PC.)`)) return;
+            await idbDel('albums', al.id).catch(() => {});
+            albumsCache = albumsCache.filter((a) => a.id !== al.id);
+            if (state.special === 'album:' + al.id) { state.special = ''; }
+            buildTree(); applyFilter();
+            toast('Album deleted');
+          } },
+        '-',
+        { label: 'Add Tray Photos to This Album', fn: async () => {
+            const list = trayTargets();
+            if (!list.length) { toast('Add photos to the Tray first', 'err'); return; }
+            const have = new Set(al.keys);
+            let added = 0;
+            for (const p of list) { const k = photoKey(p); if (!have.has(k)) { al.keys.push(k); added++; } }
+            await saveAlbum(al);
+            buildTree();
+            if (state.special === 'album:' + al.id) applyFilter();
+            toast(`${added} photo${added !== 1 ? 's' : ''} added to "${al.name}"`, 'ok');
+          } }
+      ]);
+    }
+
+    /* ================= RENAME (F2) / DELETE FROM DISK (Del) ================= */
+    const BADFN = /[\\/:*?"<>|]/;
+    async function ensurePerm(handle) {
+      try {
+        let perm = await handle.queryPermission({ mode: 'readwrite' });
+        if (perm !== 'granted') perm = await handle.requestPermission({ mode: 'readwrite' });
+        return perm === 'granted';
+      } catch (e) { return false; }
+    }
+    async function renamePhoto(p) {
+      if (!p) return;
+      if (!p.pdir) {
+        toast('Renaming needs a photo from an imported PC folder (cloud / dropped files cannot be renamed from the browser)', 'err', 6000);
+        return;
+      }
+      if (!(await ensurePerm(p.pdir))) { toast('Folder write permission was not granted', 'err'); return; }
+      const ext = (p.name.match(/\.[^.]+$/) || [''])[0];
+      const base = p.name.slice(0, p.name.length - ext.length);
+      const nn0 = prompt('Rename photo to:', base);
+      if (nn0 === null) return;
+      let nn = nn0.trim();
+      if (!nn || nn === base) return;
+      if (BADFN.test(nn)) { toast('The name has characters Windows does not allow ( \\ / : * ? " < > | )', 'err', 5000); return; }
+      if (!/\.[^.]+$/.test(nn)) nn += ext;
+      if (nn === p.name) return;
+      const oldKey = photoKey(p);
+      try {
+        const file = await getFile(p);
+        const nh = await p.pdir.getFileHandle(nn, { create: true });
+        const w = await nh.createWritable(); await w.write(file); await w.close();
+        try { await p.pdir.removeEntry(p.name); } catch (e) { /* old file may be open elsewhere */ }
+        const nf = await nh.getFile();
+        p.name = nf.name; p.size = nf.size; p.lastModified = nf.lastModified; p.handle = nh;
+        const newKey = photoKey(p);
+        /* carry the thumbnail, edits, star and album memberships across */
+        const th = await idbGet('thumbs', oldKey).catch(() => null);
+        if (th) { await idbSet('thumbs', newKey, th).catch(() => {}); await idbDel('thumbs', oldKey).catch(() => {}); }
+        const ed = await idbGet('edits', oldKey).catch(() => null);
+        if (ed) { await idbSet('edits', newKey, ed).catch(() => {}); await idbDel('edits', oldKey).catch(() => {}); }
+        if (state.stars.has(oldKey)) {
+          state.stars.delete(oldKey); state.stars.add(newKey);
+          try { await idbSet('kv', 'starred', [...state.stars]); } catch (e) {}
+        }
+        for (const al of albumsCache) {
+          if (al.keys.includes(oldKey)) {
+            al.keys = al.keys.map((k) => (k === oldKey ? newKey : k));
+            await saveAlbum(al);
+          }
+        }
+        for (const q of state.photos) q.star = state.stars.has(photoKey(q));
+        buildTree(); applyFilter(); renderTray();
+        toast(`Renamed to "${nn}"`, 'ok');
+      } catch (e) {
+        toast('Rename failed: ' + (e.message || e.name), 'err', 6000);
+      }
+    }
+    async function deleteFromDisk(list) {
+      list = list.filter(Boolean);
+      if (!list.length) { toast('Select photos first (click a photo\u2019s + to fill the Tray)', 'err'); return; }
+      const onDisk = list.filter((p) => p.pdir).length;
+      const msg = onDisk
+        ? `Permanently delete ${list.length} photo${list.length > 1 ? 's' : ''} from disk?\n\nThey will be removed from their folder on your PC and from the library. This cannot be undone (not even from the Recycle Bin).`
+        : `Remove ${list.length} photo${list.length > 1 ? 's' : ''} from the library?`;
+      if (!confirm(msg)) return;
+      let ok = 0, fail = 0;
+      for (const p of list) {
+        try {
+          if (p.pdir) {
+            if (!(await ensurePerm(p.pdir))) { fail++; continue; }
+            await p.pdir.removeEntry(p.name);
+          }
+          ok++;
+          state.photos = state.photos.filter((x) => x !== p);
+          invalidateThumb(p);
+          const k = photoKey(p);
+          for (const al of albumsCache) {
+            if (al.keys.includes(k)) { al.keys = al.keys.filter((x) => x !== k); saveAlbum(al); }
+          }
+        } catch (e) { fail++; }
+      }
+      clearSel();
+      buildTree(); applyFilter(); renderTray();
+      toast(`${ok} photo${ok !== 1 ? 's' : ''} deleted from disk${fail ? `, ${fail} failed` : ''}`, ok ? 'ok' : 'err', 5000);
     }
 
     /* ================= grid (folder-grouped, Picasa style) ================= */
@@ -2991,6 +3994,31 @@
     /* ================= keyboard: Alt+A selects the whole album ================= */
     document.addEventListener('keydown', (e) => {
       if (window.PixsaEditor && window.PixsaEditor.isOpen()) return;
+      const inField = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName || '');
+      /* v3.24.0: Picasa keyboard shortcuts — F2 rename, Del delete from disk,
+         Ctrl+P print, Ctrl+E e-mail, Ctrl+Shift+S export, Ctrl+N new album */
+      if (!inField && e.key === 'F2') {
+        if (state.selArr.length) { e.preventDefault(); renamePhoto(state.selArr[0]); }
+        return;
+      }
+      if (!inField && (e.key === 'Delete' || e.key === 'Backspace') && state.selArr.length && !e.ctrlKey && !e.altKey) {
+        const modalOpen = [...document.querySelectorAll('.modal')].some((m) => !m.hidden);
+        if (modalOpen) return;
+        e.preventDefault();
+        deleteFromDisk(state.selArr);
+        return;
+      }
+      if (e.ctrlKey && !e.altKey) {
+        const k = (e.key || '').toLowerCase();
+        if (k === 'p') { e.preventDefault(); openPrint(); return; }
+        if (k === 'e') { e.preventDefault(); openEmail(); return; }
+        if (k === 's' && e.shiftKey) { e.preventDefault(); openExport(); return; }
+        if (k === 'n' && !e.shiftKey) {
+          const modalOpen = [...document.querySelectorAll('.modal')].some((m) => !m.hidden);
+          if (!modalOpen) { e.preventDefault(); newAlbumFlow(); }
+          return;
+        }
+      }
       if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'a' || e.key === 'A')) {
         const modalOpen = [...document.querySelectorAll('.modal')].some((m) => !m.hidden);
         if (modalOpen) return;
@@ -3114,7 +4142,10 @@
     });
     els.btnTraySizer.addEventListener('click', openSizer);
     els.btnTrayCollage.addEventListener('click', () => { if (state.selArr.length && window.PixsaCollage) window.PixsaCollage.open(state.selArr); });
-    els.btnTrayExport.addEventListener('click', exportSelected);
+    els.btnTrayExport.addEventListener('click', openExport);   /* v3.24.0: Export dialog */
+    els.btnTrayPrint.addEventListener('click', openPrint);     /* v3.24.0 */
+    els.btnTrayEmail.addEventListener('click', openEmail);     /* v3.24.0 */
+    els.btnTrayMovie.addEventListener('click', openMovie);     /* v3.24.0 */
     els.btnTrayRemove.addEventListener('click', async () => {
       if (!state.selArr.length) return;
       const gone = state.selArr.slice();
@@ -3142,9 +4173,23 @@
       els.menubar.querySelectorAll('.menu.open').forEach((x) => x.classList.remove('open'));
       switch (act) {
         case 'import': importFolder(); break;
-        case 'export':
-          if (state.selArr.length) exportSelected();
-          else toast('Add photos to the Tray first (use the + button on a photo)', 'err');
+        case 'export': openExport(); break;             /* v3.24.0: real Export dialog */
+        case 'print': openPrint(); break;               /* v3.24.0 */
+        case 'email': openEmail(); break;               /* v3.24.0 */
+        case 'poster': openPoster(); break;             /* v3.24.0 */
+        case 'movie': openMovie(); break;               /* v3.24.0 */
+        case 'newalbum': newAlbumFlow(); break;         /* v3.24.0 */
+        case 'addalbum':                                /* v3.24.0 */
+          if (!trayTargets().length) { toast('Add photos to the Tray first (use the + button on a photo)', 'err'); break; }
+          openAlbumPicker();
+          break;
+        case 'rename':                                  /* v3.24.0 */
+          if (!state.selArr.length) { toast('Select a photo first (click its + button)', 'err'); break; }
+          renamePhoto(state.selArr[0]);
+          break;
+        case 'deldisk':                                 /* v3.24.0 */
+          if (!state.selArr.length) { toast('Select photos first (click their + buttons)', 'err'); break; }
+          deleteFromDisk(state.selArr);
           break;
         case 'collage': els.btnCollage.click(); break;
         case 'collagetray':
@@ -3244,7 +4289,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.22.3', 'ok', 2500);
+          toast('S H I V A M PIXA v3.24.0', 'ok', 2500);
           break;
       }
     }
@@ -3608,6 +4653,7 @@
 
     /* ================= boot ================= */
     loadCustomFonts();
+    loadAlbums().then(() => buildTree());   /* v3.24.0: albums into the tree at boot */
     initRestore();
     restoreCollageItems();   /* v3.16.0: saved collages rejoin the library */
     if (window.innerWidth < 760) document.body.classList.add('side-off');

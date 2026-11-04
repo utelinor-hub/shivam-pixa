@@ -178,10 +178,13 @@
     toolBox: q('#eToolBox'), zoom: q('#eZoom'), fxGrid: q('#fxGrid')
   };
 
+  /* v3.24.0: Brightness (br), Contrast (con) and Sharpness (shp) joined the
+     Picasa Tuning panel — wired exactly like the six original sliders. */
   const ADJ_IDS = [['adFill', 'vFill', 'fill'], ['adHigh', 'vHigh', 'high'], ['adShad', 'vShad', 'shad'],
-                   ['adTemp', 'vTemp', 'temp'], ['adTint', 'vTint', 'tint'], ['adSat', 'vSat', 'sat']];
+                   ['adTemp', 'vTemp', 'temp'], ['adTint', 'vTint', 'tint'], ['adSat', 'vSat', 'sat'],
+                   ['adBr', 'vBr', 'br'], ['adCon', 'vCon', 'con'], ['adShp', 'vShp', 'shp']];
 
-  const ADJ0 = { fill: 0, high: 0, shad: 0, temp: 0, tint: 0, sat: 0 };
+  const ADJ0 = { fill: 0, high: 0, shad: 0, temp: 0, tint: 0, sat: 0, br: 0, con: 0, shp: 0 };
   const TEXT0 = {
     size: 7, color: '#ffffff', font: '"Segoe UI", sans-serif', rot: 0, alpha: 100,
     bold: false, italic: false, underline: false, stroke: '#000000', strokeW: 0, shadow: true, align: 'center'
@@ -197,6 +200,7 @@
     ops: [], adj: { ...ADJ0 },
     prevAdj: null, undo: [], redo: [], tool: null, saved: false,
     cropR: null, aspect: 0, pendPts: [], brush: 16, draft: null,
+    cropSel: null,           /* v3.24.0: picked crop size spec + flip state */
     fit: true, zoom: 100, fxPage: 1,
     /* v3.4.0: stickers + text draft + autosave state */
     stickers: [], stkSeq: 0, stkSel: null,
@@ -411,6 +415,10 @@
     chan(G, 'rgba(88,200,110,.72)');
     chan(B, 'rgba(86,140,240,.72)');
     g.globalCompositeOperation = 'source-over';
+    /* v3.24.0: the camera-info line under the histogram mirrors the footer
+       EXIF string (Picasa shows "Histogram & Camera Information" there) */
+    const cam = q('#eCam');
+    if (cam) cam.textContent = ed.exif.textContent || 'No EXIF data available';
   }
 
   /* ---------- history ---------- */
@@ -677,38 +685,81 @@
     if (!E.tool) { tb.hidden = true; tb.innerHTML = ''; return; }
     tb.hidden = false;
     if (E.tool === 'crop') {
+      /* v3.24.0: the crop size list is now Picasa's own — the dropdown from
+         "Crop Photo" (Manual, Current ratio, print sizes, A4, Square CD
+         cover, screen ratios, 35mm). Print sizes follow the photo's
+         orientation, the ⇄ button flips it. */
+      const cv0 = ed.canvas;
+      const land = cv0.width >= cv0.height;
+      const curR = cv0.width / cv0.height;
+      const sizeList = [
+        ['0', 'Manual'],
+        ['cur', `Current ratio: ${cv0.width} x ${cv0.height}`],
+        ['4:6', '4 x 6 : Small print'],
+        ['5:7', '5 x 7 : Large print'],
+        ['8:10', '8 x 10 : Letter'],
+        ['3:5', '3 x 5 : Index card'],
+        ['A4', 'A4 : Full page'],
+        ['sq', 'Square : CD Cover'],
+        ['4:3', '4:3 : Standard screen'],
+        ['16:10', '16:10 : Widescreen'],
+        ['16:9', '16:9 : HDTV'],
+        ['35', '35mm']
+      ];
+      const ratioNum = (spec) => {
+        if (spec === 'A4') return 210 / 297;
+        if (spec === 'sq') return 1;
+        if (spec === '35') return 3 / 2;
+        const p = spec.split(':');
+        return (+p[0]) / (+p[1]);
+      };
+      /* remembers which size + orientation the user picked while the tool is
+         open, so ⇄ and re-selections keep working */
+      if (!E.cropSel) E.cropSel = { spec: '0', flipped: false };
+      const applySpec = () => {
+        const spec = E.cropSel.spec;
+        if (spec === '0') { E.aspect = 0; }
+        else if (spec === 'cur') { E.aspect = curR; }
+        else {
+          const w = ratioNum(spec);
+          const land0 = spec === 'cur' ? true : land;
+          const wantLandscape = E.cropSel.flipped ? !land0 : land0;
+          E.aspect = wantLandscape ? Math.max(w, 1 / w) : Math.min(w, 1 / w);
+        }
+        if (E.aspect && E.cropR) {
+          let nh = E.cropR.w / E.aspect;
+          if (E.cropR.y + nh > cv0.height) nh = cv0.height - E.cropR.y;
+          E.cropR.h = Math.max(32, nh);
+          if (E.cropR.w / E.cropR.h > E.aspect) {
+            E.cropR.w = Math.max(32, E.cropR.h * E.aspect);
+          }
+          syncCropOverlay();
+        }
+      };
       tb.innerHTML = `
-        <div class="asprow">
-          <button type="button" data-ar="0">Free</button>
-          <button type="button" data-ar="1">1:1</button>
-          <button type="button" data-ar="${4 / 3}">4:3</button>
-          <button type="button" data-ar="${3 / 4}">3:4</button>
-          <button type="button" data-ar="${16 / 9}">16:9</button>
-          <button type="button" data-ar="${9 / 16}">9:16</button>
-          <button type="button" data-ar="${3 / 2}">4x6</button>
-          <button type="button" data-ar="${5 / 7}">5x7</button>
-          <button type="button" data-ar="${8 / 10}">8x10</button>
+        <h4>Crop Photo</h4>
+        <p style="font-size:11px;color:#71747a;margin:2px 0 7px">Pick a size below, then click and drag on the photo to choose the crop.</p>
+        <div class="trow"><label>Size</label>
+          <select id="tbCropSel" style="flex:1;height:27px;min-width:0">${sizeList.map((s) => `<option value="${s[0]}">${s[1]}</option>`).join('')}</select>
+        </div>
+        <div class="trow"><label>&nbsp;</label>
+          <button id="tbCropSwap" type="button" class="fixbtn" style="flex:1;margin:0" title="Flip the crop between landscape and portrait">&#8644; Flip orientation</button>
         </div>
         <div class="mrow">
           <button id="tbApply" class="btn btn-accent" type="button">Apply Crop</button>
           <button id="tbCancel" class="btn" type="button">Cancel</button>
         </div>`;
-      qa('.asprow button').forEach((b) => {
-        b.classList.toggle('on', Math.abs(+b.dataset.ar - E.aspect) < 0.001);
-        b.addEventListener('click', () => {
-          E.aspect = +b.dataset.ar;
-          qa('.asprow button').forEach((x) => x.classList.toggle('on', x === b));
-          if (E.aspect && E.cropR) {
-            const cv = ed.canvas;
-            let nh = E.cropR.w / E.aspect;
-            if (E.cropR.y + nh > cv.height) nh = cv.height - E.cropR.y;
-            E.cropR.h = Math.max(32, nh);
-            syncCropOverlay();
-          }
-        });
+      const sel = q('#tbCropSel');
+      sel.value = E.cropSel.spec;
+      sel.addEventListener('change', () => { E.cropSel.spec = sel.value; applySpec(); });
+      q('#tbCropSwap').addEventListener('click', () => {
+        if (E.cropSel.spec === '0' || E.cropSel.spec === 'cur') return;
+        E.cropSel.flipped = !E.cropSel.flipped;
+        applySpec();
       });
+      applySpec();
       q('#tbApply').addEventListener('click', applyCrop);
-      q('#tbCancel').addEventListener('click', () => setTool(null));
+      q('#tbCancel').addEventListener('click', () => { E.cropSel = null; setTool(null); });
     } else if (E.tool === 'redeye' || E.tool === 'retouch') {
       const label = E.tool === 'redeye' ? 'Click-drag over the red eye' : 'Click-drag over the blemish (spot) to blur it';
       tb.innerHTML = `
@@ -2113,7 +2164,13 @@
     q('#eOrig').hidden = true; q('#eOrigTag').hidden = true;
     ed.root.classList.remove('tools-open');
     ed.exif.textContent = '';
-    readExif(file).then((txt) => { if (E.open && E.photo === photo) ed.exif.textContent = txt; });
+    readExif(file).then((txt) => {
+      if (E.open && E.photo === photo) {
+        ed.exif.textContent = txt;
+        const cam = q('#eCam');
+        if (cam) cam.textContent = txt || 'No EXIF data available';   /* v3.24.0 */
+      }
+    });
 
     /* power-cut safe: reload the previous auto-saved edits */
     try {

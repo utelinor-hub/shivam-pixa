@@ -670,13 +670,18 @@
     return { gr: +gain(r).toFixed(4), gg: +gain(g).toFixed(4), gb: +gain(b).toFixed(4) };
   }
 
-  /* ---------- tuning ---------- */
-  const adjHas = (a) => a && ((a.high | 0) || (a.shad | 0) || (a.temp | 0) || (a.tint | 0));
+  /* ---------- tuning ----------
+     v3.24.0: three more Picasa-style sliders joined the panel — Brightness
+     (br), Contrast (con) and Sharpness (shp). Brightness/contrast ride the
+     CSS-filter pass (fast), sharpness is an unsharp-mask convolution in the
+     pixel pass (only runs when the slider is actually moved off 0). */
+  const adjHas = (a) => a && ((a.high | 0) || (a.shad | 0) || (a.temp | 0) || (a.tint | 0) || (a.br | 0) || (a.con | 0) || (a.shp | 0));
   const filterStr = (a) => {
     if (!a) return 'none';
-    const br = 1 + (a.fill | 0) / 140;
+    const br = (1 + (a.fill | 0) / 140) * (1 + (a.br | 0) / 140);
+    const co = 1 + (a.con | 0) / 130;
     const sa = 1 + (a.sat | 0) / 100;
-    return `brightness(${br.toFixed(4)}) saturate(${sa.toFixed(4)})`;
+    return `brightness(${br.toFixed(4)}) contrast(${co.toFixed(4)}) saturate(${sa.toFixed(4)})`;
   };
 
   function adjPass(ctx, w, h, adj) {
@@ -702,6 +707,35 @@
         d[i] = lo256(r); d[i + 1] = lo256(g); d[i + 2] = lo256(b);
       }
     });
+    /* v3.24.0: Sharpness — a gentle 3x3 unsharp mask on luminance only,
+       amount scaled by the slider (0..100 → 0..0.9). Runs on its own pass
+       so the colour sliders above stay untouched. */
+    const shp = (adj.shp | 0) / 100;
+    if (shp > 0) {
+      const src = ctx.getImageData(0, 0, w, h);
+      const s = src.data, out = ctx.createImageData(w, h), o = out.data;
+      const amt = shp * 0.9;
+      const L = (x, y) => {
+        const i = (y * w + x) * 4;
+        return 0.299 * s[i] + 0.587 * s[i + 1] + 0.114 * s[i + 2];
+      };
+      for (let y = 0; y < h; y++) {
+        const yU = y > 0 ? y - 1 : 0, yD = y < h - 1 ? y + 1 : h - 1;
+        for (let x = 0; x < w; x++) {
+          const xL = x > 0 ? x - 1 : 0, xR = x < w - 1 ? x + 1 : w - 1;
+          const i = (y * w + x) * 4;
+          const c = L(x, y);
+          /* Laplacian kernel: centre weight 5, neighbours -1 (edges clamp) */
+          const lap = 5 * c - L(x, yU) - L(x, yD) - L(xL, y) - L(xR, y);
+          const addv = lap * amt;
+          o[i] = lo256(s[i] + addv);
+          o[i + 1] = lo256(s[i + 1] + addv);
+          o[i + 2] = lo256(s[i + 2] + addv);
+          o[i + 3] = s[i + 3];
+        }
+      }
+      ctx.putImageData(out, 0, 0);
+    }
   }
 
   /* ---------- v3.13.0 text renderer (shared) ----------
