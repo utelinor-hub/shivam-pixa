@@ -5,6 +5,15 @@
    knob is a real overlay element (donut ring + knob resting at 3 o'clock),
    dragging is native pointer-dragging anywhere on a photo.
 
+   v3.25.1 — the PICASA PAGE-FORMAT RULE (user bug report): changing the
+   page format (ratio / orientation / custom ratio) resizes ONLY the
+   background page box — every photo on it keeps its original on-screen
+   size and its place on the page, exactly like Picasa 3 where the purple
+   page grows/shrinks but the pictures on it stay untouched
+   (preservePixelsAcrossStageResize). Also: Create Collage + Close moved
+   to the BOTTOM of the settings sidebar (Picasa position) and the
+   Desktop Background + Reset buttons are gone (user request).
+
    v3.23.0 — the collage maker is SIDEBAR-FREE (user request): every control
    (Collage Type, Page Format + orientation, Borders, Background, Shadows,
    Captions, Create Collage / Reset / Desktop Background / Close) now lives
@@ -90,7 +99,7 @@
     type: q('#cType'), borders: q('#cBorders'),
     orientL: q('#cOrientL'), orientP: q('#cOrientP'),
     shadows: q('#cShadows'), captions: q('#cCaptions'),
-    cDesktop: q('#cDesktop'), cReset: q('#cReset'), cClose2: q('#cClose2'),
+    cClose2: q('#cClose2'),
     tabLib: q('#cTabLib'), tabCol: q('#cTabCol'),
     tabSettings: q('#cTabSettings'), tabClips: q('#cTabClips'),
     paneSettings: q('#cPaneSettings'), paneClips: q('#cPaneClips'),
@@ -414,6 +423,40 @@
   function keepInside(it) {
     const p = clampItemPos(it, it.x, it.y);
     it.x = p.x; it.y = p.y;
+  }
+
+  /* ============ v3.25.1: THE PICASA PAGE-FORMAT RULE ============
+     Changing the page (format ratio, orientation, custom ratio) resizes
+     ONLY the background page box. The photos on it keep their ORIGINAL
+     on-screen size and their place on the page — in Picasa 3 the purple
+     page grows or shrinks but the pictures on it never change size.
+     Implementation: snapshot every photo's pixel size + offset from the
+     page centre, let fn() resize the stage, then convert the SAME pixels
+     back into the new stage fractions. A photo that would stick out of
+     the smaller new page is clamped back inside (keepInside); one that
+     is larger than the whole new page eases its zoom down until it fits. */
+  function preservePixelsAcrossStageResize(fn) {
+    if (!stage || S.type !== 'pile') { fn(); return; }
+    const oldW = stage.clientWidth, oldH = stage.clientHeight;
+    if (!oldW || !oldH) { fn(); return; }
+    const snap = S.items.map((it) => ({
+      it,
+      w: it.wFrac * oldW, h: it.hFrac * oldH,
+      dx: it.x * oldW - oldW / 2, dy: it.y * oldH - oldH / 2
+    }));
+    fn();
+    const newW = stage.clientWidth || oldW, newH = stage.clientHeight || oldH;
+    for (const s of snap) {
+      s.it.wFrac = s.w / newW;
+      s.it.hFrac = s.h / newH;
+      const over = Math.max((s.w * s.it.scale) / newW, (s.h * s.it.scale) / newH);
+      if (over > 1) s.it.scale /= over;   /* fits the new page, never grows */
+      s.it.x = (newW / 2 + s.dx) / newW;
+      s.it.y = (newH / 2 + s.dy) / newH;
+      keepInside(s.it);
+    }
+    S.items.forEach(renderItem);
+    positionWheel();
   }
 
   /* ================= selection ================= */
@@ -1293,7 +1336,7 @@
     el.bgPhoto.checked = S.bgImage;
     el.bgSolid.checked = !S.bgImage;
     el.bg.value = S.bg;
-    el.cDesktop.disabled = el.cCreate.disabled = S.final;
+    el.cCreate.disabled = S.final;
     el.toolInfo.textContent = 'Drag to move \u2022 drag the wheel knob to rotate + resize \u2022 wheel resizes \u2022 Shift+wheel rotates \u2022 right-click for more';
     noteCount();
     if (S.noteBase && !S.final) {
@@ -1502,7 +1545,7 @@
       el.resultBar.hidden = false;
       el.resultNote.textContent = `Collage ready — ${W} \u00D7 ${H}px (${S.blob.type === 'image/png' ? 'PNG' : 'JPEG'}) — saved to the Collages folder`;
       el.note.textContent = 'Collage created — download it, save it to a folder, or go back to edit.';
-      el.cDesktop.disabled = el.cCreate.disabled = true;
+      el.cCreate.disabled = true;
       saveCollage();
       /* v3.22.2 (Picasa behaviour): Create Collage finishes the job in one
          click — the JPEG/PNG downloads immediately and the working auto-save
@@ -1558,14 +1601,15 @@
       /* v3.22.2: remember the last page format */
       try { localStorage.setItem('pixsa.collageFormat', el.fmt.value); } catch (e) {}
       el.custRow.hidden = fmtVal() !== 'custom';
-      updateStageGeometry();
+      /* v3.25.1: only the page box resizes — photos keep their original size */
+      preservePixelsAcrossStageResize(updateStageGeometry);
       if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
     });
     el.custApply.addEventListener('click', () => {
       const w = parseFloat(el.custW.value), h = parseFloat(el.custH.value);
       if (!(w > 0) || !(h > 0)) { toast('Ratio needs two numbers bigger than 0', 'err'); return; }
       S.custW = clamp(w, 0.2, 60); S.custH = clamp(h, 0.2, 60);
-      updateStageGeometry();
+      preservePixelsAcrossStageResize(updateStageGeometry);   /* v3.25.1 */
       if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
     });
     el.orientL.addEventListener('click', () => {
@@ -1573,7 +1617,8 @@
         S.landscape = true;
         /* v3.22.2: remember the last orientation */
         try { localStorage.setItem('pixsa.collageOrientation', 'landscape'); } catch (e) {}
-        updateUI(); updateStageGeometry(); if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
+        updateUI(); preservePixelsAcrossStageResize(updateStageGeometry);   /* v3.25.1 */
+        if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
       }
     });
     el.orientP.addEventListener('click', () => {
@@ -1581,7 +1626,8 @@
         S.landscape = false;
         /* v3.22.2: remember the last orientation */
         try { localStorage.setItem('pixsa.collageOrientation', 'portrait'); } catch (e) {}
-        updateUI(); updateStageGeometry(); if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
+        updateUI(); preservePixelsAcrossStageResize(updateStageGeometry);   /* v3.25.1 */
+        if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
       }
     });
     el.borders.addEventListener('click', (e) => {
@@ -1673,28 +1719,8 @@
       if (!el.paneClips.hidden) syncClips();
     }
 
-    /* sidebar 2x2: Desktop Background | Create Collage | Reset | Close */
-    el.cDesktop.addEventListener('click', async () => {
-      if (!S.items.length) { toast('Add photos first', 'err'); return; }
-      el.busy.hidden = false;
-      try {
-        const [W, H] = exportDims();
-        const c = renderExport(W, H);
-        const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.92));
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'shivam-pixa-desktop.jpg';
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 8000);
-        toast('Wallpaper image downloaded — right-click it and choose "Set as desktop background"', 'ok', 9000);
-      } finally { el.busy.hidden = true; }
-    });
-    el.cReset.addEventListener('click', () => {
-      if (S.final) return;
-      S.sel.clear(); S.hover = null;
-      applyLayout(true);
-      toast('Back to the automatic Picasa layout', 'ok', 2500);
-    });
+    /* v3.25.1: bottom action row — Create Collage | Close (the Desktop
+       Background and Reset buttons are gone per user request) */
     el.cClose2.addEventListener('click', close);
 
     /* Clips: photos from the tray + files straight from the PC */

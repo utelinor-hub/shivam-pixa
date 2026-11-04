@@ -810,7 +810,11 @@
     .c-sec select { width: 100%; font-size: 12px; padding: 5px 6px; border: 1px solid #c6c3bc; border-radius: 4px; background: #fff; color: #2c2f34; }
     .c-bgrow { display: flex; align-items: center; gap: 7px; }
     .c-chkrow2 { flex-direction: row; gap: 14px; align-items: center; }
-    .c-clipspane { margin-top: auto; display: flex; flex-direction: column; gap: 7px; min-height: 110px; border-top: 1px solid #d8d4cb; padding-top: 9px; }
+    .c-clipspane { display: flex; flex-direction: column; gap: 7px; min-height: 110px; border-top: 1px solid #d8d4cb; padding-top: 9px; }
+    /* v3.25.1: Create Collage + Close docked at the sidebar bottom —
+       sticky, so they stay visible even when the settings scroll */
+    .c-side-final { margin-top: auto; position: sticky; bottom: 0; z-index: 5; padding: 9px 0 2px; background: linear-gradient(#f8f6f2, #e9e6df); }
+    .c-side-final button { padding: 9px 6px; font-size: 12.5px; }
     .c-types { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
     .c-types button { text-align: left; padding: 7px 10px; font-size: 12.5px; border: 1px solid #c6c3bc; border-radius: 3px; background: linear-gradient(#fdfdfc, #edece7); }
     .c-types button.on { border-color: var(--accent); background: #dcebfb; font-weight: 700; }
@@ -1123,8 +1127,6 @@
         <button type="button" data-act="collage">Picture Collage&hellip;</button>
         <button type="button" data-act="collagetray">Collage from Tray&hellip;</button>
         <button type="button" data-act="poster">Make a Poster&hellip;</button>
-        <div class="sep"></div>
-        <button type="button" data-act="deskbg">Set Desktop Background&hellip;</button>
       </div>
     </div>
     <div class="menu" data-m="tools">
@@ -1246,7 +1248,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.25.0</span>
+      <span class="ver">v3.25.1</span>
     </span>
   </footer>
 
@@ -1880,10 +1882,6 @@
       <div class="c-body">
         <aside class="c-side" id="cPaneSettings">
           <div class="c-side-actions">
-            <button id="cDesktop" type="button" title="Use this collage as your desktop wallpaper image">Desktop Background</button>
-            <button id="cReset" type="button" title="Back to the automatic Picasa layout">Reset</button>
-            <button id="cCreate" type="button" class="accent" title="Finish and save this collage">Create Collage</button>
-            <button id="cClose2" type="button" title="Close the collage maker">Close</button>
             <button id="cTabClips" type="button" class="c-clipbtn on" title="Photo tray — photos waiting to join the collage" style="grid-column:1/-1">Clips (<span id="cClipCount">0</span>)</button>
           </div>
           <div class="c-sec">
@@ -1960,6 +1958,13 @@
           <div id="cPaneClips" class="c-clipspane">
             <div id="cClips" class="c-clips"></div>
             <button id="cAddPhotos" class="btn" type="button" style="width:100%;justify-content:center">Add More Photos&hellip;</button>
+          </div>
+          <!-- v3.25.1: Create Collage + Close at the sidebar BOTTOM, exactly
+               where Picasa 3 keeps them (Desktop Background + Reset removed
+               per user request) -->
+          <div class="c-side-actions c-side-final">
+            <button id="cCreate" type="button" class="accent" title="Finish and save this collage">Create Collage</button>
+            <button id="cClose2" type="button" title="Close the collage maker">Close</button>
           </div>
         </aside>
         <div class="c-prev">
@@ -4034,12 +4039,6 @@
           if (state.selArr.length && window.PixsaCollage) window.PixsaCollage.open(state.selArr);
           else toast('Add photos to the Photo Tray first (click photos or their + button)', 'err');
           break;
-        case 'deskbg':
-          if (window.PixsaCollage && (state.selArr.length || state.filtered.length)) {
-            window.PixsaCollage.open(state.selArr.length ? state.selArr : state.filtered);
-            toast('Press "Desktop Background" in the collage sidebar to set your wallpaper', 'ok', 4500);
-          } else toast('Import photos first', 'err');
-          break;
         case 'clear': els.clearBtn.click(); break;
         case 'edit': {
           if (!state.filtered.length) { toast('Import photos first', 'err'); break; }
@@ -4127,7 +4126,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.25.0', 'ok', 2500);
+          toast('S H I V A M PIXA v3.25.1', 'ok', 2500);
           break;
       }
     }
