@@ -5,6 +5,22 @@
    knob is a real overlay element (donut ring + knob resting at 3 o'clock),
    dragging is native pointer-dragging anywhere on a photo.
 
+   v3.25.3 — MULTI-SELECT FIX (user: 'do image ek sath selection nahi
+   hoti aur blue color aajata hai jaise browser me select karne par'):
+   • the rubber band now selects every photo it TOUCHES (rectangle
+     intersection with the rotated footprint). Before, a photo was only
+     picked when its exact centre landed inside the band, so dragging a
+     band across two photos often selected nothing at all.
+   • the band is no longer BLUE — it looked exactly like the browser's
+     text-selection highlight. It is now Picasa's thin dark dashed
+     rectangle, and the whole collage maker is user-select:none with
+     pointerdown preventDefault so the real browser highlight can never
+     appear anywhere.
+   • Shift+click toggles a photo like Ctrl/Cmd+click, and Ctrl+drag
+     extends the band (additive selection). The mouse wheel still
+     resizes the WHOLE selection together — both photos small/big at
+     once, exactly like Picasa's group zoom.
+
    v3.25.2 — the PICASA POINTER RULES (user request):
    • the mouse WHEEL now resizes from ANYWHERE on the page — no need to
      hover the photo or hit the tiny ring; a photo under the pointer wins,
@@ -254,6 +270,10 @@
     const style = document.createElement('style');
     style.id = 'picasa-collage-styles';
     style.textContent = `
+      /* v3.25.3: the collage maker never shows the browser's text-selection
+         highlight (user: 'blue color aajata hai jaise browser me select
+         karne par') — nothing inside the dialog is selectable text */
+      #collage, #collage * { user-select: none; -webkit-user-select: none; }
       /* the preview column centers its children — the stage must stretch */
       .c-prev .c-stage { align-self: stretch; width: auto; }
       #cStage {
@@ -269,10 +289,12 @@
       .c-item:active { cursor: grabbing; }
       .c-item img { display: block; width: 100%; height: 100%; pointer-events: none; }
       .c-item.selected { outline: 2px solid rgba(255, 153, 0, 0.9); outline-offset: -1px; }
-      /* v3.25.2: Picasa rubber-band selection on the empty page */
+      /* v3.25.3: Picasa rubber-band on the empty page — thin dark DASHED
+         rectangle with a neutral fill; the old solid blue looked exactly
+         like the browser's text-selection the user complained about */
       .c-rubber {
-        position: absolute; border: 1px solid #4a90d9;
-        background: rgba(74, 144, 217, 0.14); pointer-events: none; z-index: 99997;
+        position: absolute; border: 1px dashed #4a4a4a;
+        background: rgba(0, 0, 0, 0.06); pointer-events: none; z-index: 99997;
       }
       /* PICASA 3 AUTHENTIC CENTER ROUND WHEEL + KNOB (counter-rotated so the
          knob always rests at the ring's right edge — 3 o'clock) */
@@ -525,10 +547,12 @@
     it.el.addEventListener('pointerdown', (e) => {
       if (e.button === 2) return;
       e.stopPropagation();
+      e.preventDefault();   /* v3.25.3: never start the browser's text-selection */
       if (S.final) return;
       /* v3.25.2: Ctrl/Cmd+click toggles a photo in the multi-selection —
-         Picasa-style; drag still moves every selected photo together */
-      if (e.ctrlKey || e.metaKey) {
+         v3.25.3: Shift+click does the same (users try Shift first);
+         drag still moves every selected photo together */
+      if (e.ctrlKey || e.metaKey || e.shiftKey) {
         if (S.sel.has(it.id)) S.sel.delete(it.id); else S.sel.add(it.id);
         paintSel();
         return;
@@ -609,6 +633,7 @@
       const tgt = itemById(wheelEl.dataset.id);
       if (!tgt || S.final) return;
       e.stopPropagation();
+      e.preventDefault();   /* v3.25.3: no text-selection from the ring either */
       select(tgt);
       const rect = stage.getBoundingClientRect();
       const startX = e.clientX, startY = e.clientY;
@@ -1684,9 +1709,11 @@
       scheduleColSave();
     }, { passive: false });
     stage.addEventListener('pointerdown', (e) => {
-      if (S.final || e.button !== 0 || e.ctrlKey || e.metaKey) return;
+      if (S.final || e.button !== 0) return;
+      e.preventDefault();   /* v3.25.3: kill the browser's blue text-selection */
       const rect = stage.getBoundingClientRect();
       const sx = e.clientX, sy = e.clientY;
+      const additive = e.ctrlKey || e.metaKey;   /* v3.25.3: Ctrl+drag extends */
       let box = null;
       const onMove = (ev) => {
         if (!box && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
@@ -1702,17 +1729,25 @@
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
         if (!box) {                             /* plain click on the page */
-          if (S.sel.size) { S.sel.clear(); paintSel(); }
+          if (!additive && S.sel.size) { S.sel.clear(); paintSel(); }
           return;
         }
         box.remove();
+        /* v3.25.3 THE FIX: a photo is selected when the band TOUCHES it —
+           rectangle intersection with the photo's rotated footprint — not
+           only when its exact centre happens to land inside the band.
+           Dragging a band across two photos now selects BOTH. */
         const rx1 = Math.min(sx, ev.clientX) - rect.left, rx2 = Math.max(sx, ev.clientX) - rect.left;
         const ry1 = Math.min(sy, ev.clientY) - rect.top, ry2 = Math.max(sy, ev.clientY) - rect.top;
+        const base = additive ? new Set(S.sel) : new Set();
         S.sel.clear();
         for (const it of S.items) {
+          const { ex, ey } = itemExtent(it);
           const cx = it.x * rect.width, cy = it.y * rect.height;
-          if (cx >= rx1 && cx <= rx2 && cy >= ry1 && cy <= ry2) S.sel.add(it.id);
+          if (Math.min(cx + ex, rx2) - Math.max(cx - ex, rx1) > 0 &&
+              Math.min(cy + ey, ry2) - Math.max(cy - ey, ry1) > 0) S.sel.add(it.id);
         }
+        for (const id of base) S.sel.add(id);
         paintSel();
         if (S.sel.size) scheduleColSave();
       };
@@ -1788,9 +1823,10 @@
       }
     });
 
-    /* blank stage click deselects (the prototype's way) */
+    /* blank stage click deselects (the prototype's way); v3.25.3:
+       Ctrl/Cmd+click is the additive rubber band and must NOT clear */
     stage.addEventListener('pointerdown', (e) => {
-      if (e.target === stage) selectNone();
+      if (e.target === stage && !e.ctrlKey && !e.metaKey) selectNone();
     });
 
     /* keyboard: Delete removes, arrows nudge, ]/[ z-order, Escape clears */
