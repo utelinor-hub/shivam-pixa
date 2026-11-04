@@ -1279,7 +1279,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.25.9</span>
+      <span class="ver">v3.26.0</span>
     </span>
   </footer>
 
@@ -1698,16 +1698,115 @@
             <button id="selDeselect" class="fixbtn" type="button" disabled style="margin-top:5px">Deselect (Esc)</button>
             <p class="hint">Magic Wand = select by colour &bull; Delete removes text/objects and fills the spot with the surrounding colour &bull; Copy &rarr; Paste clones a part &bull; drag inside a selection to move those pixels &bull; Delete key also works.</p>
           </div>
+          <!-- v3.26.0: Tuning tab redesigned — Smart Studio AI (jewelry &
+               cosmetics auto-fixes) on top, PicsArt Pro Adjust sliders below
+               (Clarity joins, Highlights/Shadows go bidirectional -100..100,
+               Fill Light becomes a hidden legacy input so old saved edits
+               keep loading). The histogram stays in the shared box below,
+               visible on every tab. -->
           <div id="tab-tuning" class="e-tab">
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5v15M4.5 12h15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>Brightness</span><input id="adBr" type="range" min="-100" max="100" value="0" /><span class="val" id="vBr">0</span></div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.4" fill="currentColor"/></svg>Contrast</span><input id="adCon" type="range" min="-100" max="100" value="0" /><span class="val" id="vCon">0</span></div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 19.5L13 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 3.5v4M14.5 5.5h4M19 10.5v3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Sharpness</span><input id="adShp" type="range" min="0" max="100" value="0" /><span class="val" id="vShp">0</span></div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M5.6 18.4l1.7-1.7M16.7 7.3l1.7-1.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Fill Light</span><input id="adFill" type="range" min="0" max="100" value="0" /><span class="val" id="vFill">0</span></div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 17.5a5 5 0 00-10 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 8.5V2.5M5.5 11L7 12.5M18.5 11L17 12.5M2.5 17.5h2M19.5 17.5h2M2.5 21h19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Highlights</span><input id="adHigh" type="range" min="0" max="100" value="0" /><span class="val" id="vHigh">0</span></div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 13.2A8.5 8.5 0 1110.8 3.5a7 7 0 009.7 9.7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Shadows</span><input id="adShad" type="range" min="0" max="100" value="0" /><span class="val" id="vShad">0</span></div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 14.8V4.5a2.5 2.5 0 00-5 0v9.3a4.6 4.6 0 105 0z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Temperature</span><input id="adTemp" type="range" min="-100" max="100" value="0" /><span class="val" id="vTemp">0</span></div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5s6 6.6 6 10.4a6 6 0 11-12 0c0-3.8 6-10.4 6-10.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Tint</span><input id="adTint" type="range" min="-100" max="100" value="0" /><span class="val" id="vTint">0</span></div>
-            <div class="srow"><span class="sname"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.2 15.9A10 10 0 118.1 2.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M22 12A10 10 0 0012 2v10z" fill="currentColor"/></svg>Saturation</span><input id="adSat" type="range" min="-100" max="100" value="0" /><span class="val" id="vSat">0</span></div>
+            <div class="sechead">Smart Studio AI (Jewelry &amp; Cosmetics)</div>
+            <div class="toolgrid" style="margin-bottom: 10px;">
+              <button id="btnAiAutoAdjust" class="fixbtn" type="button" style="background:linear-gradient(#2b7cd3,#1e5fa8);color:#fff;border-color:#184d8a;font-weight:700;" title="AI analyzes lighting, shadows, yellow cast, and clarity automatically">
+                <svg viewBox="0 0 24 24" aria-hidden="true" style="opacity:1"><path d="M12 2.5l2.2 5.3 5.3 2.2-5.3 2.2L12 17.5l-2.2-5.3-5.3-2.2 5.3-2.2zM18.5 15.5l1 2.3 2.3 1-2.3 1-1 2.3-1-2.3-2.3-1 2.3-1z" fill="currentColor"/></svg>
+                AI Auto Adjust
+              </button>
+              <button id="btnFixYellow" class="fixbtn" type="button" style="background:linear-gradient(#fffdf5,#f3e8c8);border-color:#d4b86a;color:#5c4508;font-weight:600;" title="Remove indoor yellow light cast and make whites natural">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                Natural White (No Yellow)
+              </button>
+            </div>
+
+            <div class="sechead">PicsArt Pro Adjust</div>
+
+            <!-- 1. Brightness -->
+            <div class="srow">
+              <span class="sname">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.5 1.5M16.9 16.9l1.5 1.5M5.6 18.4l1.5-1.5M16.9 7.1l1.5-1.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                Brightness
+              </span>
+              <input id="adBright" type="range" min="-100" max="100" value="0" />
+              <span class="val" id="vBright">0</span>
+            </div>
+
+            <!-- 2. Contrast -->
+            <div class="srow">
+              <span class="sname">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.8a8.2 8.2 0 010 16.4z" fill="currentColor"/></svg>
+                Contrast
+              </span>
+              <input id="adCon" type="range" min="-100" max="100" value="0" />
+              <span class="val" id="vCon">0</span>
+            </div>
+
+            <!-- 3. Clarity (Detail & Stone Shine) -->
+            <div class="srow">
+              <span class="sname">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L4 9l8 12 8-12-8-6zM4 9h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                Clarity
+              </span>
+              <input id="adClar" type="range" min="-100" max="100" value="0" />
+              <span class="val" id="vClar">0</span>
+            </div>
+
+            <!-- 4. Saturation -->
+            <div class="srow">
+              <span class="sname">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5s6 6.6 6 10.4a6 6 0 11-12 0c0-3.8 6-10.4 6-10.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                Saturation
+              </span>
+              <input id="adSat" type="range" min="-100" max="100" value="0" />
+              <span class="val" id="vSat">0</span>
+            </div>
+
+            <!-- 5. Highlights -->
+            <div class="srow">
+              <span class="sname">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 17.5a5 5 0 00-10 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 8.5V2.5M5.5 11L7 12.5M18.5 11L17 12.5M2.5 17.5h2M19.5 17.5h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                Highlights
+              </span>
+              <input id="adHigh" type="range" min="-100" max="100" value="0" />
+              <span class="val" id="vHigh">0</span>
+            </div>
+
+            <!-- 6. Shadows -->
+            <div class="srow">
+              <span class="sname">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 13.2A8.5 8.5 0 1110.8 3.5a7 7 0 009.7 9.7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                Shadows
+              </span>
+              <input id="adShad" type="range" min="-100" max="100" value="0" />
+              <span class="val" id="vShad">0</span>
+            </div>
+
+            <!-- 7. Warmth (Yellow / Blue Balance) -->
+            <div class="srow">
+              <span class="sname">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 14.8V4.5a2.5 2.5 0 00-5 0v9.3a4.6 4.6 0 105 0z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                Warmth
+              </span>
+              <input id="adTemp" type="range" min="-100" max="100" value="0" />
+              <span class="val" id="vTemp">0</span>
+            </div>
+
+            <!-- 8. Tint (Green / Magenta Balance) -->
+            <div class="srow">
+              <span class="sname">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="15" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+                Tint
+              </span>
+              <input id="adTint" type="range" min="-100" max="100" value="0" />
+              <span class="val" id="vTint">0</span>
+            </div>
+
+            <!-- Hidden legacy Fill Light input so existing editor.js references never break -->
+            <input id="adFill" type="range" min="0" max="100" value="0" hidden />
+            <span id="vFill" hidden>0</span>
+
+            <div class="mrow" style="margin-top: 12px;">
+              <button id="btnResetTuning" class="btn" type="button">Reset Adjustments</button>
+            </div>
+            <p class="hint">Double-click any slider to reset it to 0 &bull; <b>AI Auto Adjust</b> optimizes lighting, stone shine &amp; colors for jewelry and cosmetics.</p>
           </div>
           <!-- v3.25.5: #tab-effects removed -->
         </div>

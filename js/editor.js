@@ -183,13 +183,20 @@
     toolBox: q('#eToolBox'), zoom: q('#eZoom'), fxGrid: q('#fxGrid')
   };
 
-  /* v3.24.0: Brightness (br), Contrast (con) and Sharpness (shp) joined the
-     Picasa Tuning panel — wired exactly like the six original sliders. */
-  const ADJ_IDS = [['adFill', 'vFill', 'fill'], ['adHigh', 'vHigh', 'high'], ['adShad', 'vShad', 'shad'],
-                   ['adTemp', 'vTemp', 'temp'], ['adTint', 'vTint', 'tint'], ['adSat', 'vSat', 'sat'],
-                   ['adBr', 'vBr', 'br'], ['adCon', 'vCon', 'con'], ['adShp', 'vShp', 'shp']];
+  /* v3.26.0: Tuning tab redesigned — the slider set is now the PicsArt Pro
+     Adjust row (Brightness / Contrast / Clarity / Saturation / Highlights /
+     Shadows / Warmth / Tint) under the Smart Studio AI buttons. adBright
+     replaces adBr, adClar is NEW, Fill Light (adFill) stays wired as a
+     HIDDEN legacy input so old saved edits keep loading, and Sharpness
+     (shp) is no longer in the panel — its value still applies to sessions
+     that saved one, and the Reset button clears it. */
+  const ADJ_IDS = [['adFill', 'vFill', 'fill'], ['adBright', 'vBright', 'br'], ['adCon', 'vCon', 'con'],
+                   ['adClar', 'vClar', 'clar'], ['adSat', 'vSat', 'sat'], ['adHigh', 'vHigh', 'high'],
+                   ['adShad', 'vShad', 'shad'], ['adTemp', 'vTemp', 'temp'], ['adTint', 'vTint', 'tint']];
 
-  const ADJ0 = { fill: 0, high: 0, shad: 0, temp: 0, tint: 0, sat: 0, br: 0, con: 0, shp: 0 };
+  const ADJ0 = { fill: 0, high: 0, shad: 0, temp: 0, tint: 0, sat: 0, br: 0, con: 0, clar: 0, shp: 0 };
+  /* v3.26.0: every key the Tuning tab can touch (incl. hidden/legacy ones) */
+  const TUNING_KEYS = ['fill', 'br', 'con', 'clar', 'sat', 'high', 'shad', 'temp', 'tint', 'shp'];
   const TEXT0 = {
     size: 7, color: '#ffffff', font: '"Segoe UI", sans-serif', rot: 0, alpha: 100,
     bold: false, italic: false, underline: false, stroke: '#000000', strokeW: 0, shadow: true, align: 'center'
@@ -509,7 +516,9 @@
       const blob = await new Promise((r) => saveCv.toBlob(r, 'image/jpeg', 0.86));
       if (!blob) return;
       const stickers = E.stickers.map((s) => ({ sid: s.sid, blob: s.blob }));
-      await P.idbSet('edits', k, { ops: E.ops, adj: E.adj, stickers, previewBlob: blob, ts: Date.now() });
+      /* v:2 marks sessions saved AFTER the Highlights slider went
+         bidirectional (-100..100) — see the migration in open() below */
+      await P.idbSet('edits', k, { v: 2, ops: E.ops, adj: E.adj, stickers, previewBlob: blob, ts: Date.now() });
       P.invalidateThumb(E.photo);
       flashSaved();
     } catch (e) { /* storage full etc. — stay silent, the Save button still works */ }
@@ -535,6 +544,7 @@
   function wireSliders() {
     for (const [inp, lab, key] of ADJ_IDS) {
       const el = q('#' + inp);
+      if (!el) continue;   /* v3.26.0: hidden/removed sliders must never crash wiring */
       el.addEventListener('input', () => {
         E.adj[key] = +el.value;
         q('#' + lab).textContent = el.value;
@@ -1446,6 +1456,164 @@
   }
 
   /* ======================================================================
+     v3.26.0 — SMART STUDIO AI (jewelry & cosmetics)
+     Two one-click fixes on the Tuning tab, both driven by a pixel
+     analysis of the CURRENT photo (the committed base, before tuning):
+
+     • AI Auto Adjust — measures the midtone, the histogram spread,
+       crushed shadows, blown highlights, the yellow/green cast of the
+       bright (near-neutral) pixels, the average saturation and the edge
+       energy, then SETS the PicsArt Pro sliders so the user can
+       fine-tune from there (PicsArt "Auto" behaviour — nothing is baked
+       into the ops stack, every slider stays editable and undoable).
+     • Natural White — a focused yellow-cast remover for indoor shop
+       lighting: it measures the BRIGHT pixels only (the whites that
+       show the cast) and moves Warmth/Tint until those whites come
+       back neutral.
+     ====================================================================== */
+  function analyzePhoto(cv) {
+    const SC = 150 / Math.max(cv.width, cv.height);
+    const t = FX.mkCanvas(Math.max(1, Math.round(cv.width * SC)), Math.max(1, Math.round(cv.height * SC)));
+    const tx = t.getContext('2d');
+    tx.drawImage(cv, 0, 0, t.width, t.height);
+    const d = tx.getImageData(0, 0, t.width, t.height).data;
+    const w = t.width, h = t.height, N = w * h;
+    const hist = new Uint32Array(256);
+    const lum = new Float32Array(N);
+    let sr = 0, sg = 0, sb = 0, sn = 0;      /* bright-pixel channel sums */
+    let satSum = 0;
+    for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+      const r = d[i], g = d[i + 1], b = d[i + 2];
+      const l = 0.299 * r + 0.587 * g + 0.114 * b;
+      lum[p] = l;
+      hist[l | 0]++;
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      satSum += mx ? (mx - mn) / mx : 0;
+      if (l > 110) { sr += r; sg += g; sb += b; sn++; }
+    }
+    const pct = (frac) => {
+      const target = N * frac;
+      let acc = 0;
+      for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= target) return v; }
+      return 255;
+    };
+    let mean = 0;
+    for (let v = 0; v < 256; v++) mean += v * hist[v];
+    mean /= N;
+    /* edge energy (softness) from the Laplacian of the downsampled luma —
+       soft indoor shots get more Clarity (stone shine) than crisp ones */
+    let lapSum = 0, lapN = 0;
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const p = y * w + x;
+        lapSum += Math.abs(4 * lum[p] - lum[p - 1] - lum[p + 1] - lum[p - w] - lum[p + w]);
+        lapN++;
+      }
+    }
+    return {
+      N, pct, mean, lapAvg: lapSum / Math.max(1, lapN), mSat: satSum / N,
+      br: sn ? sr / sn : 0, bg: sn ? sg / sn : 0, bb: sn ? sb / sn : 0, brightN: sn
+    };
+  }
+
+  function aiAutoAdjust() {
+    if (!E.open || !E.src) return;
+    setBusy(true);
+    setTimeout(() => {
+      try {
+        const A = analyzePhoto(ensureBase());
+        const lo = A.pct(0.01), hi = A.pct(0.99), med = A.pct(0.5);
+        const p25 = A.pct(0.25), p97 = A.pct(0.97);
+        const a = { br: 0, con: 0, clar: 0, sat: 0, high: 0, shad: 0, temp: 0, tint: 0 };
+        /* midtone → ~124 (jewelry shots are often a touch dim indoors) */
+        a.br = Math.round(clamp((124 - med) * 0.6, -40, 45));
+        /* widen a flat histogram, gently */
+        a.con = Math.round(clamp((215 - (hi - lo)) * 0.32, -15, 40));
+        /* lift crushed darks (a negative Shadows would deepen them) */
+        a.shad = Math.round(clamp((46 - p25) * 0.85, 0, 45));
+        /* protect the shiny stones: recover anything above ~244 */
+        a.high = -Math.round(clamp((p97 - 244) * 1.4, 0, 45));
+        /* yellow/green cast measured on the bright near-neutral pixels.
+           v3.26.0: the slider response is SOLVED, not guessed — temp acts
+           as r*(1+tp), b*(1−tp) with tp = temp/250, so the temp that
+           zeroes the yellow cast is tp = −castY / (r/2 + b); tint then
+           removes the green excess that remains. AI keeps a gentle 80%. */
+        if (A.brightN > A.N * 0.02) {
+          const castY = (A.br + A.bg) / 2 - A.bb;
+          const tp = -castY / Math.max(40, A.br / 2 + A.bb);
+          a.temp = Math.round(clamp(tp * 250 * 0.8, -45, 30));
+          const rAfter = A.br * (1 + tp), bAfter = A.bb * (1 - tp);
+          const tn = (A.bg - (rAfter + bAfter) / 2) / Math.max(20, A.bg);
+          a.tint = Math.round(clamp(tn * 300 * 0.8, -40, 40));
+        }
+        /* gentle colour pop only when the photo looks dull */
+        a.sat = Math.round(clamp((0.30 - A.mSat) * 140, -10, 28));
+        /* stone shine: Clarity scaled by how soft the edges are */
+        a.clar = Math.round(clamp((10 - A.lapAvg) * 3.2, 6, 34));
+        pushUndo(JSON.stringify({ ops: E.ops, adj: E.prevAdj }));
+        Object.assign(E.adj, a);
+        E.prevAdj = { ...E.adj };
+        resetAdjUI();
+        renderPreview();
+        scheduleEditSave();
+        toast('AI Auto Adjust applied — fine-tune with the sliders below', 'ok', 3500);
+      } catch (e) {
+        toast('AI Auto Adjust failed on this photo', 'err', 3000);
+      } finally {
+        setBusy(false);
+      }
+    }, 30);
+  }
+
+  function naturalWhite() {
+    if (!E.open || !E.src) return;
+    setBusy(true);
+    setTimeout(() => {
+      try {
+        const A = analyzePhoto(ensureBase());
+        if (A.brightN < 40) { toast('No bright whites found — nothing to fix', 'ok', 3000); return; }
+        const castY = (A.br + A.bg) / 2 - A.bb;      /* + = yellow cast */
+        if (Math.abs(castY) < 3 && Math.abs(A.bg - (A.br + A.bb) / 2) < 3) {
+          toast('Whites already look natural — no yellow cast found', 'ok', 3000);
+          return;
+        }
+        pushUndo(JSON.stringify({ ops: E.ops, adj: E.prevAdj }));
+        /* v3.26.0: solve the exact slider values instead of a linear guess —
+           temp acts as r*(1+tp), b*(1−tp) with tp = temp/250, so the temp
+           that makes the bright whites neutral is tp = −castY / (r/2 + b);
+           tint then removes the green excess left after the temp step. */
+        const tp = -castY / Math.max(40, A.br / 2 + A.bb);
+        E.adj.temp = Math.round(clamp(tp * 250, -80, 12));
+        const rAfter = A.br * (1 + tp), bAfter = A.bb * (1 - tp);
+        const tn = (A.bg - (rAfter + bAfter) / 2) / Math.max(20, A.bg);
+        E.adj.tint = Math.round(clamp(tn * 300, -60, 60));
+        E.prevAdj = { ...E.adj };
+        resetAdjUI();
+        renderPreview();
+        scheduleEditSave();
+        toast('Natural white applied — yellow cast removed', 'ok', 3000);
+      } catch (e) {
+        toast('Natural White failed on this photo', 'err', 3000);
+      } finally {
+        setBusy(false);
+      }
+    }, 30);
+  }
+
+  function resetTuning() {
+    if (!E.open) return;
+    const any = TUNING_KEYS.some((k) => (E.adj[k] | 0) !== 0);
+    if (!any) { toast('Adjustments are already at zero', 'ok', 1600); return; }
+    pushUndo(JSON.stringify({ ops: E.ops, adj: E.prevAdj }));
+    for (const k of TUNING_KEYS) E.adj[k] = 0;
+    E.prevAdj = { ...E.adj };
+    resetAdjUI();
+    renderPreview();
+    scheduleEditSave();
+    toast('Adjustments reset', 'ok', 1600);
+  }
+
+  /* ======================================================================
      v3.14.0 — PAINT (Windows-11-Paint style) & SELECT (Windows style)
      Paint: pencil / brush / eraser strokes, flood fill, colour picker and
      6 shapes with Color 1 (outline) / Color 2 (fill) — all non-destructive
@@ -2186,6 +2354,11 @@
       if (ses && Array.isArray(ses.ops) && ses.ops.length) {
         E.ops = ses.ops;
         E.adj = Object.assign({ ...ADJ0 }, ses.adj || {});
+        /* v3.26.0: Highlights slider semantics flipped (old 0..100 recovery →
+           new -100..100 PicsArt-style, negative = recover). Sessions saved
+           before v:2 with a positive Highlights value get the sign flipped
+           ONCE so they keep looking exactly the same. */
+        if (ses.adj && ses.adj.high > 0 && !ses.v) E.adj.high = -ses.adj.high;
         E.prevAdj = { ...E.adj };
         for (const sd of (ses.stickers || [])) {
           if (!sd || !sd.blob) continue;
@@ -2325,6 +2498,14 @@
   buildFx();
   wireSliders();
   wireFxStr();
+
+  /* v3.26.0: Smart Studio AI buttons + Reset Adjustments (Tuning tab) */
+  const btnAI = q('#btnAiAutoAdjust');
+  if (btnAI) btnAI.addEventListener('click', aiAutoAdjust);
+  const btnYellow = q('#btnFixYellow');
+  if (btnYellow) btnYellow.addEventListener('click', naturalWhite);
+  const btnResetT = q('#btnResetTuning');
+  if (btnResetT) btnResetT.addEventListener('click', resetTuning);
 
   /* ---------- v3.21.0 Cutout (Remove Background) ----------
      The cutout works on the current committed base (ops, no text, no

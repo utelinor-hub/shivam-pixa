@@ -675,7 +675,7 @@
      (br), Contrast (con) and Sharpness (shp). Brightness/contrast ride the
      CSS-filter pass (fast), sharpness is an unsharp-mask convolution in the
      pixel pass (only runs when the slider is actually moved off 0). */
-  const adjHas = (a) => a && ((a.high | 0) || (a.shad | 0) || (a.temp | 0) || (a.tint | 0) || (a.br | 0) || (a.con | 0) || (a.shp | 0));
+  const adjHas = (a) => a && ((a.high | 0) || (a.shad | 0) || (a.temp | 0) || (a.tint | 0) || (a.br | 0) || (a.con | 0) || (a.clar | 0) || (a.shp | 0));
   const filterStr = (a) => {
     if (!a) return 'none';
     const br = (1 + (a.fill | 0) / 140) * (1 + (a.br | 0) / 140);
@@ -695,12 +695,17 @@
         if (tn) { g = g * (1 - tn); r = r * (1 + tn * 0.18); }
         if (hi || sh) {
           const l = 0.299 * r + 0.587 * g + 0.114 * b;
+          /* v3.26.0: PicsArt semantics — positive Highlights BRIGHTEN the
+             bright areas, negative Highlights recover them (old 0..100
+             recovery-slider sessions are sign-migrated in editor.js).
+             Recovery keeps the old 0.85 strength; the boost side is a
+             touch gentler (0.7). */
           if (hi && l > 128) {
-            const k = 1 - ((l - 128) / 127) * hi * 0.85;
+            const k = 1 + ((l - 128) / 127) * hi * (hi < 0 ? 0.85 : 0.7);
             r *= k; g *= k; b *= k;
           }
           if (sh && l < 128) {
-            const add = ((128 - l) / 128) * sh * 82;
+            const add = ((128 - l) / 128) * sh * 82;   /* + lifts, − deepens */
             r += add; g += add; b += add;
           }
         }
@@ -733,6 +738,59 @@
           o[i + 2] = lo256(s[i + 2] + addv);
           o[i + 3] = s[i + 3];
         }
+      }
+      ctx.putImageData(out, 0, 0);
+    }
+    /* v3.26.0: Clarity — PicsArt-style midtone local contrast. A
+       size-scaled box blur of the luminance is subtracted (large-radius
+       unsharp mask) and the recovered local detail is re-added with a
+       midtone mask, so shiny stone highlights and deep shadows stay
+       protected while the midtones get the punch. Negative values soften
+       the look (a gentle glow) instead of sharpening. */
+    const clar = (adj.clar | 0) / 100;
+    if (clar) {
+      const clampi = (v, a, b) => v < a ? a : v > b ? b : v;
+      const src = ctx.getImageData(0, 0, w, h);
+      const s = src.data, out = ctx.createImageData(w, h), o = out.data;
+      const L = new Float32Array(w * h);
+      for (let p = 0, i = 0; p < L.length; p++, i += 4) {
+        L[p] = 0.299 * s[i] + 0.587 * s[i + 1] + 0.114 * s[i + 2];
+      }
+      const blurred = new Float32Array(L);
+      const rad = Math.max(3, Math.round(Math.min(w, h) / 90));
+      const div = rad * 2 + 1;
+      const tmp = new Float32Array(w * h);
+      for (let it = 0; it < 2; it++) {          /* 2 box passes ≈ smooth falloff */
+        for (let y = 0; y < h; y++) {
+          const row = y * w;
+          let sum = 0;
+          for (let x = -rad; x <= rad; x++) sum += blurred[row + clampi(x, 0, w - 1)];
+          for (let x = 0; x < w; x++) {
+            tmp[row + x] = sum / div;
+            sum += blurred[row + clampi(x + rad + 1, 0, w - 1)] - blurred[row + clampi(x - rad, 0, w - 1)];
+          }
+        }
+        for (let x = 0; x < w; x++) {
+          let sum = 0;
+          for (let y = -rad; y <= rad; y++) sum += tmp[clampi(y, 0, h - 1) * w + x];
+          for (let y = 0; y < h; y++) {
+            blurred[y * w + x] = sum / div;
+            sum += tmp[clampi(y + rad + 1, 0, h - 1) * w + x] - tmp[clampi(y - rad, 0, h - 1) * w + x];
+          }
+        }
+      }
+      const amt = clar * 0.9;
+      for (let p = 0, i = 0; p < L.length; p++, i += 4) {
+        const l = L[p];
+        const detail = l - blurred[p];
+        /* midtone mask: full effect in the middle, 30% at the extremes */
+        const mask = 0.3 + 0.7 * (1 - Math.abs(l - 128) / 128);
+        const nl = l + detail * amt * mask;
+        const k = l > 4 ? nl / l : 1;
+        o[i] = lo256(s[i] * k);
+        o[i + 1] = lo256(s[i + 1] * k);
+        o[i + 2] = lo256(s[i + 2] * k);
+        o[i + 3] = s[i + 3];
       }
       ctx.putImageData(out, 0, 0);
     }
