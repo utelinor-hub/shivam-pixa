@@ -831,7 +831,7 @@
     }
     .fxpager button:hover:not(:disabled) { border-color: var(--accent); background: #dcebfb; }
     .fxpager button:disabled { opacity: .4; cursor: default; }
-    .c-prev { flex: 1; display: grid; place-items: center; background: #4d5055; padding: 14px; position: relative; overflow: auto; }
+    .c-prev { flex: 1; display: grid; place-items: center; background: #4d5055; padding: 6px; position: relative; overflow: auto; }
     .c-canvaswrap { position: relative; display: inline-block; line-height: 0; max-width: 100%; max-height: 100%; }
     /* v3.19.0: the collage stage is DOM now — styles come from collage.js */
     /* v3.12.0: Picasa "Picture Collage" engine — full-screen editor with a
@@ -886,19 +886,7 @@
     .bs-prompt { width: 100%; box-sizing: border-box; font-size: 11.5px; padding: 5px 7px; border: 1px solid #bcb9b2; border-radius: 3px; margin: 2px 0 6px; background: #fff; color: #2c2f34; }
     #bsGen { width: 100%; }
     #bsApply { padding: 7px 16px; font-weight: 600; }
-    .c-tools {
-      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-      padding: 6px 12px; border-bottom: 1px solid #c8c5be;
-      background: linear-gradient(#f6f5f3, #e7e5e0);
-    }
-    .c-tools button {
-      padding: 5px 12px; font-size: 12.5px; color: #2c2f34;
-      border: 1px solid #bcb9b2; border-radius: 3px;
-      background: linear-gradient(#fdfdfc, #eceae5);
-    }
-    .c-tools button:hover { border-color: var(--accent); background: #eaf2fc; }
-    .c-tsep { width: 1px; height: 20px; background: #c4c1ba; margin: 0 4px; }
-    .c-toolinfo { margin-left: auto; font-size: 11.5px; color: #757a82; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* v3.25.2: the toolbar strip was removed — the page box gets the room */
     .c-count { margin-left: auto; font-size: 12px; font-weight: 400; color: #6d7076; }
     #collage .m-head .icobtn { margin-left: 0; }
     /* ===== v3.17.0: Picasa 3 replica — tabs, border icons, orientation, grid4, clips, ctx menu ===== */
@@ -924,7 +912,7 @@
     .c-grid4 button:hover { border-color: var(--accent); background: #eaf2fc; }
     .c-grid4 button.accent { background: var(--accent); border-color: var(--accent-deep); color: #fff; font-weight: 700; }
     .c-grid4 button.accent:hover { background: var(--accent-deep); }
-    .c-stage { flex: 1; display: grid; place-items: center; min-height: 0; padding: 10px 14px; }
+    .c-stage { flex: 1; display: grid; place-items: center; min-height: 0; padding: 4px 8px; }
     .c-prev { flex-direction: column; display: flex; }
     .c-below { display: flex; gap: 8px; justify-content: center; padding: 2px 12px 12px; flex-wrap: wrap; }
     .c-below .btn { min-width: 0; padding: 7px 13px; font-size: 12.5px; }
@@ -961,7 +949,6 @@
     @media (max-width: 900px) {
       .e-panel { width: 258px; }
       .c-side { width: 224px; }
-      .c-toolinfo { display: none; }
     }
 
     /* narrower desktops: keep the Picasa left rail but slim it down */
@@ -1248,7 +1235,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.25.1</span>
+      <span class="ver">v3.25.2</span>
     </span>
   </footer>
 
@@ -1926,10 +1913,15 @@
           </div>
           <div class="c-sec">
             <span class="c-lab">Borders</span>
+            <!-- v3.25.2: None | Border with a CUSTOM COLOR (Polaroid removed
+                 per user request, default is None) -->
             <div class="c-borders" id="cBorders">
-              <button type="button" data-b="none" title="No border"><span class="bico"></span>None</button>
-              <button type="button" data-b="white" class="on" title="Classic white photo border"><span class="bico bico-white"></span>White</button>
-              <button type="button" data-b="polaroid" title="Instant Polaroid — thick bottom border"><span class="bico bico-pol"></span>Polaroid</button>
+              <button type="button" data-b="none" class="on" title="No border"><span class="bico"></span>None</button>
+              <button type="button" data-b="white" title="Photo border — pick any color below"><span class="bico bico-white"></span>Border</button>
+            </div>
+            <div class="c-bgrow" style="margin-top:6px">
+              <span class="c-lab" style="text-transform:none;letter-spacing:0">Color</span>
+              <input id="cBorderColor" type="color" value="#ffffff" style="height:24px;width:34px;padding:1px" aria-label="Border color" title="Border color — works when a border is on" />
             </div>
           </div>
           <div class="c-sec">
@@ -1951,8 +1943,7 @@
             <label class="chkrow"><input type="radio" name="cbgm" id="cBgPhoto" /> Use Image</label>
           </div>
           <div class="c-sec c-chkrow2">
-            <label class="chkrow"><input type="checkbox" id="cShadows" checked /> Shadows</label>
-            <label class="chkrow"><input type="checkbox" id="cCaptions" /> Captions</label>
+            <label class="chkrow"><input type="checkbox" id="cShadows" /> Shadows</label>
           </div>
           <button id="cTabSettings" type="button" hidden aria-hidden="true" tabindex="-1"></button>
           <div id="cPaneClips" class="c-clipspane">
@@ -1968,14 +1959,10 @@
           </div>
         </aside>
         <div class="c-prev">
-          <div class="c-tools">
-            <button id="cSelAll" type="button">Select All</button>
-            <button id="cSelNone" type="button">Select None</button>
-            <button id="cRemove" type="button">Remove</button>
-            <span class="c-tsep"></span>
-            <button id="cSetBg" type="button">Set as Background</button>
-            <span id="cToolInfo" class="c-toolinfo">Drag to move &bull; drag the wheel knob to rotate + resize &bull; wheel resizes &bull; right-click for more</span>
-          </div>
+          <!-- v3.25.2: the top toolbar (Select All / Select None / Remove /
+               Set as Background) is GONE per user request — the page box gets
+               the full area now; those actions live in the right-click menu
+               (Set as Background, Remove) and Ctrl+A / drag-rubber-band -->
           <div class="c-stage">
             <div id="cWrap" class="c-canvaswrap">
               <div id="cStage"></div>
@@ -4126,7 +4113,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.25.1', 'ok', 2500);
+          toast('S H I V A M PIXA v3.25.2', 'ok', 2500);
           break;
       }
     }

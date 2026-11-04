@@ -5,6 +5,22 @@
    knob is a real overlay element (donut ring + knob resting at 3 o'clock),
    dragging is native pointer-dragging anywhere on a photo.
 
+   v3.25.2 — the PICASA POINTER RULES (user request):
+   • the mouse WHEEL now resizes from ANYWHERE on the page — no need to
+     hover the photo or hit the tiny ring; a photo under the pointer wins,
+     otherwise the whole selection resizes/rotates TOGETHER (Shift+wheel).
+   • real Picasa MULTI-SELECT: Ctrl/Cmd+click toggles photos into the
+     selection and dragging a rubber band on the empty page selects every
+     photo whose centre is inside it; a plain click on the page clears.
+   • the top toolbar (Select All / Select None / Remove / Set as
+     Background) is gone — those live in the right-click menu, Ctrl+A and
+     the rubber band; the page box got the extra room (plus slimmer
+     paddings) and is now noticeably bigger.
+   • Borders: default NONE, Polaroid removed, and the border color is
+     freely customisable (color picker next to the Border button).
+   • Shadows default OFF; Captions removed completely (UI, renderer and
+     exporter).
+
    v3.25.1 — the PICASA PAGE-FORMAT RULE (user bug report): changing the
    page format (ratio / orientation / custom ratio) resizes ONLY the
    background page box — every photo on it keeps its original on-screen
@@ -92,13 +108,13 @@
   const q = (s) => document.querySelector(s);
   const el = {
     root: q('#collage'), wrap: q('#cWrap'), busy: q('#cBusy'), note: q('#cNote'),
-    count: q('#cCount'), toolInfo: q('#cToolInfo'),
+    count: q('#cCount'),
     fmt: q('#cFormat'), custRow: q('#cCustomRow'), custW: q('#cCustW'), custH: q('#cCustH'),
     custApply: q('#cCustApply'),
     bg: q('#cBg'), bgSolid: q('#cBgSolid'), bgPhoto: q('#cBgPhoto'), eyedrop: q('#cEyedropper'),
     type: q('#cType'), borders: q('#cBorders'),
     orientL: q('#cOrientL'), orientP: q('#cOrientP'),
-    shadows: q('#cShadows'), captions: q('#cCaptions'),
+    shadows: q('#cShadows'), borderColor: q('#cBorderColor'),
     cClose2: q('#cClose2'),
     tabLib: q('#cTabLib'), tabCol: q('#cTabCol'),
     tabSettings: q('#cTabSettings'), tabClips: q('#cTabClips'),
@@ -124,7 +140,7 @@
     open: false, list: [], items: [], sel: new Set(), hover: null,
     type: 'pile', bg: '#f5f2ec', bgImage: false, bgIdx: 0,
     bgSrc: null, bgImg: null,               /* v3.22.4 background snapshot */
-    border: 'white', landscape: true, shadows: true, captions: false,
+    border: 'none', borderColor: '#ffffff', landscape: true, shadows: false,
     fmt: '4x3', custW: 16, custH: 9, seed: 7,
     alphaAny: false, restored: false, final: false,
     editId: null, editName: '', outW: 0, outH: 0,
@@ -253,11 +269,10 @@
       .c-item:active { cursor: grabbing; }
       .c-item img { display: block; width: 100%; height: 100%; pointer-events: none; }
       .c-item.selected { outline: 2px solid rgba(255, 153, 0, 0.9); outline-offset: -1px; }
-      .c-cap {
-        position: absolute; left: 0; right: 0; bottom: 0; line-height: 1.1;
-        display: flex; align-items: center; justify-content: center;
-        overflow: hidden; white-space: nowrap; pointer-events: none;
-        font-family: 'Segoe UI', system-ui, sans-serif;
+      /* v3.25.2: Picasa rubber-band selection on the empty page */
+      .c-rubber {
+        position: absolute; border: 1px solid #4a90d9;
+        background: rgba(74, 144, 217, 0.14); pointer-events: none; z-index: 99997;
       }
       /* PICASA 3 AUTHENTIC CENTER ROUND WHEEL + KNOB (counter-rotated so the
          knob always rests at the ring's right edge — 3 o'clock) */
@@ -284,8 +299,8 @@
     const holder = el.wrap.parentElement || el.wrap;
     const r = holder.getBoundingClientRect();
     const cs = getComputedStyle(holder);
-    const availW = Math.max(120, r.width - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 16);
-    const availH = Math.max(90, r.height - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0) - 16);
+    const availW = Math.max(120, r.width - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 6);
+    const availH = Math.max(90, r.height - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0) - 6);
     let [W, H] = dims();
     const target = W / H;
     let sw = availW, sh = sw / target;
@@ -322,15 +337,14 @@
     const sheet = S.type === 'sheet';
     let pad = 0, bot = 0;
     if (sheet) { pad = bw * 0.045; bot = pad; }
-    else if (S.border === 'polaroid') { pad = u * 0.05; bot = u * 0.16; }
-    else if (S.border === 'white') { pad = S.type === 'pile' ? u * 0.032 : u * 0.035; bot = pad; }
+    else if (S.border !== 'none') { pad = S.type === 'pile' ? u * 0.032 : u * 0.035; bot = pad; }
     it.el.style.width = bw + 'px';
     it.el.style.height = bh + 'px';
     it.el.style.left = (it.x * 100) + '%';
     it.el.style.top = (it.y * 100) + '%';
     it.el.style.zIndex = it.z;
     it.el.style.transform = `translate(-50%, -50%) rotate(${it.rot}deg) scale(${it.scale})`;
-    it.el.style.background = (sheet || S.border !== 'none') ? '#ffffff' : 'transparent';
+    it.el.style.background = (sheet || S.border !== 'none') ? (S.borderColor || '#ffffff') : 'transparent';
     it.el.style.padding = `${pad}px ${pad}px ${bot}px ${pad}px`;
     it.el.style.boxShadow = S.shadows ? '0 6px 16px rgba(0,0,0,0.38)' : 'none';
     const img = it.el.firstChild;
@@ -339,29 +353,7 @@
       /* cover/contain crop must clip to the padded box */
       it.el.style.overflow = 'hidden';
     }
-    /* caption: Picasa writes the name under the photo — inside the white
-       border when there is one, on a soft strip when there is none */
-    let cap = it.el.querySelector('.c-cap');
-    if (S.captions && S.type === 'pile' && it.name) {
-      if (!cap) { cap = document.createElement('div'); cap.className = 'c-cap'; it.el.appendChild(cap); }
-      const capH = Math.max(10, u * 0.085);
-      if (S.border === 'none') {
-        cap.style.background = 'rgba(0,0,0,0.45)';
-        cap.style.color = '#ffffff';
-        cap.style.height = capH + 'px';
-        cap.style.left = '0px'; cap.style.right = '0px';
-        cap.style.padding = '0 4px';
-      } else {
-        cap.style.background = 'transparent';
-        cap.style.color = '#4a4a4a';
-        cap.style.height = Math.max(capH, bot) + 'px';
-        cap.style.left = pad + 'px'; cap.style.right = pad + 'px';
-        cap.style.padding = '0';
-      }
-      cap.style.fontSize = Math.max(7, Math.min(capH * 0.66, 13)).toFixed(1) + 'px';
-      cap.textContent = it.name;
-      cap.style.display = 'flex';
-    } else if (cap) cap.style.display = 'none';
+    /* caption: REMOVED in v3.25.2 (user request) */
   }
   const renderAll = () => S.items.forEach(renderItem);
 
@@ -534,6 +526,13 @@
       if (e.button === 2) return;
       e.stopPropagation();
       if (S.final) return;
+      /* v3.25.2: Ctrl/Cmd+click toggles a photo in the multi-selection —
+         Picasa-style; drag still moves every selected photo together */
+      if (e.ctrlKey || e.metaKey) {
+        if (S.sel.has(it.id)) S.sel.delete(it.id); else S.sel.add(it.id);
+        paintSel();
+        return;
+      }
       /* clicking an already-selected photo keeps the multi-selection */
       if (!S.sel.has(it.id)) select(it);
       const rect = stage.getBoundingClientRect();
@@ -629,18 +628,8 @@
       window.addEventListener('pointerup', onUp);
     });
 
-    /* 3. MOUSE WHEEL ZOOM + SHIFT+WHEEL ROTATE */
-    it.el.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      if (S.final) return;
-      select(it);
-      if (e.shiftKey) it.rot += e.deltaY > 0 ? 5 : -5;
-      else it.scale = clamp(it.scale * (e.deltaY < 0 ? 1.07 : 0.93), SCALE_MIN, SCALE_MAX);
-      keepInside(it);              /* v3.25.0: page clamp after zoom/rotate */
-      renderItem(it);
-      positionWheel();
-      scheduleColSave();
-    }, { passive: false });
+    /* 3. MOUSE WHEEL — moved to the STAGE in v3.25.2: the wheel now resizes
+          from anywhere on the page (hovered photo or the whole selection) */
 
     /* 4. PICASA RIGHT-CLICK CONTEXT MENU */
     it.el.addEventListener('contextmenu', (e) => {
@@ -1181,7 +1170,7 @@
     return {
       type: S.type, bg: S.bg, bgImage: S.bgImage, border: S.border,
       landscape: S.landscape, bgIdx: S.bgIdx, seed: S.seed, fmt: fmtVal(),
-      custW: S.custW, custH: S.custH, shadows: S.shadows, captions: S.captions,
+      custW: S.custW, custH: S.custH, shadows: S.shadows, borderColor: S.borderColor,
       exportFmt: el.exportFmt.value,
       pos: S.items.map((it) => ({ x: it.x, y: it.y, rot: it.rot * DEG, scale: it.scale })),
       geo: S.items.map((it) => ({ w: it.wFrac, h: it.hFrac })),
@@ -1270,8 +1259,7 @@
       const u = Math.min(bw, bh);
       let pad = 0, bot = 0;
       if (sheet) { pad = bw * 0.045; bot = pad; }
-      else if (S.border === 'polaroid') { pad = u * 0.05; bot = u * 0.16; }
-      else if (S.border === 'white') { pad = S.type === 'pile' ? u * 0.032 : u * 0.035; bot = pad; }
+      else if (S.border !== 'none') { pad = S.type === 'pile' ? u * 0.032 : u * 0.035; bot = pad; }
       x.save();
       x.translate(cx, cy);
       x.rotate(it.rot * DEG);
@@ -1281,7 +1269,7 @@
         x.shadowOffsetY = Math.min(W, H) * 0.002 * it.scale;
       }
       if (sheet || S.border !== 'none') {
-        x.fillStyle = '#ffffff';
+        x.fillStyle = S.borderColor || '#ffffff';   /* v3.25.2: custom border color */
         x.fillRect(-bw / 2, -bh / 2, bw, bh);
       }
       x.shadowColor = 'transparent';
@@ -1290,31 +1278,7 @@
       if (sheet) drawContain(x, it.img, ix, iy, iw, ih);
       else if (S.type === 'pile') x.drawImage(it.img, ix, iy, iw, ih);
       else drawCover(x, it.img, ix, iy, iw, ih);
-      /* captions: pile photos get the Picasa name strip */
-      if (S.captions && S.type === 'pile' && it.name) {
-        const capH = Math.max(10, u * 0.085);
-        let cn = it.name;
-        x.save();
-        x.beginPath();
-        if (S.border === 'none') {
-          x.rect(-bw / 2, bh / 2 - capH, bw, capH);
-          x.fillStyle = 'rgba(0,0,0,0.45)';
-        } else {
-          x.rect(-bw / 2 + pad, bh / 2 - Math.max(capH, bot), bw - pad * 2, Math.max(capH, bot));
-          x.fillStyle = '#4a4a4a';
-        }
-        x.clip();
-        x.fill();
-        x.fillStyle = S.border === 'none' ? '#ffffff' : '#4a4a4a';
-        x.font = `${Math.max(7, Math.min(capH * 0.66, 18)).toFixed(1)}px 'Segoe UI', system-ui, sans-serif`;
-        x.textAlign = 'center'; x.textBaseline = 'middle';
-        const rw = S.border === 'none' ? bw : bw - pad * 2;
-        while (cn.length > 3 && x.measureText(cn).width > rw * 0.94) cn = cn.slice(0, -2);
-        if (cn !== it.name && cn.length > 3) cn = cn.slice(0, -1) + '\u2026';
-        const ty = bh / 2 - (S.border === 'none' ? capH / 2 : Math.max(capH, bot) / 2);
-        x.fillText(cn, 0, ty, rw * 0.94);
-        x.restore();
-      }
+      /* captions: removed in v3.25.2 (user request) */
       x.restore();
     }
     return c;
@@ -1332,12 +1296,11 @@
     for (const b of el.borders.querySelectorAll('button')) b.classList.toggle('on', b.dataset.b === S.border);
     el.type.value = ALL_TYPES.includes(S.type) ? S.type : 'pile';
     el.shadows.checked = S.shadows;
-    el.captions.checked = S.captions;
+    el.borderColor.value = S.borderColor || '#ffffff';
     el.bgPhoto.checked = S.bgImage;
     el.bgSolid.checked = !S.bgImage;
     el.bg.value = S.bg;
     el.cCreate.disabled = S.final;
-    el.toolInfo.textContent = 'Drag to move \u2022 drag the wheel knob to rotate + resize \u2022 wheel resizes \u2022 Shift+wheel rotates \u2022 right-click for more';
     noteCount();
     if (S.noteBase && !S.final) {
       el.note.textContent = S.noteBase +
@@ -1429,11 +1392,11 @@
     S.editName = S.editId ? (proj.name || '') : '';
     S.type = ALL_TYPES.includes(proj.type) ? proj.type : 'pile';
     S.shadows = proj.shadows !== false;
-    S.captions = !!proj.captions;
     S.bg = proj.bg || '#f5f2ec';
     /* old records used bgPhoto (blurred style); Use Image stays direct */
     S.bgImage = proj.bgImage != null ? !!proj.bgImage : !!proj.bgPhoto;
-    S.border = proj.border || 'white';
+    S.border = proj.border === 'polaroid' ? 'white' : (proj.border || 'none');   /* v3.25.2: polaroid is gone */
+    S.borderColor = proj.borderColor || '#ffffff';
     S.landscape = proj.landscape !== false;
     S.bgIdx = proj.bgIdx || 0;
     S.seed = proj.seed || 7;
@@ -1692,14 +1655,70 @@
       scheduleColSave();
     });
     el.shadows.addEventListener('change', () => { S.shadows = el.shadows.checked; renderAll(); scheduleColSave(); });
-    el.captions.addEventListener('change', () => { S.captions = el.captions.checked; renderAll(); scheduleColSave(); });
+    /* v3.25.2: custom border color — repaint every bordered photo live */
+    el.borderColor.addEventListener('input', () => { S.borderColor = el.borderColor.value; renderAll(); scheduleColSave(); });
     el.exportFmt.addEventListener('change', () => scheduleColSave());
 
-    /* stage toolbar: Select All | Select None | Remove | Set as Background */
-    q('#cSelAll').addEventListener('click', selectAll);
-    q('#cSelNone').addEventListener('click', selectNone);
-    q('#cRemove').addEventListener('click', removeSelected);
-    q('#cSetBg').addEventListener('click', setAsBackground);
+    /* v3.25.2: PICASA POINTER RULES on the page (the old toolbar is gone):
+       • wheel ANYWHERE on the page resizes — a photo under the pointer wins,
+         otherwise the WHOLE selection resizes/rotates together
+       • drag a rubber band on the empty page to select several photos;
+         a plain click on the page clears the selection */
+    el.wrap.addEventListener('wheel', (e) => {
+      if (!S.open || el.root.hidden || S.final) return;
+      e.preventDefault();
+      const hov = S.hover ? itemById(S.hover) : null;
+      let targets = null;
+      if (hov && !S.sel.has(hov.id)) { select(hov); targets = [hov]; }
+      else if (S.sel.size) targets = [...S.sel].map(itemById).filter(Boolean);
+      else if (hov) targets = [hov];
+      if (!targets || !targets.length) return;
+      const f = e.deltaY < 0 ? 1.07 : 0.93;
+      for (const it of targets) {
+        if (e.shiftKey) it.rot += e.deltaY > 0 ? 5 : -5;
+        else it.scale = clamp(it.scale * f, SCALE_MIN, SCALE_MAX);
+        keepInside(it);
+        renderItem(it);
+      }
+      positionWheel();
+      scheduleColSave();
+    }, { passive: false });
+    stage.addEventListener('pointerdown', (e) => {
+      if (S.final || e.button !== 0 || e.ctrlKey || e.metaKey) return;
+      const rect = stage.getBoundingClientRect();
+      const sx = e.clientX, sy = e.clientY;
+      let box = null;
+      const onMove = (ev) => {
+        if (!box && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
+        const x1 = Math.max(0, Math.min(sx, ev.clientX) - rect.left);
+        const y1 = Math.max(0, Math.min(sy, ev.clientY) - rect.top);
+        const x2 = Math.min(rect.width, Math.max(sx, ev.clientX) - rect.left);
+        const y2 = Math.min(rect.height, Math.max(sy, ev.clientY) - rect.top);
+        if (!box) { box = document.createElement('div'); box.className = 'c-rubber'; stage.appendChild(box); }
+        box.style.left = x1 + 'px'; box.style.top = y1 + 'px';
+        box.style.width = (x2 - x1) + 'px'; box.style.height = (y2 - y1) + 'px';
+      };
+      const onUp = (ev) => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        if (!box) {                             /* plain click on the page */
+          if (S.sel.size) { S.sel.clear(); paintSel(); }
+          return;
+        }
+        box.remove();
+        const rx1 = Math.min(sx, ev.clientX) - rect.left, rx2 = Math.max(sx, ev.clientX) - rect.left;
+        const ry1 = Math.min(sy, ev.clientY) - rect.top, ry2 = Math.max(sy, ev.clientY) - rect.top;
+        S.sel.clear();
+        for (const it of S.items) {
+          const cx = it.x * rect.width, cy = it.y * rect.height;
+          if (cx >= rx1 && cx <= rx2 && cy >= ry1 && cy <= ry2) S.sel.add(it.id);
+        }
+        paintSel();
+        if (S.sel.size) scheduleColSave();
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    });
 
     /* bottom bar */
     q('#cScramble').addEventListener('click', scramble);
@@ -1784,6 +1803,7 @@
         return;
       }
       if (S.final) return;
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); selectAll(); return; }   /* v3.25.2 */
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeSelected(); return; }
       const it = firstSel();
       if (!it) return;
