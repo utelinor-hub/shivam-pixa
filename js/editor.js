@@ -94,6 +94,13 @@
            at the photo centre — no more "almost straight". (4) The last
            Page Format + Landscape/Portrait choice are remembered and
            applied to every new collage.
+   v3.22.3: (collage) the magnetic-snap "0°" badge refined to the user's
+           variant — the badge is now a .snap-text child INSIDE the photo
+           element (sits at the photo's centre, travels and rotates with
+           the photo), it appears the moment the knob drag enters the
+           -4°..+4° straight zone and is removed the moment the drag
+           leaves the zone or the pointer is released (no 900ms linger).
+           Scale bounds 0.2–4.5 and the snap itself (exact 0°) unchanged.
    v3.22.1: (library) full Picasa-3 spec audit pass — the library home
            screen (Albums / Projects → Collages / Folders tree, folder
            headers with photo counts + one-click Create Photo Collage

@@ -5,6 +5,11 @@
    knob is a real overlay element (donut ring + knob resting at 3 o'clock),
    dragging is native pointer-dragging anywhere on a photo.
 
+   v3.22.3 — magnetic-snap badge refined to the user's variant: the "0°"
+   .snap-text badge is a child of the PHOTO element (sits at the photo's
+   centre, travels and rotates with it) and is removed the moment the knob
+   drag leaves the -4°..+4° zone or the pointer is released.
+
    v3.22.2 — the four Picasa-behaviour fixes:
    • Create Collage = one clean action: final image saved to the Collages
      folder + file downloads immediately + working auto-save record cleaned
@@ -238,16 +243,6 @@
         box-shadow: 0 1px 4px rgba(0,0,0,0.65); touch-action: none;
       }
       #cKnob:hover { background: #ffffff; }
-      /* v3.22.2: MAGNETIC SNAP badge — shows "0°" at the photo centre while
-         the knob drags the photo through the straight zone (Picasa style) */
-      #cSnap {
-        position: absolute; transform: translate(-50%, -50%);
-        background: rgba(28, 28, 30, 0.88); color: #fff;
-        font: 600 13px 'Segoe UI', system-ui, sans-serif;
-        padding: 3px 10px; border-radius: 12px; pointer-events: none;
-        z-index: 100001; box-shadow: 0 2px 8px rgba(0,0,0,0.45);
-        white-space: nowrap;
-      }
     `;
     document.head.appendChild(style);
   }
@@ -421,26 +416,25 @@
     wheelEl.dataset.id = it.id;
   }
 
-  /* ================= v3.22.2 MAGNETIC SNAP "0°" badge ================= */
-  let snapEl = null, snapT = 0;
+  /* ============ v3.22.3 MAGNETIC SNAP "0°" badge (user's variant) ============
+     The badge is a .snap-text child INSIDE the photo element — it sits at the
+     photo's centre, travels with the photo and rotates with it (straight when
+     visible, because the photo is at 0° whenever the badge shows). It appears
+     the moment the knob drag enters the -4°..+4° zone and is removed the
+     moment the drag leaves the zone or the pointer is released. */
   function showSnapBadge(it) {
-    if (!S.open) return;
-    if (!snapEl) {
-      snapEl = document.createElement('div');
-      snapEl.id = 'cSnap';
-      snapEl.textContent = '0\u00b0';
-      snapEl.hidden = true;
-      stage.appendChild(snapEl);
+    if (!S.open || !it || !it.el) return;
+    if (!it.el.querySelector('.snap-text')) {
+      const t = document.createElement('div');
+      t.className = 'snap-text';
+      t.textContent = '0\u00b0';
+      t.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:white; background:rgba(0,0,0,0.6); padding:4px 8px; border-radius:4px; font-weight:bold; font-size:14px; pointer-events:none; z-index:30; white-space:nowrap;';
+      it.el.appendChild(t);
     }
-    snapEl.style.left = (it.x * stage.clientWidth) + 'px';
-    snapEl.style.top = (it.y * stage.clientHeight - 34) + 'px';
-    snapEl.hidden = false;
-    clearTimeout(snapT);
-    snapT = setTimeout(() => { if (snapEl) snapEl.hidden = true; }, 900);
   }
-  function hideSnapBadge() {
-    clearTimeout(snapT);
-    if (snapEl) snapEl.hidden = true;
+  function hideSnapBadge(it) {
+    if (it && it.el) { const t = it.el.querySelector('.snap-text'); if (t) t.remove(); return; }
+    S.items.forEach((i) => { if (i.el) { const t = i.el.querySelector('.snap-text'); if (t) t.remove(); } });
   }
 
   /* ================= item interactions (the prototype's, 1:1) ================= */
@@ -494,14 +488,17 @@
         const curDist = Math.hypot(ev.clientX - cx, ev.clientY - cy);
         let rot = origRot + (curAngle - startAngle);
         tgt.scale = clamp(origScale * (curDist / Math.max(20, startDist)), SCALE_MIN, SCALE_MAX);
-        /* v3.22.2 MAGNETIC SNAP (Picasa straighten): while the knob drags the
-           rotation through the -4°..+4° zone, the photo clicks to exactly 0°
-           and a "0°" badge flashes at the photo centre — no more "almost
-           straight but not quite" */
+        /* v3.22.2/v3.22.3 MAGNETIC SNAP (Picasa straighten + user's variant):
+           while the knob drags the rotation through the -4°..+4° zone the
+           photo clicks to exactly 0° and a "0°" badge shows at the photo
+           centre; leaving the zone removes it at once. Normalised so
+           accumulated angles like 356° also snap to straight. */
         const norm = ((rot % 360) + 540) % 360 - 180;   /* (-180, 180] */
         if (Math.abs(norm) <= 4) {
-          if (norm !== 0) showSnapBadge(tgt);
+          showSnapBadge(tgt);
           rot = 0;
+        } else {
+          hideSnapBadge(tgt);
         }
         tgt.rot = rot;
         renderItem(tgt);
@@ -510,7 +507,7 @@
       const onUp = () => {
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
-        hideSnapBadge();
+        hideSnapBadge(tgt);           /* mouse chhodne par text hata do */
         scheduleColSave();
       };
       window.addEventListener('pointermove', onMove);
