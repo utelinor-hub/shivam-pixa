@@ -1055,6 +1055,7 @@
       <div class="dd">
         <button type="button" data-act="newalbum">New Album&hellip; (Ctrl+N)</button>
         <button type="button" data-act="addalbum">Add Selected to Album&hellip;</button>
+        <button type="button" data-act="addphotos">Add Photos to PIXA&hellip;</button>
         <button type="button" data-act="import">Add Folder to PIXA&hellip;</button>
         <div class="sep"></div>
         <button type="button" data-act="edit">Open File(s) in an Editor</button>
@@ -1091,6 +1092,7 @@
     <div class="menu" data-m="folder">
       <button type="button">Folder</button>
       <div class="dd">
+        <button type="button" data-act="addphotos">Add Photos&hellip;</button>
         <button type="button" data-act="import">Import Folder&hellip;</button>
         <button type="button" data-act="all">Show Whole Library (clear filter)</button>
         <div class="sep"></div>
@@ -1151,7 +1153,7 @@
   <!-- ===== Restore last folder bar (only shows while Chrome needs one click) ===== -->
   <div id="restoreBar" class="restorebar" hidden>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-    <span>Reopening <b id="restoreName"></b> &mdash; click anywhere to allow</span>
+    <span>Reopening <b id="restoreName"></b> &mdash; click anywhere to allow, then pick <b>Allow on every visit</b> so it never asks again</span>
     <button id="btnRestoreDel" class="linkbtn dim" type="button">Remove</button>
   </div>
 
@@ -1235,7 +1237,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.25.3</span>
+      <span class="ver">v3.25.4</span>
     </span>
   </footer>
 
@@ -1996,6 +1998,8 @@
   <div id="cMenu" class="ctxmenu" hidden></div>
 
   <input id="fileFallback" type="file" multiple accept="image/*,.heic,.heif,.tif,.tiff" webkitdirectory directory hidden />
+  <!-- v3.25.4: single/multi PHOTO picker fallback for browsers without showOpenFilePicker -->
+  <input id="filesFallback" type="file" multiple accept="image/*,.avif" hidden />
   <input id="fontFile" type="file" multiple accept=".ttf,.otf,.woff,.woff2" hidden />
   <input id="stickerFile" type="file" accept="image/png,image/webp,image/gif,image/svg+xml" hidden />
 
@@ -2036,6 +2040,7 @@
       btnTrayRemove: $('#btnTrayRemove'),
       btnTrayPrint: $('#btnTrayPrint'), btnTrayEmail: $('#btnTrayEmail'),   /* v3.24.0 */
       fileInput: $('#fileFallback'),
+      filesInput: $('#filesFallback'),                     /* v3.25.4 */
       toasts: $('#toasts')
     };
 
@@ -2138,14 +2143,71 @@
       await loadFolder(dir);
     }
 
-    async function loadFiles(list) {
+    /* ================= v3.25.4: ADD PHOTOS (single images, Picasa
+       "Add Files to Library") =================
+       The folder picker only accepts whole folders — now single photos (or a
+       multi-selection) can be picked straight out of any folder. File handles
+       are kept, so edit / rename / delete work on them like folder photos.
+       They land in their own "Added photos" library group; picking the same
+       photo twice never duplicates it. */
+    async function importPhotos() {
+      if (typeof window.showOpenFilePicker === 'function') {
+        let handles;
+        try {
+          handles = await window.showOpenFilePicker({
+            multiple: true,
+            types: [{ description: 'Photos (JPG PNG GIF WebP BMP AVIF)', accept: { 'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.avif'] } }]
+          });
+        } catch (e) {
+          if (e && e.name === 'AbortError') return;
+          toast('Could not open photos: ' + (e.message || e.name), 'err', 6000);
+          return;
+        }
+        const out = []; let unsup = 0;
+        for (const h of handles) {
+          try {
+            const f = await h.getFile();
+            if (UNSUPPORTED_EXT.test(f.name)) { unsup++; continue; }
+            if (!IMG_EXT.test(f.name)) continue;
+            out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: h, file: null, folder: 'Added photos', root: 'Added photos' });
+          } catch (e) { /* unreadable — skip */ }
+        }
+        if (!out.length) {
+          toast(handles.length ? `${handles.length} file${handles.length > 1 ? 's' : ''} picked, but no supported photo among them` : 'No files picked', 'err', 6000);
+          return;
+        }
+        addPickedPhotos(out, unsup);
+      } else {
+        els.filesInput.click();
+      }
+    }
+
+    /* v3.25.4: shared tail of both ADD-PHOTOS paths — appends into the
+       "Added photos" group, never duplicates, never drops older picks */
+    function addPickedPhotos(out, unsup) {
+      const existing = state.photos.filter((p) => (p.root || '') === 'Added photos');
+      const fresh = out.filter((q) => !existing.some((p) => p.name === q.name && p.size === q.size && p.lastModified === q.lastModified));
+      if (!fresh.length) { toast('Those photos are already in PIXA', 'ok', 3500); return 0; }
+      state.photos = state.photos.filter((p) => (p.root || '') !== 'Added photos').concat(existing, fresh);
+      hydrateDims();
+      state.folder = 'Added photos';
+      state.folderFilter = '';
+      clearSel();
+      buildTree();
+      applyFilter();
+      toast(`Added ${fresh.length} photo${fresh.length > 1 ? 's' : ''} • library now has ${state.photos.length} photos in all folders${unsup ? ` • ${unsup} HEIC/RAW skipped` : ''}`, 'ok', 5000);
+      if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged();
+      return fresh.length;
+    }
+
+    async function loadFiles(list, rootName) {   /* v3.25.4: optional root name */
       const out = []; let unsup = 0, total = 0;
       for (const f of list) {
         total++;
         if (UNSUPPORTED_EXT.test(f.name)) { unsup++; continue; }
         if (!IMG_EXT.test(f.name)) continue;
         const rel = (f.file && f.file.webkitRelativePath) || f.webkitRelativePath || '';
-        const root = rel ? rel.split('/')[0] : 'Imported photos';
+        const root = rootName || (rel ? rel.split('/')[0] : 'Imported photos');
         const sub = rel.split('/').slice(1, -1).join('/');
         out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: sub ? `${root}/${sub}` : root, root });
       }
@@ -2169,6 +2231,21 @@
       const list = [...els.fileInput.files];
       els.fileInput.value = '';
       if (list.length) loadFiles(list);
+    });
+    /* v3.25.4: single-photo fallback input — APPENDS like the picker path
+       (browsers without showOpenFilePicker) */
+    els.filesInput.addEventListener('change', () => {
+      const list = [...els.filesInput.files];
+      els.filesInput.value = '';
+      if (!list.length) return;
+      const out = [];
+      for (const f of list) {
+        if (UNSUPPORTED_EXT.test(f.name)) continue;
+        if (!IMG_EXT.test(f.name)) continue;
+        out.push({ name: f.name, size: f.size, lastModified: f.lastModified, handle: null, file: f, folder: 'Added photos', root: 'Added photos' });
+      }
+      if (!out.length) { toast('No supported photo among the picked files', 'err', 6000); return; }
+      addPickedPhotos(out, 0);
     });
     /* v3.16.1: Picasa-style "Open with" — right-click any photo in Explorer
        → Open with → SHIVAM PIXA and it lands straight in the library
@@ -3910,11 +3987,18 @@
         if (ev && ev.target && els.restore.contains(ev.target)) return;
         document.removeEventListener('pointerdown', tryOpen, true);
         document.removeEventListener('keydown', tryOpen, true);
+        let deniedShown = false;
         for (const h of pending) {
           let p2 = 'denied';
           try { p2 = await h.requestPermission({ mode: 'read' }); } catch (e) {}
           if (p2 === 'granted') {
             try { await loadFolder(h, true, true); } catch (e) { toast('Could not reopen ' + h.name, 'err'); }
+          } else if (p2 === 'denied' && !deniedShown) {
+            /* v3.25.4: recovery hint — Chrome hides its prompt once a site
+               was told "Don't allow"; the user must unblock it in Site
+               Settings (address-bar icon → File editing) */
+            deniedShown = true;
+            toast('Folder access is blocked — click the icon at the left of the address bar → File editing → Allow, then reopen PIXA', 'err', 9000);
           }
         }
         els.restore.hidden = true;
@@ -4004,6 +4088,7 @@
       els.menubar.querySelectorAll('.menu.open').forEach((x) => x.classList.remove('open'));
       switch (act) {
         case 'import': importFolder(); break;
+        case 'addphotos': importPhotos(); break;      /* v3.25.4: single photos */
         case 'export': openExport(); break;             /* v3.24.0: real Export dialog */
         case 'print': openPrint(); break;               /* v3.24.0 */
         case 'email': openEmail(); break;               /* v3.24.0 */
@@ -4113,7 +4198,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.25.3', 'ok', 2500);
+          toast('S H I V A M PIXA v3.25.4', 'ok', 2500);
           break;
       }
     }
