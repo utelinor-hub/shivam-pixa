@@ -103,10 +103,11 @@
      (3 o'clock, screen-space) — the v3.17.1 reference alignment is kept.
    • right-click menu: Set as Background, Bring to Top / Forward /
      Backward / Bottom, Rotate Right/Left (90°), View and Edit, Remove.
-   • Collage Type (Picture Pile / Mosaic / Frame Mosaic / Grid / Contact
-     Sheet) now ARRANGES the free items: the slotted types compute their
-     slot rectangles and drop every photo into its cell (cover-cropped),
-     after which photos stay freely movable — exactly like the prototype.
+   • v3.25.7: the Collage Type chooser is GONE (user request — 'college
+     types ko hata do uski zaroorat nahi hai'). The maker always builds a
+     Picture Pile; the old slotted layouts (Mosaic / Frame Mosaic / Grid /
+     Contact Sheet) stay in the code as dead paths but can never be
+     selected again, and saved projects of those types reopen as a pile.
    • Page Format list, Landscape/Portrait, Picture Borders (None / White /
      Polaroid), Solid Color (+ presets + eyedropper) / Use Image background,
      Draw Shadows, Show Captions, Desktop Background | Create Collage |
@@ -134,7 +135,7 @@
     fmt: q('#cFormat'), custRow: q('#cCustomRow'), custW: q('#cCustW'), custH: q('#cCustH'),
     custApply: q('#cCustApply'),
     bg: q('#cBg'), bgSolid: q('#cBgSolid'), bgPhoto: q('#cBgPhoto'), eyedrop: q('#cEyedropper'),
-    type: q('#cType'), borders: q('#cBorders'),
+    borders: q('#cBorders'),   /* v3.25.7: #cType select removed */
     orientL: q('#cOrientL'), orientP: q('#cOrientP'),
     shadows: q('#cShadows'), borderColor: q('#cBorderColor'),
     cClose2: q('#cClose2'),
@@ -152,8 +153,8 @@
   const wheelEl = q('#cWheel');
   const knobEl = q('#cKnob');
 
-  const SLOTTED = ['grid', 'sheet', 'mosaic', 'frame'];
-  const ALL_TYPES = ['pile'].concat(SLOTTED);
+  /* v3.25.7: SLOTTED / ALL_TYPES removed with the Collage Type chooser —
+     S.type is always 'pile' now. */
   const DEG = Math.PI / 180;
   const MAXP = 60;                       /* Picasa-era sanity cap */
   const SCALE_MIN = 0.2, SCALE_MAX = 4.5;
@@ -1010,7 +1011,6 @@
   function scramble() {
     if (S.final || !S.items.length) return;
     S.type = 'pile';
-    el.type.value = 'pile';
     S.items.forEach((it) => {
       it.x = 0.2 + Math.random() * 0.6;
       it.y = 0.2 + Math.random() * 0.6;
@@ -1325,7 +1325,6 @@
     el.orientL.classList.toggle('on', S.landscape);
     el.orientP.classList.toggle('on', !S.landscape);
     for (const b of el.borders.querySelectorAll('button')) b.classList.toggle('on', b.dataset.b === S.border);
-    el.type.value = ALL_TYPES.includes(S.type) ? S.type : 'pile';
     el.shadows.checked = S.shadows;
     el.borderColor.value = S.borderColor || '#ffffff';
     el.bgPhoto.checked = S.bgImage;
@@ -1421,7 +1420,7 @@
     S.open = true; S.blob = null; S.restored = true;
     S.editId = proj.editId || null;
     S.editName = S.editId ? (proj.name || '') : '';
-    S.type = ALL_TYPES.includes(proj.type) ? proj.type : 'pile';
+    S.type = 'pile';   /* v3.25.7: type chooser gone — old saved projects open as a pile */
     S.shadows = proj.shadows !== false;
     S.bg = proj.bg || '#f5f2ec';
     /* old records used bgPhoto (blurred style); Use Image stays direct */
@@ -1600,12 +1599,6 @@
     fileAdd.hidden = true;
     el.paneClips.appendChild(fileAdd);
 
-    el.type.addEventListener('change', () => {
-      S.type = ALL_TYPES.includes(el.type.value) ? el.type.value : 'pile';
-      S.sel.clear(); S.hover = null;
-      updateUI();
-      applyLayout(true);
-    });
     el.fmt.addEventListener('change', () => {
       /* v3.22.2: remember the last page format */
       try { localStorage.setItem('pixsa.collageFormat', el.fmt.value); } catch (e) {}

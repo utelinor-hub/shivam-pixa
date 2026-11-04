@@ -1279,7 +1279,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.25.6</span>
+      <span class="ver">v3.25.7</span>
     </span>
   </footer>
 
@@ -1871,22 +1871,15 @@
         </button>
       </header>
       <!-- v3.25.0: Picasa 3 layout — every control in the LEFT sidebar
-           (Collage Type, Page Format, Borders, Background) with the Clips
-           tray docked at the sidebar bottom; the canvas sits on the right -->
+           (Page Format, Borders, Background) with the Clips tray docked at
+           the sidebar bottom; the canvas sits on the right.
+           v3.25.7: the Collage Type chooser was removed — 'college types ko
+           hata do uski zaroorat nahi hai'. The maker always builds a
+           Picture Pile now. -->
       <div class="c-body">
         <aside class="c-side" id="cPaneSettings">
           <div class="c-side-actions">
             <button id="cTabClips" type="button" class="c-clipbtn on" title="Photo tray — photos waiting to join the collage" style="grid-column:1/-1">Clips (<span id="cClipCount">0</span>)</button>
-          </div>
-          <div class="c-sec">
-            <span class="c-lab">Collage Type</span>
-            <select id="cType">
-              <option value="pile" selected>Picture Pile : Looks like a pile of scattered pictures</option>
-              <option value="mosaic">Mosaic : Fits pictures together into a grid automatically</option>
-              <option value="frame">Frame Mosaic : A mosaic with a central framed picture</option>
-              <option value="grid">Grid : Arranges pictures in uniform rows and columns</option>
-              <option value="sheet">Contact Sheet : Thumbnails of all pictures</option>
-            </select>
           </div>
           <div class="c-sec">
             <span class="c-lab">Page Format</span>
