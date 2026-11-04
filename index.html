@@ -804,11 +804,32 @@
     .co-stat { font-size: 12px; color: #4a4e55; }
     .co-foot { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-top: 1px solid #c9c6bf; background: #ecebe6; }
     .co-foot .hint { flex: 1; margin: 0; font-size: 11px; }
+    /* v3.22.0: .fixbtn is width:100% for the side panel — restore natural
+       width inside the shared footer (Cutout + Background Studio) */
+    .co-foot .fixbtn { width: auto; padding: 7px 16px; white-space: nowrap; flex: 0 0 auto; }
     #coApply { padding: 7px 16px; font-weight: 600; }
     @media (max-width: 760px) {
       .co-body { flex-direction: column; }
       .co-side { width: 100%; border-left: none; border-top: 1px solid #c9c6bf; max-height: 46%; }
     }
+    /* ===== v3.22.0 Background Studio ===== */
+    #bgstudio .m-box { width: min(1150px, 97vw); height: min(790px, 93vh); }
+    #bgstudio .m-title { font-weight: 600; font-size: 13.5px; color: #2b3138; }
+    #bgstudio .m-head { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #c9c6bf; background: #eceae5; }
+    #bsWrap { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+    #bsCv { display: block; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+    .bs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 0 8px; }
+    .bs-thumb { border: 1px solid #bcb9b2; border-radius: 4px; background: #fff; padding: 3px 3px 2px; cursor: pointer; text-align: center; }
+    .bs-thumb canvas { width: 100%; display: block; border-radius: 2px; }
+    .bs-thumb span { display: block; font-size: 9.5px; color: #4a4e55; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bs-thumb.on { outline: 2px solid var(--accent, #3a7bd5); outline-offset: -2px; background: #e8f0fb; }
+    .bs-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+    .bs-chips button { font-size: 10.5px; padding: 3px 8px; border: 1px solid #bcb9b2; border-radius: 20px; background: linear-gradient(#fdfdfc, #eceae5); color: #2c2f34; cursor: pointer; }
+    .bs-chips button.on { outline: 2px solid var(--accent, #3a7bd5); outline-offset: -2px; background: #e8f0fb; }
+    .bs-beta { font-size: 9.5px; font-weight: 400; color: #a06a12; background: #faf0da; border: 1px solid #e8d5a8; border-radius: 8px; padding: 1px 6px; margin-left: 4px; }
+    .bs-prompt { width: 100%; box-sizing: border-box; font-size: 11.5px; padding: 5px 7px; border: 1px solid #bcb9b2; border-radius: 3px; margin: 2px 0 6px; background: #fff; color: #2c2f34; }
+    #bsGen { width: 100%; }
+    #bsApply { padding: 7px 16px; font-weight: 600; }
     .c-tools {
       display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
       padding: 6px 12px; border-bottom: 1px solid #c8c5be;
@@ -1028,6 +1049,7 @@
       <div class="dd">
         <button type="button" data-act="edit">View and Edit</button>
         <button type="button" data-act="cutout">Remove Background (Cutout)&hellip;</button>
+        <button type="button" data-act="bgstudio">Professional Background (Studio)&hellip;</button>
         <div class="sep"></div>
         <button type="button" data-act="export">Export Selected&hellip;</button>
         <button type="button" data-act="sizer">Resize Photos (Sizer)&hellip;</button>
@@ -1164,7 +1186,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.21.0</span>
+      <span class="ver">v3.22.0</span>
     </span>
   </footer>
 
@@ -1372,6 +1394,7 @@
             <div class="sechead">Cutout</div>
             <div class="toolgrid">
               <button class="fixbtn" type="button" data-fix="cutout" title="Remove the background — professional product cutout (transparent PNG / pure white)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.7" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="18" r="2.7" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.3 7.5L20.5 18M8.3 16.5L20.5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Remove BG</button>
+              <button class="fixbtn" type="button" data-fix="bgstudio" title="Put the product on a professional studio backdrop — offline and unlimited"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M7.2 19.5c0-3.1 2.1-5.6 4.8-5.6s4.8 2.5 4.8 5.6" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="9.2" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>Studio BG</button>
             </div>
             <div class="sechead">Rotate</div>
             <div class="rotrow">
@@ -1519,6 +1542,69 @@
         <span class="hint" id="coHint">The original photo is never modified &mdash; Apply adds a step you can always undo.</span>
         <button id="coCancel" class="fixbtn" type="button">Cancel</button>
         <button id="coApply" class="fixbtn accent" type="button" title="Apply the cutout to this photo">Apply Cutout</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ===== Background Studio — Professional Backdrops (v3.22.0) ===== -->
+  <div id="bgstudio" class="modal" hidden role="dialog" aria-label="Background Studio">
+    <div class="m-box">
+      <header class="m-head">
+        <span class="m-title">Background Studio &mdash; Professional Backdrops</span>
+        <span id="bsStat" class="co-stat"></span>
+        <button id="bsClose" class="icobtn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="co-body">
+        <div id="bsStage" class="co-stage">
+          <div id="bsWrap"><canvas id="bsCv"></canvas></div>
+          <div id="bsBusy" class="e-busy" hidden><span class="spin big"></span></div>
+        </div>
+        <aside class="co-side">
+          <div class="sechead" style="margin-top:0">Studio Backdrops &mdash; offline &amp; unlimited</div>
+          <div id="bsGrid" class="bs-grid"></div>
+          <button id="bsShuffle" class="fixbtn" type="button" title="New variation of the selected backdrop">Shuffle Pattern</button>
+          <div class="sechead">AI Scene <span class="bs-beta">Beta &bull; needs internet</span></div>
+          <div id="bsChips" class="bs-chips">
+            <button type="button" data-ai="Elegant white marble display podium, soft studio light, luxury product photography background">Marble Podium</button>
+            <button type="button" data-ai="Luxurious golden silk fabric background with soft folds, warm festive light, product photography">Gold Silk Luxe</button>
+            <button type="button" data-ai="Warm wooden table top with blurred cozy cafe background, product photography backdrop">Wooden Cafe</button>
+            <button type="button" data-ai="Soft pink pastel studio background with gentle gradient light, cosmetics product photography">Pink Pastel</button>
+            <button type="button" data-ai="Dark green botanical leaves background with soft light, luxury product photography backdrop">Green Botanical</button>
+            <button type="button" data-ai="Festive golden bokeh lights background, warm dark backdrop, jewelry product photography">Festive Gold</button>
+          </div>
+          <input id="bsPrompt" class="bs-prompt" type="text" placeholder="Describe your own background&hellip;" maxlength="220" />
+          <div class="co-fixrow">
+            <button id="bsGen" class="fixbtn" type="button">Generate AI Scene</button>
+          </div>
+          <div class="sechead">Product Placement</div>
+          <div class="trow"><label>Product Size</label><input id="bsSize" type="range" min="55" max="130" value="100" /><span class="val" id="bsSizeV">100</span></div>
+          <div class="trow"><label>Position</label><input id="bsShift" type="range" min="-100" max="100" value="0" /><span class="val" id="bsShiftV">0</span></div>
+          <label class="chkrow" id="bsShadowRow"><input type="checkbox" id="bsShadow" checked /> Soft shadow under the product</label>
+          <div class="trow" id="bsShadowTR"><label>Shadow Strength</label><input id="bsShadowA" type="range" min="5" max="70" value="30" /><span class="val" id="bsShadowAV">30</span></div>
+          <div class="sechead">Output Size</div>
+          <select id="bsOut" style="width:100%">
+            <option value="orig" selected>Original size &amp; ratio</option>
+            <option value="sq1600">1:1 &bull; 1600 &times; 1600 (Amazon / Flipkart / Meesho)</option>
+            <option value="sq2000">1:1 &bull; 2000 &times; 2000 (extra zoom)</option>
+            <option value="post45">4:5 &bull; 1080 &times; 1350 (Instagram post)</option>
+            <option value="cat34">3:4 &bull; 1200 &times; 1600 (catalog)</option>
+            <option value="story916">9:16 &bull; 1080 &times; 1920 (status / story)</option>
+          </select>
+          <div class="sechead">Zoom &amp; Compare</div>
+          <div class="co-fixrow">
+            <button id="bsFit" class="fixbtn" type="button">Fit</button>
+            <button id="bs100" class="fixbtn" type="button">100%</button>
+            <button id="bsHold" class="fixbtn" type="button" title="Hold to see the original photo">Before</button>
+          </div>
+          <p class="hint">The product keeps its cutout edges — the studio backdrop never touches it. Everything renders on your device: offline, unlimited, free.</p>
+        </aside>
+      </div>
+      <footer class="co-foot">
+        <span class="hint">Non-destructive — Apply adds a step you can always undo. Pair with the Cutout tool for marketplace-ready photos.</span>
+        <button id="bsCancel" class="fixbtn" type="button">Cancel</button>
+        <button id="bsApply" class="fixbtn accent" type="button" title="Apply this background to the photo">Apply Background</button>
       </footer>
     </div>
   </div>
@@ -3097,6 +3183,24 @@
           })();
           break;
         }
+        case 'bgstudio': {
+          /* v3.22.0: Picture → Professional Background (Studio) — opens the
+             editor on the selected photo and lifts Background Studio as
+             soon as it's ready */
+          if (!state.filtered.length) { toast('Import photos first', 'err'); break; }
+          const gp = state.selArr[0] || state.filtered[0];
+          const gk = photoKey(gp);
+          const gi = state.filtered.findIndex((x) => photoKey(x) === gk);
+          if (!window.PixsaEditor || !window.PixsaBGStudio) break;
+          window.PixsaEditor.open(gi);
+          const gt0 = Date.now();
+          (function waitEd2() {
+            if (window.PixsaBGStudio.isOpen()) return;
+            if (window.PixsaEditor.isOpen()) window.PixsaBGStudio.open();
+            else if (Date.now() - gt0 < 8000) setTimeout(waitEd2, 150);
+          })();
+          break;
+        }
         case 'selall':
           if (!state.filtered.length) { toast('Import photos first', 'err'); break; }
           const have = selSet();
@@ -3140,7 +3244,7 @@
           break;
         }
         case 'about':
-          toast('S H I V A M PIXA v3.21.0', 'ok', 2500);
+          toast('S H I V A M PIXA v3.22.0', 'ok', 2500);
           break;
       }
     }
@@ -3537,6 +3641,7 @@
   </script>
   <script src="./js/fx.js"></script>
   <script src="./js/cutout.js"></script>
+  <script src="./js/bgstudio.js"></script>
   <script src="./js/editor.js"></script>
   <script src="./js/collage.js"></script>
   <script src="./js/cloud.js"></script>

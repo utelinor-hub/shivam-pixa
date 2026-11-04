@@ -1001,14 +1001,25 @@
              stored bitmap was produced at source resolution from the same
              sid->bitmap map as patches, so it scales cleanly down to the
              preview cap and stays 1:1 on full-res export. Transparency is
-             preserved — hasAlpha() then switches Save/Export to PNG. */
+             preserved — hasAlpha() then switches Save/Export to PNG.
+             v3.22.0: a Background-Studio composition may carry its own
+             canvas size (1:1 1600, 4:5 1080×1350 …) — the pipeline now
+             adopts the bitmap's own size (the preview keeps its maxSide
+             cap; same-size bitmaps from v3.21.0 behave exactly as before). */
           const cbmp = stickers ? stickers.get(op.sid) : null;
           if (cbmp) {
-            const nc = mkCanvas(acc.width, acc.height);
-            const nx = nc.getContext('2d');
-            nx.imageSmoothingQuality = 'high';
-            nx.drawImage(cbmp, 0, 0, nc.width, nc.height);
-            acc = nc; cx = nx;
+            let nw = cbmp.width, nh = cbmp.height;
+            if (maxSide && Math.max(nw, nh) > maxSide) {
+              const k = maxSide / Math.max(nw, nh);
+              nw = Math.max(1, Math.round(nw * k));
+              nh = Math.max(1, Math.round(nh * k));
+            }
+            if (nw !== acc.width || nh !== acc.height) {
+              acc = mkCanvas(nw, nh); cx = acc.getContext('2d');
+            }
+            cx.imageSmoothingQuality = 'high';
+            cx.clearRect(0, 0, acc.width, acc.height);
+            cx.drawImage(cbmp, 0, 0, acc.width, acc.height);
           }
           break;
         }

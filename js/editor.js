@@ -65,6 +65,20 @@
            style updates: the app keeps checking under Help, shows the new
            version there, and one click on "Install Update" with internet
            on updates and restarts it automatically.
+   v3.22.0: (editor) Background Studio — professional product backdrops
+           rendered ON-DEVICE (offline & unlimited, no AI service needed):
+           15 seeded studio backdrops (Pure White marketplace standard,
+           Studio Sweep + pastel sweeps, Black Luxe / Royal Blue, Marble,
+           Walnut, Linen, Concrete textures, Podium scene, Gold Festive
+           bokeh, Rose Silk, Two-Tone Pastel) with a Shuffle-Pattern
+           variation button, an optional AI Scene beta (clearly marked
+           "needs internet"), auto-centred product placement with size /
+           position sliders and a soft drop shadow, marketplace output
+           sizes (1:1 1600 Amazon/Flipkart/Meesho, 4:5 Instagram, 3:4,
+           9:16) that now replace the canvas size, a zoomable QA preview
+           with before/after hold, and non-destructive apply (undoable
+           'cutout' op). Picture → Professional Background (Studio)… and
+           a Studio BG button next to Remove BG in the Fix tab.
    v3.21.0: (editor) the Cutout tool — a professional Remove-Background
            engine for product photos: border-connected background detection
            (colour clusters sampled from the photo edges, so shiny parts
@@ -2138,6 +2152,7 @@
       else if (f === 'rotr') commit({ type: 'rot', deg: 90 });
       else if (f === 'sticker') q('#stickerFile').click();
       else if (f === 'cutout') { if (window.PixsaCutout) window.PixsaCutout.open(); }
+      else if (f === 'bgstudio') { if (window.PixsaBGStudio) window.PixsaBGStudio.open(); }
       else if (E.tool === f) setTool(null);
       else if (f === 'crop') startCrop();
       else setTool(f);

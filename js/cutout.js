@@ -27,7 +27,15 @@
   const q = (s) => document.querySelector(s);
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const c255 = (v) => (v < 0 ? 0 : v > 255 ? 255 : v);
-  const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  /* two rAFs give the spinner one painted frame; the timeout is a safety
+     net (v3.22.0) for throttled pages (background tab / occluded window),
+     where rAF never fires and the busy overlay would hang forever */
+  const raf2 = () => new Promise((r) => {
+    let done = false;
+    const fin = () => { if (!done) { done = true; r(); } };
+    requestAnimationFrame(() => requestAnimationFrame(fin));
+    setTimeout(fin, 130);
+  });
   /* safety cap — photos above this pixel count are processed scaled down */
   const MAXPX = 24e6;
 
