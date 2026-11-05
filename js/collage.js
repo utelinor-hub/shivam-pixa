@@ -332,8 +332,10 @@
     const holder = el.wrap.parentElement || el.wrap;
     const r = holder.getBoundingClientRect();
     const cs = getComputedStyle(holder);
-    const availW = Math.max(120, r.width - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 6);
-    const availH = Math.max(90, r.height - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0) - 6);
+    /* v3.26.2: only a 2px breathing margin — the page box is as big as the
+       preview area allows (user: 'box ki size bahut choti hai, bada karo') */
+    const availW = Math.max(120, r.width - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 2);
+    const availH = Math.max(90, r.height - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0) - 2);
     let [W, H] = dims();
     const target = W / H;
     let sw = availW, sh = sw / target;

@@ -881,7 +881,9 @@
     }
     .fxpager button:hover:not(:disabled) { border-color: var(--accent); background: #dcebfb; }
     .fxpager button:disabled { opacity: .4; cursor: default; }
-    .c-prev { flex: 1; display: grid; place-items: center; background: #4d5055; padding: 6px; position: relative; overflow: auto; }
+    /* v3.26.2: the preview column fills the whole area — the page box is as
+       big as the window allows (padding stripped) */
+    .c-prev { flex: 1; display: grid; place-items: center; background: #4d5055; padding: 0; position: relative; overflow: auto; }
     .c-canvaswrap { position: relative; display: inline-block; line-height: 0; max-width: 100%; max-height: 100%; }
     /* v3.19.0: the collage stage is DOM now — styles come from collage.js */
     /* v3.12.0: Picasa "Picture Collage" engine — full-screen editor with a
@@ -962,10 +964,17 @@
     .c-grid4 button:hover { border-color: var(--accent); background: #eaf2fc; }
     .c-grid4 button.accent { background: var(--accent); border-color: var(--accent-deep); color: #fff; font-weight: 700; }
     .c-grid4 button.accent:hover { background: var(--accent-deep); }
-    .c-stage { flex: 1; display: grid; place-items: center; min-height: 0; padding: 4px 8px; }
+    .c-stage { flex: 1; display: grid; place-items: center; min-height: 0; padding: 2px; }
     .c-prev { flex-direction: column; display: flex; }
-    .c-below { display: flex; gap: 8px; justify-content: center; padding: 2px 12px 12px; flex-wrap: wrap; }
-    .c-below .btn { min-width: 0; padding: 7px 13px; font-size: 12.5px; }
+    /* v3.26.2: the bottom strip (hint text + Scramble/Shuffle/View and Edit)
+       is gone — the actions live in the sidebar Tools section now */
+    .c-toolsec .c-side-actions { margin-top: 2px; }
+    .c-toolrow { grid-template-columns: repeat(3, 1fr); }
+    .c-toolrow button { padding: 6px 2px; font-size: 11.5px; white-space: nowrap; }
+    .c-note2 { font-size: 10.5px; color: #6d7076; line-height: 1.4; margin-top: 2px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* v3.26.2: slimmer collage header = taller page box */
+    #collage .m-head { padding: 4px 10px; }
+    #collage .c-tabs button { padding: 3px 14px; }
     .ctxmenu { position: fixed; z-index: 400; min-width: 200px; background: #fff; border: 1px solid #b5b2ab; border-radius: 5px; box-shadow: 0 8px 26px rgba(0,0,0,.3); padding: 4px; }
     .ctxmenu button { display: block; width: 100%; text-align: left; padding: 6px 12px; font-size: 12.5px; color: #2b3138; border-radius: 3px; border: 0; background: none; cursor: pointer; }
     .ctxmenu button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent-deep); }
@@ -1313,7 +1322,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.26.1</span>
+      <span class="ver">v3.26.2</span>
     </span>
   </footer>
 
@@ -2083,6 +2092,16 @@
             <div id="cClips" class="c-clips"></div>
             <button id="cAddPhotos" class="btn" type="button" style="width:100%;justify-content:center">Add More Photos&hellip;</button>
           </div>
+          <!-- v3.26.2: Tools moved here from the removed bottom strip -->
+          <div class="c-sec c-toolsec">
+            <span class="c-lab">Tools</span>
+            <div class="c-side-actions c-toolrow">
+              <button id="cScramble" type="button" title="Re-lay the whole collage">Scramble</button>
+              <button id="cShufflePics" type="button" title="Shuffle the order of the photos">Shuffle</button>
+              <button id="cViewEdit" type="button" title="Open the selected photo in the editor">View/Edit</button>
+            </div>
+            <span id="cNote" class="c-note2"></span>
+          </div>
           <!-- v3.25.1: Create Collage + Close at the sidebar BOTTOM, exactly
                where Picasa 3 keeps them (Desktop Background + Reset removed
                per user request) -->
@@ -2096,17 +2115,16 @@
                Set as Background) is GONE per user request — the page box gets
                the full area now; those actions live in the right-click menu
                (Set as Background, Remove) and Ctrl+A / drag-rubber-band -->
+          <!-- v3.26.2: the BOTTOM strip under the canvas (hint text +
+               Scramble / Shuffle / View and Edit) is GONE too — the actions
+               moved into the left sidebar, so the page box now uses the
+               whole preview area (user: 'box ko bada karo, editing me maza
+               aaye'). -->
           <div class="c-stage">
             <div id="cWrap" class="c-canvaswrap">
               <div id="cStage"></div>
               <div id="cWheel" hidden><div id="cKnob"></div></div>
             </div>
-          </div>
-          <div class="c-below">
-            <span class="cnote" id="cNote" style="margin-right:auto;align-self:center"></span>
-            <button id="cScramble" class="btn" type="button" title="Re-lay the whole collage">Scramble Collage</button>
-            <button id="cShufflePics" class="btn" type="button" title="Shuffle the order of the photos">Shuffle Pictures</button>
-            <button id="cViewEdit" class="btn" type="button" title="Open the selected photo in the editor">View and Edit</button>
           </div>
           <div id="cBusy" class="c-busy" hidden><span class="spin big"></span></div>
         </div>
