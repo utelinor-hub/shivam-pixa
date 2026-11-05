@@ -1322,7 +1322,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.26.2</span>
+      <span class="ver">v3.27.0</span>
     </span>
   </footer>
 
@@ -2453,6 +2453,9 @@
       hydrateDims();
       buildTree();
       applyFilter();
+      /* v3.27.0: a finished collage is a library photo — push it to Google
+         Drive right away so the other PC shows it within seconds */
+      if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged();
       return item;
     }
     async function restoreCollageItems() {

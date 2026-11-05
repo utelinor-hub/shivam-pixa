@@ -2278,6 +2278,9 @@
       /* v3.7.0: cloud photos — the SAME Google Drive file is overwritten in
          the background (no duplicate photo is ever created) */
       if (p.cloud && window.PixsaCloud) window.PixsaCloud.onPhotoSaved(p, blob);
+      /* v3.27.0: a photo saved INTO the library (Ctrl+S) also backs up to
+         Google Drive in the background — it appears on the other PCs too */
+      if (how === 'lib' && window.PixsaCloud) window.PixsaCloud.onLibraryChanged();
       E.saved = true;
       E.dirty = false;
       try { if (E.src && E.src.close) E.src.close(); } catch (e) {}

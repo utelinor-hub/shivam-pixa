@@ -23,6 +23,19 @@
    exact reason in plain English, and a one-click "Enable Drive API" button
    opens the right Google Cloud Console page. Every failed Drive response
    is translated (rate limit, permission, session expired, Google outage).
+   v3.27.0 — TRUE TWO-PC LIVE SYNC. Fixes for "doosre PC me sync nahi aata":
+   • One unreadable / unuploadable photo used to KILL the whole upload
+     cycle (the manifest was only written at the very end) — so nothing
+     (new photos, edits, deletions) ever reached the other PC. Every photo
+     is tried independently now; failures retry at the next cycle while
+     everything else still syncs.
+   • The manifest is re-pulled and MERGED right before it is written, so a
+     slow upload on this PC can no longer roll back what the other PC just
+     pushed (new photos + deletions survive).
+   • Poll 25 s → 12 s + pull on window focus, and arrivals now SHOW:
+     "Cloud sync — 2 new, 1 updated from your other PC".
+   • Renames / folder changes made inside PIXA follow the manifest
+     (photos that live on the other PC's disk keep their local name).
 
    How it works (design goals):
    • Sign in with Google → each user gets their own private folder
@@ -35,7 +48,7 @@
    • Deleting a photo in PIXA also trashes it in Google Drive and on
      every other PC at the next pull.
    • Photos added on one PC appear on the other PCs at the next poll
-     (every 25 s, on tab focus, and right after a push).
+     (every 12 s, on tab focus, and right after a push).
    • First sync downloads small thumbnails first — the grid appears
      fast. Full-size photos are fetched only when actually needed
      (edit / export / tray) and cached in IndexedDB after that.
@@ -56,7 +69,9 @@
   const SCOPE = 'https://www.googleapis.com/auth/drive.file';
   const FOLDER_NAME = 'SHIVAM PIXA';
   const MANIFEST_NAME = 'pixa-manifest.json';
-  const POLL_MS = 25000;
+  /* v3.27.0: 25 s → 12 s — the other PC's new photos / edits / collages
+     land within seconds of the next focus, not half a minute later */
+  const POLL_MS = 12000;
   const GIS_SRC = 'https://accounts.google.com/gsi/client';
 
   /* Built-in OAuth Client ID (created by Shivam in Google Cloud Console for
@@ -104,6 +119,7 @@
     enabled: false,
     everSignedIn: false,  // true only after a successful sign-in on this PC
     pendingAdopt: 0,
+    lastPullAt: 0,        // v3.27.0: throttle for focus pulls
     fixUrl: null          // console page that fixes the current error (button in the dialog)
   };
 
@@ -460,8 +476,11 @@
     blobDel(p.cloud && p.cloud.pid);
   }
 
+  /* v3.27.0: returns a counts object {added, edited, removed} instead of a
+     boolean so the pull cycle can TELL the user what arrived (silent auto
+     pulls used to change the grid without a word). */
   async function applyRemote(m, { silent } = {}) {
-    if (!m) return false;
+    if (!m) return null;
     C.remote = m;
     await remoteSet(m);
     const byPid = new Map();
@@ -470,13 +489,13 @@
       if (p.cloud) byPid.set(p.cloud.pid, p);
       else byLink.set(linkKey(p), p);
     });
-    let changed = false;
+    const n = { added: 0, edited: 0, removed: 0, renamed: 0 };
     const keep = [];
     const seen = new Set();
     for (const e of m.photos) {
       if (e.deleted) {
         const lp = byPid.get(e.pid);
-        if (lp) { removeLocalCloudPhoto(lp); byPid.delete(e.pid); changed = true; }
+        if (lp) { removeLocalCloudPhoto(lp); byPid.delete(e.pid); n.removed++; }
         continue;
       }
       seen.add(e.pid);
@@ -489,7 +508,14 @@
           lp.cloud.dirty = false;
           invalidateThumb(lp);
           await blobDel(e.pid);
-          changed = true;
+          n.edited++;
+        }
+        /* v3.27.0: a photo renamed / moved between folders inside PIXA on
+           another PC follows the manifest — but a photo that lives on THIS
+           PC's disk keeps its local name (the disk file is its truth) */
+        if (!lp.handle) {
+          if (e.name && e.name !== lp.name) { invalidateThumb(lp); lp.name = e.name; n.renamed++; }
+          if ((e.folder || '') && (e.folder || '') !== (lp.folder || '')) { lp.folder = e.folder; n.renamed++; }
         }
         keep.push(lp);
         byPid.delete(e.pid);
@@ -497,11 +523,13 @@
       }
       const lk = byLink.get(`${e.folder || ''}//${e.name}`);
       if (lk) {
-        /* the same local photo already exists here — link it instead of duplicating */
+        /* the same local photo already exists here — link it instead of
+           duplicating (v3.27.0: linking is NOT an "arrival" — a fresh
+           sign-in must not claim "12 new from your other PC" for photos
+           that were already on this PC) */
         lk.cloud = { pid: e.pid, fileId: e.fileId, thumbId: e.thumbId, updated: e.updated };
         const links = await linksGet(); links[linkKey(lk)] = e.pid; await linksSet(links);
         keep.push(lk); byLink.delete(`${e.folder || ''}//${e.name}`);
-        changed = true;
         continue;
       }
       keep.push({
@@ -509,20 +537,19 @@
         handle: null, file: null, folder: e.folder || 'Google Drive',
         cloud: { pid: e.pid, fileId: e.fileId, thumbId: e.thumbId, updated: e.updated }
       });
-      changed = true;
+      n.added++;
     }
     /* entries that vanished from the remote manifest were deleted on another PC */
-    for (const [, lp] of byPid) { removeLocalCloudPhoto(lp); changed = true; }
-    if (changed) {
+    for (const [, lp] of byPid) { removeLocalCloudPhoto(lp); n.removed++; }
+    if (n.added || n.edited || n.removed || n.renamed) {
       /* local photos first, then cloud-only photos (grid sorts them anyway) */
       const locals = state.photos.filter((p) => !p.cloud);
       state.photos = locals.concat(keep.filter((p) => p.cloud));
       buildTree(); applyFilter();
-      if (!silent) toast('Cloud photos updated', 'ok', 2500);
     }
     /* settings (sort / zoom) follow the newest save */
     if (m.settings && m.settings.updated) applyRemoteSettings(m.settings);
-    return changed;
+    return n;
   }
 
   function applyRemoteSettings(s) {
@@ -625,40 +652,54 @@
 
       /* 1 — deletions made in PIXA (offline-safe queue) */
       const delQ = await delQGet();
+      const deletedHere = new Map();                 /* v3.27.0: pid → deletion time */
       if (delQ.length) {
         for (const pid of delQ) {
           const e = entries.get(pid);
           if (e && !e.deleted) { e.deleted = true; e.updated = nowIso(); trashFiles([e.fileId, e.thumbId]); }
+          deletedHere.set(pid, nowIso());
           entries.delete(pid);
         }
         await delQSet([]);
       }
 
-      /* 2 — re-uploads of photos edited on this PC */
+      /* 2 — re-uploads of photos edited on this PC.
+         v3.27.0: one failed edit upload no longer kills the cycle — the
+         pid stays queued and retries at the next cycle, while every OTHER
+         edit still reaches the other PCs. */
       let dirty = await dirtyGet();
       if (dirty.length) {
+        const stillDirty = [];
         for (const pid of dirty) {
           const e = entries.get(pid);
           const b = await blobGet(pid);
           if (e && b) {
-            await updateMedia(e.fileId, b);
-            const tb = await makeThumbBlob(b);
-            if (tb) {
-              if (e.thumbId) { try { await updateMedia(e.thumbId, tb); } catch (er) { e.thumbId = await uploadNew(tb, `${e.name}.thumb.jpg`, { pixa: 'thumb' }); } }
-              else e.thumbId = await uploadNew(tb, `${e.name}.thumb.jpg`, { pixa: 'thumb' });
-            }
-            const lp = state.photos.find((x) => x.cloud && x.cloud.pid === pid);
-            if (lp) { e.size = lp.size; e.lastModified = lp.lastModified; } else { e.size = b.size; }
-            e.updated = nowIso();
-            if (lp && lp.cloud) { lp.cloud.updated = e.updated; lp.cloud.dirty = false; }
+            try {
+              await updateMedia(e.fileId, b);
+              const tb = await makeThumbBlob(b);
+              if (tb) {
+                if (e.thumbId) { try { await updateMedia(e.thumbId, tb); } catch (er) { e.thumbId = await uploadNew(tb, `${e.name}.thumb.jpg`, { pixa: 'thumb' }); } }
+                else e.thumbId = await uploadNew(tb, `${e.name}.thumb.jpg`, { pixa: 'thumb' });
+              }
+              const lp = state.photos.find((x) => x.cloud && x.cloud.pid === pid);
+              if (lp) { e.size = lp.size; e.lastModified = lp.lastModified; } else { e.size = b.size; }
+              e.updated = nowIso();
+              if (lp && lp.cloud) { lp.cloud.updated = e.updated; lp.cloud.dirty = false; }
+            } catch (er) { stillDirty.push(pid); }
           }
           await sleep(30);
         }
-        dirty = []; await dirtySet([]);
+        await dirtySet(stillDirty);
       }
 
-      /* 3 — new local photos → upload (one by one, editor pauses the queue) */
-      let upCount = 0;
+      /* 3 — new local photos → upload (one by one, editor pauses the queue).
+         v3.27.0 THE BIG FIX: a photo that cannot be read (folder permission
+         dropped) or fails to upload is SKIPPED, not fatal. Before this fix
+         ONE bad photo aborted the whole cycle — the manifest was only
+         written at the very end, so NOTHING (new photos, edits, collages,
+         deletions) ever reached the other PC. Failed photos are retried at
+         the next cycle; everything else syncs right now. */
+      let upCount = 0, skipCount = 0;
       for (const p of state.photos.slice()) {
         if (p.cloud) continue;
         if (editorOpen()) break;
@@ -669,16 +710,18 @@
         let pid;
         if (twin) { pid = twin.pid; }
         else {
-          pid = uuid();
-          const f = await getFile(p);
-          const fileId = await uploadNew(f, p.name, { pixa: 'photo' });
-          const tb = await makeThumbBlob(f);
-          const thumbId = tb ? await uploadNew(tb, `${p.name}.thumb.jpg`, { pixa: 'thumb' }) : null;
-          entries.set(pid, {
-            pid, name: p.name, folder: p.folder || '', type: f.type || 'image/jpeg',
-            size: f.size, lastModified: p.lastModified || Date.now(),
-            fileId, thumbId, updated: nowIso(), deleted: false
-          });
+          try {
+            pid = uuid();
+            const f = await getFile(p);
+            const fileId = await uploadNew(f, p.name, { pixa: 'photo' });
+            const tb = await makeThumbBlob(f);
+            const thumbId = tb ? await uploadNew(tb, `${p.name}.thumb.jpg`, { pixa: 'thumb' }) : null;
+            entries.set(pid, {
+              pid, name: p.name, folder: p.folder || '', type: f.type || 'image/jpeg',
+              size: f.size, lastModified: p.lastModified || Date.now(),
+              fileId, thumbId, updated: nowIso(), deleted: false
+            });
+          } catch (er) { skipCount++; continue; }   /* retried at the next cycle */
           upCount++;
           if (upCount % 20 === 0) toast(`Uploading — ${upCount} done`, 'ok', 2500);
           await sleep(30);
@@ -688,13 +731,59 @@
         await linksSet(links);
       }
 
-      /* 4 — write the manifest back */
+      /* 3b — v3.27.0: names / folder changes made inside PIXA follow the
+         manifest too, so a photo renamed on this PC shows its new name on
+         every other PC (photos on the other PC's DISK keep their local
+         name — only app-owned photos follow). */
+      for (const p of state.photos) {
+        if (!p.cloud || p.handle) continue;
+        const e = entries.get(p.cloud.pid);
+        if (e && !e.deleted && (e.name !== p.name || (e.folder || '') !== (p.folder || ''))) {
+          e.name = p.name;
+          e.folder = p.folder || '';
+        }
+      }
+
+      /* 4 — v3.27.0: re-pull and MERGE, then write. A slow upload cycle on
+         this PC must never roll back what the other PC pushed while we
+         were uploading (their new photos arrive, their deletions become
+         tombstones instead of being resurrected). */
+      let result = [...entries.values()];
+      try {
+        const baseList = m.photos.slice();          /* manifest as seen at cycle start */
+        const m2 = await pullManifest();
+        if (m2 && m2.rev && m2.rev > (C.remote ? C.remote.rev : 0)) {
+          const out = new Map(result.map((e) => [e.pid, e]));
+          const theirs = new Map(m2.photos.map((e) => [e.pid, e]));
+          for (const [pid2, e2] of theirs) {
+            /* photos deleted on THIS PC during the cycle stay deleted —
+               the other PC's stale copy must not resurrect them (unless
+               that PC edited the photo AFTER our deletion) */
+            if (deletedHere.has(pid2)) {
+              if ((e2.updated || '') > (deletedHere.get(pid2) || '')) out.set(pid2, e2);
+              continue;
+            }
+            const cur = out.get(pid2);
+            if (!cur || (e2.updated || '') > (cur.updated || '')) out.set(pid2, e2);
+          }
+          for (const e1 of baseList) {
+            if (!theirs.has(e1.pid)) {
+              const cur = out.get(e1.pid);
+              if (cur && !cur.deleted) { cur.deleted = true; cur.updated = nowIso(); }
+            }
+          }
+          result = [...out.values()];
+        }
+      } catch (er) { /* merge is best-effort — push what we have */ }
       m.rev = Date.now();
-      m.photos = [...entries.values()];
+      m.photos = result;
       if (!m.settings) m.settings = {};
       if (state.sort) m.settings.sort = state.sort;
       await pushManifest(m);
-      setStatus_('ok');
+      /* merged-in entries (pushed by the other PC during this cycle) show
+         in the grid immediately instead of waiting for the next poll */
+      await applyRemote(m, { silent: true });
+      setStatus_('ok', skipCount ? `${skipCount} photo${skipCount > 1 ? 's' : ''} waiting to upload — will retry` : '');
       if (upCount) toast(`${upCount} photo${upCount > 1 ? 's' : ''} backed up to Google Drive`, 'ok', 4000);
     } catch (e) {
       setStatus_('err', e.message);
@@ -708,6 +797,7 @@
   async function pullCycle({ manual } = {}) {
     if (!C.enabled || C.pulling || !hasToken()) return;
     C.pulling = true;
+    C.lastPullAt = Date.now();
     try {
       setStatus_('syncing');
       C.folderId = C.folderId || await findFolder();
@@ -721,7 +811,7 @@
         if (manual) { await pushCycle(); } else setStatus_('ok');
         return;
       }
-      const changed = await applyRemote(m, { silent: !manual });
+      const n = await applyRemote(m, { silent: true });
       /* v3.8.0: adopt photos that other apps uploaded straight into the
          Drive folder (e.g. an auto-upload app on the phone) */
       let adopted = 0;
@@ -731,7 +821,16 @@
       const haveLocalNew = state.photos.some((p) => !p.cloud && !mine[linkKey(p)]);
       if (haveLocalNew) schedulePush(1500);
       else setStatus_('ok');
-      if (manual && !changed) toast('Everything is already in sync', 'ok', 2500);
+      /* v3.27.0: arrivals are no longer silent — the user SEES that the
+         other PC's photos / edits / collages just landed */
+      if (n && (n.added || n.edited || n.removed || n.renamed)) {
+        const bits = [];
+        if (n.added) bits.push(`${n.added} new`);
+        if (n.edited) bits.push(`${n.edited} updated`);
+        if (n.renamed) bits.push(`${n.renamed} renamed`);
+        if (n.removed) bits.push(`${n.removed} removed`);
+        toast(`Cloud sync — ${bits.join(', ')} from your other PC`, 'ok', 3500);
+      } else if (manual) toast('Everything is already in sync', 'ok', 2500);
     } catch (e) {
       setStatus_('err', e.message);
       if (manual) toast('Sync failed: ' + e.message, 'err', 6000);
@@ -1010,6 +1109,15 @@
   /* faster visibility: when the user comes back to the tab, pull at once */
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && C.enabled && hasToken()) pullCycle().catch(() => {});
+  });
+  /* v3.27.0: some windows never fire visibilitychange (popout windows,
+     some desktop setups) — pull on focus too, so the other PC's photos,
+     edits and collages appear the moment the user looks at PIXA.
+     Throttled to one pull per 5 s. */
+  window.addEventListener('focus', () => {
+    if (C.enabled && hasToken() && !C.pulling && Date.now() - C.lastPullAt > 5000) {
+      pullCycle().catch(() => {});
+    }
   });
   window.addEventListener('online', () => {
     if (!C.enabled) return;
