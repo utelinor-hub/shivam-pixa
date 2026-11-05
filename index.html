@@ -394,6 +394,17 @@
     }
     .cell:hover .addbtn, .cell:focus-visible .addbtn { opacity: 1; }
     .cell.sel .addbtn { opacity: 1; background: var(--accent); color: #fff; border-color: var(--accent-deep); }
+    /* v3.28.0: Picasa rotate buttons — two small arrows under every thumbnail,
+       always visible (Picasa 3 showed them the same way). Rotation stays in
+       the app until the photo is saved with Ctrl+S. */
+    .cell .grot { display: flex; justify-content: center; gap: 5px; padding: 3px 0 1px; }
+    .cell .grot button {
+      width: 26px; height: 19px; border-radius: 4px; padding: 0;
+      border: 1px solid #c6c3bc; background: linear-gradient(#fdfdfc, #edece7);
+      color: #4c525a; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    }
+    .cell .grot button:hover { border-color: var(--accent); background: #eaf2fc; color: var(--accent-deep); }
+    .cell .grot button svg { width: 12px; height: 12px; pointer-events: none; }
     /* v3.16.0: collage badge on finished collages + foldable folder headers */
     .cell .cbadge {
       position: absolute; top: 6px; left: 6px; z-index: 3;
@@ -697,12 +708,28 @@
     .e-tabs button:last-child { border-right: 0; }
     .e-tabs button.on { background: #f8f7f4; color: #1f6fc0; box-shadow: inset 0 -2px 0 var(--accent); }
     .e-tabbody { flex: 1; overflow-y: auto; padding: 10px; }
-    /* v3.24.0: permanent histogram + camera info block (Picasa position) */
+    /* v3.28.0: the histogram + camera info box was REMOVED (user request) —
+       the legacy rules below only remain harmless if an old cache references them */
     .e-histbox { border-top: 1px solid #bcb9b2; background: #e4e2dc; padding: 9px 10px 8px; }
     .e-histbox canvas { width: 100%; height: auto; display: block; border: 1px solid #a5a29b; }
     .e-cam { display: block; font-size: 10.5px; color: #565b63; margin-top: 5px; line-height: 1.45; min-height: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .e-cam:empty { display: none; }
     .e-tab { display: none; } .e-tab.on { display: block; }
+    /* v3.28.0: Picasa Basic Fixes palette — 3 big icon tiles per row, exactly
+       like the original Picasa 3 'Basic Fixes' buttons; ONLY the 6 tools the
+       user asked for live here now */
+    .pica-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 2px 0 8px; }
+    .fixbtn.pica {
+      flex-direction: column; align-items: center; justify-content: center; gap: 7px;
+      padding: 13px 4px 10px; margin: 0; text-align: center;
+      border-radius: 5px; min-height: 78px;
+      font-size: 12px; font-weight: 600; color: #33373d;
+      box-shadow: 0 1px 2px rgba(0,0,0,.06);
+    }
+    .fixbtn.pica svg { width: 26px; height: 26px; flex: 0 0 26px; opacity: .82; }
+    .fixbtn.pica span { line-height: 1.15; }
+    .fixbtn.pica:hover { box-shadow: 0 2px 6px rgba(43,124,211,.28); transform: translateY(-1px); }
+    .fixbtn.pica.on { transform: none; }
     .fixbtn {
       display: flex; align-items: center; justify-content: flex-start; gap: 7px; width: 100%;
       padding: 4px 9px; margin: 0 0 5px; border-radius: 3px;
@@ -743,6 +770,20 @@
     .e-actions button:hover svg { opacity: 1; }
     .e-actions button:disabled { opacity: .45; cursor: default; }
     .e-actions button.accent { background: linear-gradient(#4d92dc, #2b6fc0); color: #fff; border-color: #1e5a9e; text-shadow: 0 1px 1px rgba(0,0,0,.2); }
+    /* v3.28.0: right-click menu on the editor photo — 'Save a Copy' lives here
+       (the sidebar has no Save buttons; Ctrl+S saves) */
+    .e-ctx {
+      position: absolute; z-index: 60; min-width: 190px;
+      background: #fffdf9; border: 1px solid #b9b6ae; border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.28); padding: 4px;
+      display: flex; flex-direction: column;
+    }
+    .e-ctx button {
+      border: 0; background: none; text-align: left; padding: 7px 11px;
+      font-size: 12.5px; border-radius: 4px; cursor: pointer; color: #2c2f34;
+    }
+    .e-ctx button:hover { background: #eaf2fc; }
+    .e-ctx button:disabled { opacity: .45; cursor: default; }
     .e-actions button.accent:hover { background: linear-gradient(#5a9de6, #2f79cf); }
     .e-actions button.holding { border-color: var(--accent); background: #dcebfb; }
     .e-bottom {
@@ -1322,7 +1363,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.27.0</span>
+      <span class="ver">v3.28.0</span>
     </span>
   </footer>
 
@@ -1659,37 +1700,21 @@
           <button type="button" data-tab="select" title="Select — copy / cut / delete part of the photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7V5.5a2 2 0 012-2H7M17 3.5h1.5a2 2 0 012 2V7M20.5 17v1.5a2 2 0 01-2 2H17M7 20.5H5.5a2 2 0 01-2-2V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3.5 10.5v3M20.5 10.5v3M10.5 3.5h3M10.5 20.5h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Select</button>
         </div>
         <div class="e-tabbody">
+          <!-- v3.28.0: Picasa Basic Fixes — ONLY the 6 tools the user asked
+               for, as big icon tiles like Picasa 3. Row 1: Crop, Straighten,
+               ABC Text. Row 2: Remove BG, Blur Spot, Sticker / Logo.
+               Lucky / Auto Contrast / Auto Color / Redeye / Studio BG and the
+               in-editor Rotate section are gone (grid thumbnails carry their
+               own rotate buttons now). Every tool opens its own bar with
+               Apply / Cancel / Undo / Redo inside. -->
           <div id="tab-basic" class="e-tab on">
-            <div class="sechead">Crop &bull; Straighten &bull; Text</div>
-            <div class="toolgrid">
-              <button class="fixbtn" type="button" data-fix="crop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 2.5v13a2 2 0 002 2h13M2.5 6.5h13a2 2 0 012 2v13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Crop</button>
-              <button class="fixbtn" type="button" data-fix="straighten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 19.5h17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2.5"/><path d="M5 15.5L19 7.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="5" cy="15.5" r="1.4" fill="currentColor"/><circle cx="19" cy="7.5" r="1.4" fill="currentColor"/></svg>Straighten</button>
-              <button class="fixbtn" type="button" data-fix="text"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7V4.5h14V7M12 4.5v15M9.5 19.5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>ABC Text</button>
-            </div>
-            <div class="sechead">One-click Fixes</div>
-            <div class="toolgrid">
-              <button class="fixbtn" type="button" data-fix="lucky"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5L13 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 3.5v4M14.5 5.5h4M19 10.5v3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Lucky</button>
-              <button class="fixbtn" type="button" data-fix="autocon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.8a8.2 8.2 0 010 16.4z" fill="currentColor"/></svg>Contrast</button>
-              <button class="fixbtn" type="button" data-fix="autocolor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5s6 6.6 6 10.4a6 6 0 11-12 0c0-3.8 6-10.4 6-10.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Color</button>
-            </div>
-            <div class="sechead">Retouch</div>
-            <div class="toolgrid">
-              <button class="fixbtn" type="button" data-fix="redeye"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Redeye</button>
-              <button class="fixbtn" type="button" data-fix="retouch"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="9" width="17.6" height="6" rx="3" transform="rotate(-45 12 12)" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="10.3" cy="10.4" r="1" fill="currentColor"/><circle cx="13.7" cy="13.7" r="1" fill="currentColor"/></svg>Blur Spot</button>
-            </div>
-            <div class="sechead">Add</div>
-            <div class="toolgrid">
-              <button class="fixbtn" type="button" data-fix="sticker"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8.6" cy="9.4" r="1.6" fill="currentColor"/><path d="M4 16.5l4.8-4.2 3.4 3L15 13l6 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Sticker / Logo</button>
-            </div>
-            <div class="sechead">Cutout</div>
-            <div class="toolgrid">
-              <button class="fixbtn" type="button" data-fix="cutout" title="Remove the background — professional product cutout (transparent PNG / pure white)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.7" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="18" r="2.7" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.3 7.5L20.5 18M8.3 16.5L20.5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Remove BG</button>
-              <button class="fixbtn" type="button" data-fix="bgstudio" title="Put the product on a professional studio backdrop — offline and unlimited"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M7.2 19.5c0-3.1 2.1-5.6 4.8-5.6s4.8 2.5 4.8 5.6" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="9.2" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>Studio BG</button>
-            </div>
-            <div class="sechead">Rotate</div>
-            <div class="rotrow">
-              <button class="fixbtn" type="button" data-fix="rotl"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5L4 8.7l4.5 4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 8.7H15a5.4 5.4 0 110 10.8h-3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Rotate Left</button>
-              <button class="fixbtn" type="button" data-fix="rotr"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5L20 8.7l-4.5 4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.5 8.7H9a5.4 5.4 0 100 10.8h3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Rotate Right</button>
+            <div class="pica-grid">
+              <button class="fixbtn pica" type="button" data-fix="crop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 2.5v13a2 2 0 002 2h13M2.5 6.5h13a2 2 0 012 2v13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Crop</span></button>
+              <button class="fixbtn pica" type="button" data-fix="straighten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 19.5h17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2.5"/><path d="M5 15.5L19 7.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="5" cy="15.5" r="1.4" fill="currentColor"/><circle cx="19" cy="7.5" r="1.4" fill="currentColor"/></svg><span>Straighten</span></button>
+              <button class="fixbtn pica" type="button" data-fix="text"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7V4.5h14V7M12 4.5v15M9.5 19.5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Text</span></button>
+              <button class="fixbtn pica" type="button" data-fix="cutout" title="Remove the background — professional product cutout (transparent PNG / pure white)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.7" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="18" r="2.7" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.3 7.5L20.5 18M8.3 16.5L20.5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Remove BG</span></button>
+              <button class="fixbtn pica" type="button" data-fix="retouch" title="Blur a spot / blemish — drag over it"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="9" width="17.6" height="6" rx="3" transform="rotate(-45 12 12)" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="10.3" cy="10.4" r="1" fill="currentColor"/><circle cx="13.7" cy="13.7" r="1" fill="currentColor"/></svg><span>Blur Spot</span></button>
+              <button class="fixbtn pica" type="button" data-fix="sticker" title="Put a sticker or your logo on the photo"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8.6" cy="9.4" r="1.6" fill="currentColor"/><path d="M4 16.5l4.8-4.2 3.4 3L15 13l6 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Sticker / Logo</span></button>
             </div>
             <div id="eToolBox" class="toolbox" hidden></div>
           </div>
@@ -1853,19 +1878,16 @@
           </div>
           <!-- v3.25.5: #tab-effects removed -->
         </div>
-        <!-- v3.24.0: Picasa shows the histogram + camera info at the bottom of
-             the tools panel in EVERY tab — it moved out of the Tuning tab -->
-        <div class="e-histbox">
-          <div class="sechead">Histogram &amp; Camera Information</div>
-          <canvas id="eHist" width="280" height="84"></canvas>
-          <span class="e-cam" id="eCam"></span>
-        </div>
+        <!-- v3.28.0: the histogram + camera info box is REMOVED (user request:
+             'histogram remove karo uski zaroorat nahi'). EXIF/dimensions still
+             show in the editor footer. -->
+        <!-- v3.28.0: NO Save / Save a Copy buttons — saving happens ONLY via
+             Ctrl+S (Picasa rule: 'save control S se hi hoga'). 'Save a Copy'
+             moved into the right-click menu on the photo. -->
         <div class="e-actions">
           <button id="eCompare" type="button" title="Before / After — hold to view the original (B)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Before</button>
           <button id="eUndo" type="button" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 13.5L4 9l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 9H15a5 5 0 015 5v0a5 5 0 01-5 5h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Undo</button>
           <button id="eRedo" type="button" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 13.5L20 9l-4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.5 9H9a5 5 0 00-5 5v0a5 5 0 005 5h4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Redo</button>
-          <button id="eSave" class="accent" type="button" title="Save into the original file (Ctrl+S)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 20.5H5a1.5 1.5 0 01-1.5-1.5V5A1.5 1.5 0 015 3.5h11L20.5 8v11a1.5 1.5 0 01-1.5 1.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M16.5 20.5v-7h-9v7M7.5 3.5V8h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Save</button>
-          <button id="eSaveCopy" type="button" title="Save as a new copy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 15.5h-1a2 2 0 01-2-2v-9a2 2 0 012-2h9a2 2 0 012 2v1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Save a Copy</button>
         </div>
       </aside>
     </div>
@@ -3003,7 +3025,56 @@
        hydrated before the first render. */
     const dimsMap = new Map();
     let dimsSaveT = 0;
+    /* ===== v3.28.0: Picasa rotate buttons under every thumbnail =====
+       'rotate button jaise picasa me har image ke niche aata tha' — two
+       small buttons sit under each grid photo. Like everything in Picasa,
+       the rotation stays IN THE APP (thumbnails show it instantly, the disk
+       file is untouched) until Ctrl+S bakes it into the saved photo. */
+    let gridRotMap = null;
+    async function loadGridRots() {
+      if (gridRotMap) return gridRotMap;
+      try { gridRotMap = (await idbGet('kv', 'gridrots')) || {}; } catch (e) { gridRotMap = {}; }
+      if (!gridRotMap || typeof gridRotMap !== 'object') gridRotMap = {};
+      return gridRotMap;
+    }
+    function saveGridRots() { if (gridRotMap) idbSet('kv', 'gridrots', gridRotMap).catch(() => {}); }
+    function applyGridRots() {
+      if (!gridRotMap || !state.photos.length) return;
+      for (const p of state.photos) {
+        const r = gridRotMap[photoKey(p)] || 0;
+        if (r) p.rot = r; else if (p.rot) p.rot = 0;
+      }
+    }
+    /* display dimensions of a photo in the grid — 90°/270° rotations swap w/h */
+    function dispDims(p) {
+      const r = ((p.rot || 0) % 360 + 360) % 360;
+      return (r === 90 || r === 270) ? [p.h, p.w] : [p.w, p.h];
+    }
+    function rotatePhoto(p, d) {
+      if (!p) return;
+      loadGridRots().then(() => {
+        const key = photoKey(p);
+        const cur = ((p.rot || 0) % 360 + 360) % 360;
+        const nr = ((cur + d) % 360 + 360) % 360;
+        p.rot = nr;
+        if (nr) gridRotMap[key] = nr; else delete gridRotMap[key];
+        saveGridRots();
+        invalidateThumb(p);
+        applyFilter();
+      });
+    }
+    /* editor: the pending grid rotation moved INTO the edit session — drop it */
+    async function clearGridRot(keys) {
+      await loadGridRots();
+      let ch = false;
+      for (const k of (keys || [])) { if (gridRotMap[k] != null) { delete gridRotMap[k]; ch = true; } }
+      for (const p of state.photos) { if (keys && keys.includes(photoKey(p)) && p.rot) p.rot = 0; }
+      if (ch) saveGridRots();
+    }
+    loadGridRots().then(() => applyGridRots());
+
     function hydrateDims() {
+      if (gridRotMap) applyGridRots();
       if (!dimsMap.size || !state.photos.length) return;
       for (const p of state.photos) {
         if (p.w && p.h) continue;
@@ -3846,7 +3917,21 @@
       add.type = 'button'; add.className = 'addbtn'; add.textContent = '+';
       add.title = 'Add to Photo Tray';
       add.addEventListener('click', (e) => { e.stopPropagation(); toggleSel(entry.p); });
-      btn.appendChild(ph); btn.appendChild(cap); btn.appendChild(chk); btn.appendChild(star); btn.appendChild(add);
+      btn.appendChild(ph);
+      /* v3.28.0: Picasa rotate buttons — under EVERY thumbnail, always visible */
+      const grot = document.createElement('span');
+      grot.className = 'grot';
+      const mkRot = (deg, label, svgPath) => {
+        const rb = document.createElement('button');
+        rb.type = 'button'; rb.title = label; rb.setAttribute('aria-label', label);
+        rb.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + svgPath + '</svg>';
+        rb.addEventListener('click', (e) => { e.stopPropagation(); rotatePhoto(entry.p, deg); });
+        return rb;
+      };
+      grot.appendChild(mkRot(-90, 'Rotate left', '<path d="M8.5 4.5L4 8.7l4.5 4.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 8.7H15a5.4 5.4 0 110 10.8h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>'));
+      grot.appendChild(mkRot(90, 'Rotate right', '<path d="M15.5 4.5L20 8.7l-4.5 4.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.5 8.7H9a5.4 5.4 0 100 10.8h3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>'));
+      btn.appendChild(grot);
+      btn.appendChild(cap); btn.appendChild(chk); btn.appendChild(star); btn.appendChild(add);
       /* v3.16.0: collages carry a small badge so they are easy to spot */
       if (entry.p.collageId) {
         btn.classList.add('is-collage');
@@ -3854,7 +3939,7 @@
         cb.className = 'cbadge'; cb.textContent = 'Collage';
         btn.appendChild(cb);
       }
-      if (entry.p.w && entry.p.h) ph.style.aspectRatio = `${entry.p.w} / ${entry.p.h}`;
+      if (entry.p.w && entry.p.h) { const dwd = dispDims(entry.p); ph.style.aspectRatio = `${dwd[0]} / ${dwd[1]}`; }
       /* single click = select (Photo Tray), double click = open the editor */
       btn.addEventListener('click', (e) => {
         if (e.detail >= 2) {
@@ -3899,7 +3984,10 @@
            photo. The stored thumbnail keeps the original ratio, so read its
            size (new entries carry it inline; older ones are decoded once). */
         const blob = (cached && cached.blob) ? cached.blob : cached;
-        let bw = cached && cached.w, bh = cached && cached.h;
+        /* v3.28.0: ow/oh are the ORIGINAL file's dims — the thumbnail itself
+           may be rotated by a pending grid rotation, so never feed the
+           rotated size back into p.w/p.h */
+        let bw = cached && (cached.ow || cached.w), bh = cached && (cached.oh || cached.h);
         if (!bw || !bh) {
           try {
             const bm = await createImageBitmap(blob);
@@ -3934,11 +4022,25 @@
       /* v3.11.0: remember the photo's true aspect ratio — the grid cell uses
          it so every thumbnail keeps its original shape (Picasa style) */
       if (src && src.width && src.height) { p.w = src.width; p.h = src.height; rememberDims(p, p.w, p.h); }
-      const sc = Math.min(1, THUMB / Math.max(src.width, src.height));
-      const w = Math.max(1, Math.round(src.width * sc));
-      const h = Math.max(1, Math.round(src.height * sc));
+      /* v3.28.0: a pending grid rotation (Picasa rotate buttons) is baked
+         into the THUMBNAIL so the grid shows it instantly — the disk file
+         itself is only rewritten when the photo is saved with Ctrl+S */
+      const rot = ((p.rot || 0) % 360 + 360) % 360;
+      const swap = rot === 90 || rot === 270;
+      const sw0 = swap ? src.height : src.width, sh0 = swap ? src.width : src.height;
+      const sc = Math.min(1, THUMB / Math.max(sw0, sh0));
+      const w = Math.max(1, Math.round(sw0 * sc));
+      const h = Math.max(1, Math.round(sh0 * sc));
       const c = document.createElement('canvas'); c.width = w; c.height = h;
-      c.getContext('2d').drawImage(src, 0, 0, w, h);
+      const cctx = c.getContext('2d');
+      if (rot) {
+        cctx.translate(w / 2, h / 2);
+        cctx.rotate(rot * Math.PI / 180);
+        const dw = swap ? h : w, dh = swap ? w : h;
+        cctx.drawImage(src, -dw / 2, -dh / 2, dw, dh);
+      } else {
+        cctx.drawImage(src, 0, 0, w, h);
+      }
       if (src.close) src.close();
       /* transparent PNG/GIF/WebP: preserve alpha (JPEG would turn black) */
       if (!alphaSrc) {
@@ -3950,8 +4052,10 @@
       }
       const blob = await new Promise((r) => c.toBlob(r, alphaSrc ? 'image/png' : 'image/jpeg', 0.82));
       if (!blob) return null;
-      /* v3.15.1: store the ratio alongside the blob so restarts never re-decode */
-      idbSet('thumbs', key, { blob, w: p.w || 0, h: p.h || 0 }).catch(() => {});
+      /* v3.15.1: store the ratio alongside the blob so restarts never re-decode
+         v3.28.0: w/h = the (possibly rotated) thumbnail size, ow/oh = the
+         ORIGINAL file's dims so a rotated thumb never corrupts p.w/p.h */
+      idbSet('thumbs', key, { blob, w, h, ow: p.w || 0, oh: p.h || 0 }).catch(() => {});
       const u = URL.createObjectURL(blob);
       thumbMem.set(key, u);
       return u;
@@ -3977,8 +4081,9 @@
         if (!ph.isConnected) return;
         if (url) {
           /* v3.12.0: resize the photo box to the photo's real ratio before the
-             image fades in, so nothing is cropped and no bands are shown */
-          if (p.w && p.h) ph.style.aspectRatio = `${p.w} / ${p.h}`;
+             image fades in, so nothing is cropped and no bands are shown
+             v3.28.0: a pending grid rotation swaps the box ratio too */
+          if (p.w && p.h) { const dwd = dispDims(p); ph.style.aspectRatio = `${dwd[0]} / ${dwd[1]}`; }
           const img = new Image();
           img.alt = p.name; img.decoding = 'async';
           img.onload = () => ph.classList.add('ready');
@@ -4396,7 +4501,8 @@
       canPicker, inIframe, invalidateThumb, saveBlobToDir, clamp, debounce,
       IMG_EXT, UNSUPPORTED_EXT, idbGetAll,
       savePhotoBytes, deleteLibPhoto, restoreLibPhotos,
-      addCollageItem, restoreCollageItems
+      addCollageItem, restoreCollageItems,
+      clearGridRot
     };
 
     /* ================= toolbar events ================= */

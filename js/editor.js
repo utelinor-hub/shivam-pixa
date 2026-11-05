@@ -342,7 +342,6 @@
          the preview — the base cache does not know about it yet */
       if (E.lift) cx.drawImage(E.lift.hole, E.lift.bbox.x, E.lift.bbox.y, E.lift.bbox.w, E.lift.bbox.h);
       applyDisp();
-      schedHist();
       res();
     }));
   }
@@ -390,48 +389,9 @@
     if (btn) btn.classList.toggle('holding', on);
   }
 
-  /* ---------- live RGB histogram ---------- */
-  let histT = null;
-  function schedHist() { if (histT) return; histT = setTimeout(() => { histT = null; drawHist(); }, 140); }
-  function drawHist() {
-    const hc = q('#eHist');
-    if (!hc || !E.open || !E.src) return;
-    const cv = ed.canvas;
-    if (!cv.width || !cv.height) return;
-    const sc = Math.min(1, 480 / Math.max(cv.width, cv.height));
-    const t = FX.mkCanvas(Math.max(1, (cv.width * sc) | 0), Math.max(1, (cv.height * sc) | 0));
-    const tx = t.getContext('2d');
-    tx.drawImage(cv, 0, 0, t.width, t.height);
-    let d;
-    try { d = tx.getImageData(0, 0, t.width, t.height).data; } catch (e) { return; }
-    const R = new Uint32Array(256), G = new Uint32Array(256), B = new Uint32Array(256);
-    for (let i = 0; i < d.length; i += 16) { R[d[i]]++; G[d[i + 1]]++; B[d[i + 2]]++; }
-    let mx = 1;
-    for (let v = 1; v < 255; v++) { if (R[v] > mx) mx = R[v]; if (G[v] > mx) mx = G[v]; if (B[v] > mx) mx = B[v]; }
-    const g = hc.getContext('2d');
-    const W = hc.width, H = hc.height;
-    g.clearRect(0, 0, W, H);
-    g.fillStyle = '#191b1f';
-    g.fillRect(0, 0, W, H);
-    g.globalCompositeOperation = 'screen';
-    const chan = (hist, col) => {
-      g.beginPath();
-      g.moveTo(0, H);
-      for (let v = 0; v < 256; v++) g.lineTo((v / 255) * W, H - Math.min(1, hist[v] / mx) * (H - 6));
-      g.lineTo(W, H);
-      g.closePath();
-      g.fillStyle = col;
-      g.fill();
-    };
-    chan(R, 'rgba(235,72,72,.72)');
-    chan(G, 'rgba(88,200,110,.72)');
-    chan(B, 'rgba(86,140,240,.72)');
-    g.globalCompositeOperation = 'source-over';
-    /* v3.24.0: the camera-info line under the histogram mirrors the footer
-       EXIF string (Picasa shows "Histogram & Camera Information" there) */
-    const cam = q('#eCam');
-    if (cam) cam.textContent = ed.exif.textContent || 'No EXIF data available';
-  }
+  /* v3.28.0: the live RGB histogram was REMOVED (user request: 'histogram
+     remove karo uski zaroorat nahi') — the canvas no longer exists, so the
+     scheduler and the painter are gone with it. */
 
   /* ---------- history ---------- */
   const snap = () => JSON.stringify({ ops: E.ops, adj: E.adj });
@@ -698,6 +658,20 @@
     syncOverlay();
   }
 
+  /* v3.28.0: every tool bar carries Apply / Cancel / Undo / Redo right inside
+     it (Picasa rule: 'wahi par apply cancel undo redo sare option hoge').
+     Undo/Redo keep the CURRENT tool open so the user never loses their place. */
+  function tbUndoRedoHTML() {
+    return '<button type="button" class="btn" data-tbh="undo" title="Undo (Ctrl+Z)">&#8630; Undo</button>' +
+           '<button type="button" class="btn" data-tbh="redo" title="Redo (Ctrl+Y)">&#8631; Redo</button>';
+  }
+  function wireTbUndoRedo(tb, keepTool) {
+    const u = tb.querySelector('[data-tbh="undo"]');
+    const r = tb.querySelector('[data-tbh="redo"]');
+    if (u) u.addEventListener('click', () => { doUndo(); if (keepTool) setTool(keepTool); });
+    if (r) r.addEventListener('click', () => { doRedo(); if (keepTool) setTool(keepTool); });
+  }
+
   function renderToolbox() {
     const tb = ed.toolBox;
     if (!E.tool) { tb.hidden = true; tb.innerHTML = ''; return; }
@@ -766,6 +740,10 @@
         <div class="mrow">
           <button id="tbApply" class="btn btn-accent" type="button">Apply Crop</button>
           <button id="tbCancel" class="btn" type="button">Cancel</button>
+        </div>
+        <div class="mrow">
+          <button id="tbReset" class="btn" type="button" title="Back to the full photo">Reset</button>
+          ${tbUndoRedoHTML()}
         </div>`;
       const sel = q('#tbCropSel');
       sel.value = E.cropSel.spec;
@@ -778,15 +756,24 @@
       applySpec();
       q('#tbApply').addEventListener('click', applyCrop);
       q('#tbCancel').addEventListener('click', () => { E.cropSel = null; setTool(null); });
+      q('#tbReset').addEventListener('click', () => {
+        E.cropR = { x: 0, y: 0, w: cv0.width, h: cv0.height };
+        E.aspect = 0;
+        E.cropSel = { spec: '0', flipped: false };
+        sel.value = '0';
+        syncCropOverlay();
+      });
+      wireTbUndoRedo(tb, 'crop');
     } else if (E.tool === 'redeye' || E.tool === 'retouch') {
       const label = E.tool === 'redeye' ? 'Click-drag over the red eye' : 'Click-drag over the blemish (spot) to blur it';
       tb.innerHTML = `
         <h4>${label}</h4>
         <div class="trow"><label>Brush</label><input id="tbBrush" type="range" min="6" max="40" value="${E.brush}" /><span class="val" id="tbBrushV">${E.brush}</span></div>
         <div class="mrow">
-          <button id="tbDone" class="btn btn-accent" type="button">Done</button>
+          <button id="tbDone" class="btn btn-accent" type="button">Apply</button>
           <button id="tbCancel" class="btn" type="button">Cancel</button>
-        </div>`;
+        </div>
+        <div class="mrow">${tbUndoRedoHTML()}</div>`;
       const br = q('#tbBrush');
       br.addEventListener('input', () => { E.brush = +br.value; q('#tbBrushV').textContent = br.value; });
       q('#tbDone').addEventListener('click', () => {
@@ -797,6 +784,7 @@
         setTool(null);
       });
       q('#tbCancel').addEventListener('click', () => { E.pendPts = []; setTool(null); renderPreview(); });
+      wireTbUndoRedo(tb, 'retouch');
     } else if (E.tool === 'text') {
       /* v3.13.0: Picasa text panel — click the photo & type directly on it.
          Controls act on the selected text block (or set defaults for the next one). */
@@ -825,6 +813,7 @@
           <button id="txApply" class="btn btn-accent" type="button">Apply</button>
           <button id="txCancel" class="btn" type="button">Cancel</button>
         </div>
+        <div class="mrow">${tbUndoRedoHTML()}</div>
         <button id="txClear" class="fixbtn" type="button" style="margin-top:6px">Clear All Text</button>
         <p style="font-size:11px;color:#71747a;margin:8px 0 0;line-height:1.5">Click photo = new text • drag the pin to move • drag the ring handle to rotate &amp; resize • Enter = new line • Esc = done • Delete key removes the selected text</p>`;
       setTxUI(op);
@@ -844,6 +833,7 @@
       grab('#txApply').addEventListener('click', () => { commitEditing(); E.txtSel = null; setTool(null); });
       grab('#txCancel').addEventListener('click', () => { if (E.txtEditing && E.txtEditing.isNew) discardEditing(); E.txtSel = null; setTool(null); });
       grab('#txClear').addEventListener('click', clearAllText);
+      wireTbUndoRedo(tb, 'text');
       document.addEventListener('pixa-fonts-updated', () => { if (E.tool === 'text') renderToolbox(); }, { once: true });
     } else if (E.tool === 'sticker') {
       const op = E.ops.filter((o) => o.type === 'sticker' && o.sid === E.stkSel).pop();
@@ -856,8 +846,9 @@
         <div class="trow"><label>Opacity</label><input id="skAlpha" type="range" min="10" max="100" value="${al}" /><span class="val" id="skAlphaV">${al}%</span></div>
         <div class="mrow">
           <button id="skNew" class="btn" type="button">+ New Sticker</button>
-          <button id="skDone" class="btn btn-accent" type="button">Done</button>
-        </div>`;
+          <button id="skDone" class="btn btn-accent" type="button">Apply</button>
+        </div>
+        <div class="mrow">${tbUndoRedoHTML()}</div>`;
       const selOp = () => E.ops.filter((o) => o.type === 'sticker' && o.sid === E.stkSel).pop();
       q('#skScale').addEventListener('input', (e) => { const o = selOp(); if (o) { o.scale = +e.target.value / 100; q('#skScaleV').textContent = e.target.value + '%'; renderPreview(); } });
       q('#skRot').addEventListener('input', (e) => { const o = selOp(); if (o) { o.rot = +e.target.value; q('#skRotV').textContent = e.target.value + '\u00B0'; renderPreview(); } });
@@ -867,6 +858,7 @@
       q('#skAlpha').addEventListener('change', scheduleEditSave);
       q('#skNew').addEventListener('click', () => q('#stickerFile').click());
       q('#skDone').addEventListener('click', () => setTool(null));
+      wireTbUndoRedo(tb, 'sticker');
     } else if (E.tool === 'straighten') {
       tb.innerHTML = `
         <h4>Straighten</h4>
@@ -874,6 +866,10 @@
         <div class="mrow">
           <button id="tbApply" class="btn btn-accent" type="button">Apply</button>
           <button id="tbCancel" class="btn" type="button">Cancel</button>
+        </div>
+        <div class="mrow">
+          <button id="tbStrReset" class="btn" type="button" title="Back to 0°">Reset</button>
+          ${tbUndoRedoHTML()}
         </div>`;
       const s = q('#tbStr');
       s.addEventListener('input', () => {
@@ -888,6 +884,12 @@
         setTool(null);
       });
       q('#tbCancel').addEventListener('click', () => { E.draft = null; E.pmax = 1400; setTool(null); renderPreview(); });
+      q('#tbStrReset').addEventListener('click', () => {
+        E.draft = null; E.pmax = 1400;
+        s.value = 0; q('#tbStrV').textContent = '0\u00B0';
+        renderPreview();
+      });
+      wireTbUndoRedo(tb, 'straighten');
     } else {
       /* v3.14.0: Paint & Select tools keep their options in their side tabs —
          no floating toolbox for them */
@@ -2357,11 +2359,7 @@
     ed.root.classList.remove('tools-open');
     ed.exif.textContent = '';
     readExif(file).then((txt) => {
-      if (E.open && E.photo === photo) {
-        ed.exif.textContent = txt;
-        const cam = q('#eCam');
-        if (cam) cam.textContent = txt || 'No EXIF data available';   /* v3.24.0 */
-      }
+      if (E.open && E.photo === photo) ed.exif.textContent = txt;   /* v3.28.0: eCam (histogram box) removed */
     });
 
     /* power-cut safe: reload the previous auto-saved edits */
@@ -2387,6 +2385,17 @@
         E.restored = true;
       }
     } catch (e) {}
+
+    /* v3.28.0: a grid rotation (the Picasa rotate buttons under the library
+       thumbnails) moves INTO the edit session as its first step. The pending
+       flag is cleared right away so the thumbnail can never rotate twice. */
+    if (photo.rot) {
+      const deg0 = ((photo.rot % 360) + 360) % 360;
+      if (deg0) commit({ type: 'rot', deg: deg0 });
+      photo.rot = 0;
+      if (P.clearGridRot) P.clearGridRot([P.photoKey(photo)]);
+      P.invalidateThumb(photo);
+    }
 
     resetAdjUI(); updFxTiles(); updUndoBtns(); setTool(null);
     await renderPreview();
@@ -2455,9 +2464,43 @@
     cmpBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); setCompare(true); });
     ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => cmpBtn.addEventListener(ev, () => setCompare(false)));
   }
+
+  /* ---------- v3.28.0: right-click on the photo = Picasa menu ----------
+     'save copy right click wale menu me hona chahiye side bar me nahi' —
+     the sidebar has no Save buttons at all; Ctrl+S saves the photo. */
+  const eCtx = document.createElement('div');
+  eCtx.className = 'e-ctx';
+  eCtx.hidden = true;
+  ed.root.appendChild(eCtx);
+  const showECtx = (x, y) => {
+    eCtx.innerHTML =
+      '<button type="button" data-c="copy">Save a Copy\u2026</button>' +
+      '<button type="button" data-c="undo"' + (E.undo.length ? '' : ' disabled') + '>Undo</button>' +
+      '<button type="button" data-c="redo"' + (E.redo.length ? '' : ' disabled') + '>Redo</button>';
+    eCtx.hidden = false;
+    const rr = ed.root.getBoundingClientRect();
+    eCtx.style.left = Math.max(6, Math.min(x - rr.left, ed.root.clientWidth - 200)) + 'px';
+    eCtx.style.top = Math.max(6, Math.min(y - rr.top, ed.root.clientHeight - 120)) + 'px';
+  };
+  eCtx.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    eCtx.hidden = true;
+    if (b.dataset.c === 'copy') doSaveCopy();
+    else if (b.dataset.c === 'undo') doUndo();
+    else if (b.dataset.c === 'redo') doRedo();
+  });
+  ed.stage.addEventListener('contextmenu', (e) => {
+    if (!E.open) return;
+    e.preventDefault();
+    showECtx(e.clientX, e.clientY);
+  });
+  window.addEventListener('pointerdown', (e) => { if (!eCtx.hidden && !eCtx.contains(e.target)) eCtx.hidden = true; }, true);
+  window.addEventListener('blur', () => { eCtx.hidden = true; });
   document.addEventListener('keyup', (e) => { if (E.open && (e.key === 'b' || e.key === 'B')) setCompare(false); });
-  q('#eSave').addEventListener('click', doSave);
-  q('#eSaveCopy').addEventListener('click', doSaveCopy);
+  /* v3.28.0: the Save / Save a Copy buttons are GONE from the sidebar —
+     Ctrl+S is the only save (Picasa rule), 'Save a Copy' lives in the
+     right-click menu on the photo. */
   q('#eBack').addEventListener('click', close);
   q('#ePrev').addEventListener('click', () => nav(-1));
   q('#eNext').addEventListener('click', () => nav(1));
