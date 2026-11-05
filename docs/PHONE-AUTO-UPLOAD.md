@@ -69,11 +69,13 @@ Adoption rules (so nothing ever duplicates):
 
 ---
 
-## Route C — PIXA SHARE, the built-in phone app (v3.30.1, recommended)
+## Route C — PIXA SHARE, the dedicated phone app (v1.0.0, recommended)
 
-A dedicated, InShare-style sender app that lives at
-**https://utelinor-hub.github.io/shivam-pixa/share/** (install once via the
-browser menu → "Add to Home screen").
+A standalone, InShare-style sender app that lives in its **own repository**
+(utelinor-hub/Pixa-share) at
+**https://utelinor-hub.github.io/pixa-share/** (install once via the
+browser menu → "Add to Home screen"). It shares no code with PIXA — the
+two apps only agree on the Drive protocol below.
 
 1. Sign in with the **same Google account** as PIXA on the PC.
 2. Turn the big **Auto send to PC** switch ON — the app keeps running in
@@ -90,12 +92,13 @@ dialog shows a PIXA SHARE block (received count + which account the phone
 is signed in as — a wrong-account phone is warned about immediately).
 Works over home WiFi **and** mobile data.
 
-Technical note: `share/manifest.webmanifest` declares a `share_target`
-(POST, multipart/form-data) handled by `share/sw.js`, which stashes the
-files in the `pixashare-shared-v1` cache; the page ingests them into its
-IndexedDB queue and uploads via the Drive multipart endpoint with upload
-progress (XHR). The heartbeat file `pixa-share-mobile.json` in the Drive
-folder tells the PC which account the phone uses.
+Technical note: PIXA SHARE's own `manifest.webmanifest` declares a
+`share_target` (POST, multipart/form-data) handled by its own `sw.js`,
+which stashes the files in the `pixashare-shared-v1` cache; the page
+ingests them into its IndexedDB queue and uploads via the Drive multipart
+endpoint with upload progress (XHR). The heartbeat file
+`pixa-share-mobile.json` in the Drive folder tells the PC which account
+the phone uses.
 
 ---
 

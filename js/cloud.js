@@ -58,7 +58,7 @@
      last sync time, photos in cloud, waiting-to-upload count and a
      Check-for-Updates button — because the #1 real-world cause remains
      one PC still running an older version.
-   v3.30.1 — PIXA SHARE (the phone app at /share/): photos sent from the
+   v3.30.1 — PIXA SHARE (the phone app): photos sent from the
      phone arrive here automatically at ORIGINAL quality. The phone
      uploads into the same "SHIVAM PIXA" Drive folder tagging files with
      appProperties pixa:'share' (+ a small `${name}.thumb.jpg` preview);
@@ -67,6 +67,11 @@
      arrival toast says "received from PIXA SHARE". A phone heartbeat
      file (pixa-share-mobile.json) lets the Cloud dialog warn the minute
      the phone is signed in with a DIFFERENT Google account than this PC.
+   v3.30.2 — PIXA SHARE moved OUT of this repo into its own project
+     (utelinor-hub/Pixa-share → https://utelinor-hub.github.io/pixa-share/).
+     Zero code is shared with this app — the two only agree on the Drive
+     protocol above. The Open button and the guide now point to the new
+     address; ./share/ here is just a redirect stub for old phones.
 
    How it works (design goals):
    • Sign in with Google → each user gets their own private folder
@@ -1254,7 +1259,7 @@
     el.csSharePhone = document.getElementById('csSharePhone');
     el.btnShare = document.getElementById('cloudOpenShare');
     if (el.btnShare) el.btnShare.addEventListener('click', () => {
-      window.open('https://utelinor-hub.github.io/shivam-pixa/share/', '_blank', 'noopener');
+      window.open('https://utelinor-hub.github.io/pixa-share/', '_blank', 'noopener');
     });
   }
 
