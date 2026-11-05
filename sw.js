@@ -4,7 +4,7 @@
    Only then SKIP_WAITING activates it and the page reloads once. The new
    version never activates silently behind the user's back. */
 
-const VERSION = 'v3.30.0';
+const VERSION = 'v3.30.1';
 const CACHE = `shivam-pixa-${VERSION}`;
 /* photos arriving from the Android "Share → PIXA" share target land here
    first; the page picks them up (see receiveShared in index.html) */
@@ -24,7 +24,13 @@ const ASSETS = [
   './icons/icon-maskable-512.png',
   './icons/logo-ring.png',
   './icons/logo-core.png',
-  './icons/favicon.png'
+  './icons/favicon.png',
+  /* v3.30.1: PIXA SHARE — the mobile sender app under /share/ (its own
+     service worker takes over that scope once the user installs it) */
+  './share/',
+  './share/index.html',
+  './share/manifest.webmanifest',
+  './share/icons/logo-round.png'
 ];
 
 self.addEventListener('install', (e) => {
@@ -38,7 +44,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== SHARE_CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== SHARE_CACHE && !k.startsWith('pixashare-')).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

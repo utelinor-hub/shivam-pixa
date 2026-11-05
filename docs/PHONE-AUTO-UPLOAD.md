@@ -69,7 +69,37 @@ Adoption rules (so nothing ever duplicates):
 
 ---
 
-## Route C — Companion Android app (the Google-Photos way, future)
+## Route C — PIXA SHARE, the built-in phone app (v3.30.1, recommended)
+
+A dedicated, InShare-style sender app that lives at
+**https://utelinor-hub.github.io/shivam-pixa/share/** (install once via the
+browser menu → "Add to Home screen").
+
+1. Sign in with the **same Google account** as PIXA on the PC.
+2. Turn the big **Auto send to PC** switch ON — the app keeps running in
+   the background (Wake Lock while sending + Play Services background sync
+   flush the queue even after the app is closed).
+3. Press **Pick photos to send**, or in the Gallery select photos →
+   **Share → PIXA SHARE**.
+
+Photos upload at **original bytes** (same size / resolution / ratio,
+nothing re-encoded) into the same "SHIVAM PIXA" Drive folder, tagged
+`pixa:'share'`, together with a small `.thumb.jpg` preview. PIXA on the PC
+adopts them within ~12 s into the **PIXA SHARE** group and the Cloud
+dialog shows a PIXA SHARE block (received count + which account the phone
+is signed in as — a wrong-account phone is warned about immediately).
+Works over home WiFi **and** mobile data.
+
+Technical note: `share/manifest.webmanifest` declares a `share_target`
+(POST, multipart/form-data) handled by `share/sw.js`, which stashes the
+files in the `pixashare-shared-v1` cache; the page ingests them into its
+IndexedDB queue and uploads via the Drive multipart endpoint with upload
+progress (XHR). The heartbeat file `pixa-share-mobile.json` in the Drive
+folder tells the PC which account the phone uses.
+
+---
+
+## Route D — Companion Android app (the Google-Photos way, future)
 
 A tiny Kotlin app with a `MediaStore` ContentObserver could upload new
 camera photos itself (same Drive folder, same OAuth `drive.file` scope)

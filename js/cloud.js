@@ -58,6 +58,15 @@
      last sync time, photos in cloud, waiting-to-upload count and a
      Check-for-Updates button — because the #1 real-world cause remains
      one PC still running an older version.
+   v3.30.1 — PIXA SHARE (the phone app at /share/): photos sent from the
+     phone arrive here automatically at ORIGINAL quality. The phone
+     uploads into the same "SHIVAM PIXA" Drive folder tagging files with
+     appProperties pixa:'share' (+ a small `${name}.thumb.jpg` preview);
+     adoption now accepts those tags, files them under the "PIXA SHARE"
+     group, matches the preview to its full photo (fast grid) and the
+     arrival toast says "received from PIXA SHARE". A phone heartbeat
+     file (pixa-share-mobile.json) lets the Cloud dialog warn the minute
+     the phone is signed in with a DIFFERENT Google account than this PC.
 
    How it works (design goals):
    • Sign in with Google → each user gets their own private folder
@@ -151,7 +160,8 @@
     modal: null, clientId: null, email: null, line: null, diag: null, steps: null,
     btnSaveId: null, btnSign: null, btnNow: null, btnOut: null, btnFree: null,
     btnEnable: null,
-    csStat: null, csVer: null, csLast: null, csCount: null, csWait: null, btnUpd: null
+    csStat: null, csVer: null, csLast: null, csCount: null, csWait: null, btnUpd: null,
+    csShare: null, csShareCount: null, csSharePhone: null, btnShare: null
   };
 
   /* ================= IndexedDB 'cloudblobs' store (full-size cache) ================= */
@@ -624,34 +634,48 @@
      is picked up here. The manifest only knows photos pushed by PIXA
      itself, so at every pull the folder is listed and image files PIXA
      did not file yet are adopted into the library (and into the manifest,
-     so every other PC sees them at the next poll). */
+     so every other PC sees them at the next poll).
+     v3.30.1 — files tagged pixa:'share' come from the PIXA SHARE phone
+     app (original bytes + a matched .thumb.jpg preview): they land in
+     the "PIXA SHARE" group with their preview linked, and the toast
+     names the sender. Untagged files keep landing in
+     "Phone & other uploads" like before. */
   const ADOPT_IMG = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
   async function adoptExternal(m) {
-    if (!C.folderId || C.pushing || !m || !m.photos) return 0;
+    if (!C.folderId || C.pushing || !m || !m.photos) return { count: 0, share: 0 };
     const q = encodeURIComponent(`'${C.folderId}' in parents and trashed = false and mimeType contains 'image/'`);
     const r = await authFetch(`${DRIVE}/files?q=${q}&fields=files(id,name,mimeType,size,createdTime,appProperties)&pageSize=1000`);
-    if (!r.ok) return 0;
+    if (!r.ok) return { count: 0, share: 0 };
     const j = await r.json();
-    if (!j.files || !j.files.length) return 0;
+    if (!j.files || !j.files.length) return { count: 0, share: 0 };
     const known = new Set();
     m.photos.forEach((e) => { known.add(e.fileId); if (e.thumbId) known.add(e.thumbId); });
+    /* v3.30.1: previews uploaded by PIXA SHARE are matched to their
+       full-size photo instead of being adopted as photos themselves */
+    const thumbs = new Map();
+    j.files.forEach((f) => {
+      if (/\.thumb\.jpe?g$/i.test(f.name || '')) thumbs.set((f.name || '').replace(/\.thumb\.jpe?g$/i, ''), f.id);
+    });
     const fresh = j.files.filter((f) =>
       f.id && !known.has(f.id) &&
       ADOPT_IMG.test(f.name || '') &&
       !/\.thumb\.jpe?g$/i.test(f.name || '') &&
-      !(f.appProperties && f.appProperties.pixa)
+      !(f.appProperties && (f.appProperties.pixa === 'photo' || f.appProperties.pixa === 'thumb'))
     );
-    if (!fresh.length) return 0;
+    if (!fresh.length) return { count: 0, share: 0 };
+    let shareCount = 0;
     for (const f of fresh) {
+      const isShare = !!(f.appProperties && f.appProperties.pixa === 'share');
+      if (isShare) shareCount++;
       m.photos.push({
         pid: uuid(),
         name: f.name,
-        folder: 'Phone & other uploads',
+        folder: isShare ? 'PIXA SHARE' : 'Phone & other uploads',
         type: f.mimeType || 'image/jpeg',
         size: Number(f.size) || 0,
         lastModified: Date.parse(f.createdTime) || Date.now(),
         fileId: f.id,
-        thumbId: null,
+        thumbId: thumbs.get(f.name) || null,
         updated: f.createdTime || nowIso(),
         deleted: false,
         adopted: true
@@ -660,7 +684,7 @@
     m.rev = Date.now();
     await pushManifest(m);
     await applyRemote(m, { silent: true });
-    return fresh.length;
+    return { count: fresh.length, share: shareCount };
   }
 
   /* ================= upload queue (background, zero-lag) ================= */
@@ -843,6 +867,40 @@
   }
 
   /* ================= pull cycle (see new photos from other PCs) ================= */
+  /* v3.30.1: the arrival toast names the sender — PIXA SHARE photos (the
+     phone app) get their own wording so the user knows where they came from */
+  function announceAdopted(a) {
+    const n = a.count || 0;
+    if (!n) return;
+    if (a.share) toast(`${a.share} photo${a.share > 1 ? 's' : ''} received from PIXA SHARE (mobile) — original quality`, 'ok', 5000);
+    else toast(`${n} photo${n > 1 ? 's' : ''} arrived from the phone`, 'ok', 4500);
+  }
+
+  /* v3.30.1: PIXA SHARE on the phone drops a tiny heartbeat file
+     (pixa-share-mobile.json) into the Drive folder with its account email.
+     If that account is NOT this PC's account, the photos will never arrive
+     here — warn the user the minute it happens instead of silence. */
+  let heartbeatWarned = false;
+  async function checkPhoneHeartbeat() {
+    try {
+      const q = encodeURIComponent(`name = 'pixa-share-mobile.json' and trashed = false and '${C.folderId}' in parents`);
+      const r = await authFetch(`${DRIVE}/files?q=${q}&fields=files(id)&pageSize=1`);
+      if (!r.ok) return;
+      const j = await r.json();
+      if (!j.files || !j.files.length) return;
+      const fr = await authFetch(`${DRIVE}/files/${j.files[0].id}?alt=media`);
+      if (!fr.ok) return;
+      const hb = JSON.parse(await fr.text());
+      C.phone = { email: hb.email || '', at: hb.at || '' };
+      const pcEmail = (C.cfg && C.cfg.email) || '';
+      if (hb.email && pcEmail && hb.email !== pcEmail && !heartbeatWarned) {
+        heartbeatWarned = true;
+        toast(`PIXASHARE: your phone is signed in as ${hb.email} but this PC uses ${pcEmail} — photos will NOT arrive. Sign the phone out and in with the right account.`, 'err', 10000);
+      }
+      updModal();
+    } catch (e) { /* heartbeat is best-effort */ }
+  }
+
   async function pullCycle({ manual } = {}) {
     if (!C.enabled || C.pulling || !hasToken()) return;
     C.pulling = true;
@@ -854,19 +912,21 @@
       let m = await pullManifest();
       if (!m) {
         /* no manifest yet — still pick up photos other apps dropped in the folder */
-        let adopted0 = 0;
+        let adopted0 = { count: 0, share: 0 };
         try { adopted0 = await adoptExternal(emptyManifest()); } catch (e) { /* non-fatal */ }
-        if (adopted0) toast(`${adopted0} photo${adopted0 > 1 ? 's' : ''} arrived from the phone`, 'ok', 4500);
+        if (adopted0 && adopted0.count) announceAdopted(adopted0);
+        await checkPhoneHeartbeat();
         if (manual) { await pushCycle(); } else setStatus_('ok');
         return;
       }
       const n = await applyRemote(m, { silent: true });
       C.lastSyncAt = Date.now();
       /* v3.8.0: adopt photos that other apps uploaded straight into the
-         Drive folder (e.g. an auto-upload app on the phone) */
-      let adopted = 0;
+         Drive folder (e.g. an auto-upload app on the phone, or PIXA SHARE) */
+      let adopted = { count: 0, share: 0 };
       try { adopted = await adoptExternal(m); } catch (e) { /* non-fatal */ }
-      if (adopted) toast(`${adopted} photo${adopted > 1 ? 's' : ''} arrived from the phone`, 'ok', 4500);
+      if (adopted && adopted.count) announceAdopted(adopted);
+      await checkPhoneHeartbeat();
       const mine = await linksGet();
       const haveLocalNew = state.photos.some((p) => !p.cloud && !mine[linkKey(p)]);
       if (haveLocalNew) schedulePush(1500);
@@ -1124,6 +1184,21 @@
         } catch (e) { /* dialog numbers are best-effort */ }
       })();
     }
+    /* v3.30.1: PIXA SHARE block — how many photos the phone sent, and
+       whether the phone app is signed in with the SAME account as this PC */
+    if (el.csShare) {
+      el.csShare.hidden = !C.enabled;
+      const shareN = C.remote ? C.remote.photos.filter((e) => !e.deleted && e.folder === 'PIXA SHARE').length : 0;
+      el.csShareCount.textContent = String(shareN);
+      const pcEmail = (C.cfg && C.cfg.email) || '';
+      if (C.phone && C.phone.email) {
+        el.csSharePhone.textContent = C.phone.email === pcEmail
+          ? `Phone online: ${C.phone.email} ✓ (same account)`
+          : `Phone online as ${C.phone.email} — DIFFERENT from this PC (${pcEmail}) — photos will NOT arrive`;
+      } else {
+        el.csSharePhone.textContent = 'No phone seen yet — open PIXA SHARE on the phone';
+      }
+    }
   }
 
   function wireUI() {
@@ -1172,6 +1247,14 @@
     if (el.btnUpd) el.btnUpd.addEventListener('click', () => {
       if (window.PixsaUpd && window.PixsaUpd.checkNow) window.PixsaUpd.checkNow();
       else toast('Updates are checked automatically — close and reopen the app to fetch the latest version', 'ok', 6000);
+    });
+    /* v3.30.1: PIXA SHARE block wiring */
+    el.csShare = document.getElementById('cloudShare');
+    el.csShareCount = document.getElementById('csShareCount');
+    el.csSharePhone = document.getElementById('csSharePhone');
+    el.btnShare = document.getElementById('cloudOpenShare');
+    if (el.btnShare) el.btnShare.addEventListener('click', () => {
+      window.open('https://utelinor-hub.github.io/shivam-pixa/share/', '_blank', 'noopener');
     });
   }
 

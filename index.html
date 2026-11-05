@@ -1383,7 +1383,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.30.0</span>
+      <span class="ver">v3.30.1</span>
     </span>
   </footer>
 
@@ -1644,12 +1644,12 @@
       <div class="dk-body">
         <p class="dk-note" style="margin:0 0 8px">Photos clicked on your phone reach this PC in the <b>original quality</b> &mdash; same size, same resolution, same ratio, nothing re-encoded. It works over <b>home WiFi and mobile data</b> both, because the photos travel through your own Google Drive &mdash; like a private Xender between your devices.</p>
         <ol class="dk-steps">
-          <li>On the phone, open the same app: <b>utelinor-hub.github.io/shivam-pixa</b> &mdash; install it once from the browser menu (&ldquo;Add to Home screen&rdquo;) for one-tap use</li>
-          <li>Open the Cloud chip (top right) on the phone &rarr; <b>Sign in with Google</b> &mdash; the <b>same account</b> as on this PC (one-time)</li>
-          <li>Send photos any way you like: gallery &rarr; <b>Share &rarr; SHIVAM PIXA</b> &nbsp;&bull;&nbsp; <b>Import &rarr; Add Photos</b> &nbsp;&bull;&nbsp; <b>Import &rarr; Take Photo</b></li>
-          <li>They back up to your Drive automatically &mdash; this PC pulls them in about 12 seconds into the <b>Shared from phone</b> / <b>Camera</b> group</li>
+          <li>On the phone open <b>PIXA SHARE</b>: <b>utelinor-hub.github.io/shivam-pixa/share</b> &mdash; the clean Xender-style sender. Install it once from the browser menu (&ldquo;Add to Home screen&rdquo;) for one-tap use</li>
+          <li>Sign in with the <b>same Google account</b> as this PC, then turn the big <b>Auto send to PC</b> switch ON &mdash; the app now keeps running in the background and every photo sends itself</li>
+          <li>Send photos any way you like: inside PIXA SHARE press <b>Pick photos to send</b>, or in the Gallery select photos &rarr; <b>Share &rarr; PIXA SHARE</b></li>
+          <li>They arrive here in about 12 seconds, grouped as <b>PIXA SHARE</b> &mdash; full original bytes, nothing compressed</li>
         </ol>
-        <p class="dk-note">One-time setup only &mdash; after that every phone photo lands here by itself, full original quality. Both WiFi and mobile data work; no cable, no app store.</p>
+        <p class="dk-note">One-time setup only. The Cloud Sync dialog also shows a <b>PIXA SHARE</b> block: how many photos arrived and whether the phone is signed in with the right account. The old paths (opening this whole app on the phone, or a folder-sync app into the Drive folder) keep working too.</p>
       </div>
     </div>
   </div>
@@ -1681,6 +1681,19 @@
           </div>
           <div class="cl-row" style="justify-content:flex-end;margin-top:6px">
             <button id="cloudCheckUpd" class="btn" type="button">Check for Updates</button>
+          </div>
+        </div>
+        <div class="cl-sec" id="cloudShare" hidden>
+          <h5>PIXA SHARE &mdash; mobile &rarr; PC</h5>
+          <div style="font-size:12px;color:#333;line-height:1.7">
+            Photos received from your phone: <b id="csShareCount">0</b><br/>
+            <span id="csSharePhone" style="color:#667">No phone seen yet &mdash; open PIXA SHARE on the phone</span>
+          </div>
+          <div style="font-size:11.5px;color:#0b5c2a;background:#e9f8ef;border:1px solid #bfe8cd;border-radius:6px;padding:6px 8px;margin-top:6px;line-height:1.5">
+            On the phone open <b>utelinor-hub.github.io/shivam-pixa/share</b> &mdash; sign in with the <b>same Google account</b> as this PC, turn <b>Auto send to PC</b> on and pick photos (or Gallery &rarr; Share &rarr; <b>PIXA SHARE</b>). They arrive here in about 12 seconds, <b>original quality</b> &mdash; WiFi and mobile data both work.
+          </div>
+          <div class="cl-row" style="justify-content:flex-end;margin-top:6px">
+            <button id="cloudOpenShare" class="btn" type="button">Open PIXA SHARE</button>
           </div>
         </div>
         <div class="cl-sec">
