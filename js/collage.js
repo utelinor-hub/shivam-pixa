@@ -5,6 +5,17 @@
    knob is a real overlay element (donut ring + knob resting at 3 o'clock),
    dragging is native pointer-dragging anywhere on a photo.
 
+   v3.29.4 — NO-CROP RULE (user: 'image har haal me original size jaisa
+   dikhna chahiye, jab tak hum use manually crop na kare'): the auto grid
+   no longer CUTS photos to fill equal cells. A new justified layout
+   (slotRows) gives every slot its photo's own aspect ratio, grid items
+   render with 'contain', and in auto mode the PAGE itself resizes to a
+   custom ratio that exactly hugs the layout — so 2 photos are two FULL
+   halves side by side (same height, border to border) and NOTHING is
+   ever cropped. A hand-picked page format / orientation is kept
+   (S.pageAuto = false): the rows scale inside it, photos still complete.
+   The Auto Fit button re-enables the hugging page.
+
    v3.25.5 — BACK TO THE MAIN SCREEN (user: 'collage create karne ke baad
    main screen aajani chahiye'): Create Collage now closes the collage
    maker by itself and drops the user on the main screen — the whole
@@ -165,6 +176,7 @@
     bgSrc: null, bgImg: null,               /* v3.22.4 background snapshot */
     border: 'none', borderColor: '#ffffff', landscape: true, shadows: false,
     fmt: '4x3', custW: 16, custH: 9, seed: 7,
+    pageAuto: true,               /* v3.29.4: page hugs the photos until a format is picked */
     alphaAny: false, restored: false, final: false,
     editId: null, editName: '', outW: 0, outH: 0,
     blob: null, url: null, noteBase: '', savedProj: false
@@ -393,7 +405,7 @@
     it.el.style.boxShadow = S.shadows ? '0 6px 16px rgba(0,0,0,0.38)' : 'none';
     const img = it.el.firstChild;
     if (img) {
-      img.style.objectFit = sheet ? 'contain' : (S.type === 'pile' ? 'fill' : 'cover');
+      img.style.objectFit = (sheet || S.type === 'grid') ? 'contain' : (S.type === 'pile' ? 'fill' : 'cover');   /* v3.29.4: grid never crops */
       /* cover/contain crop must clip to the padded box */
       it.el.style.overflow = 'hidden';
     }
@@ -871,6 +883,62 @@
     }
     return out;
   }
+  /* v3.29.4: NO-CROP justified layout — the auto grid NEVER cuts a photo.
+     Every slot keeps its photo's own aspect ratio (justified rows that
+     close up exactly to the page width), so 'contain' rendering shows the
+     FULL picture edge to edge. The returned H is exactly the height the
+     rows need, so in auto mode the page can hug the layout (setAutoPage):
+     2 photos become two full halves side by side, same height. */
+  function slotRows(imgs, W) {
+    const sp = 8;
+    const n = imgs.length;
+    const asp = imgs.map((im) => clamp((im.natW || 1) / (im.natH || 1), 0.3, 3.5));
+    if (!n) return { slots: [], W, H: W * 0.75 };
+    const splitRows = (R) => {
+      const base = Math.floor(n / R), extra = n % R;
+      const rows = []; let i = 0;
+      for (let r = 0; r < R; r++) {
+        const row = [];
+        for (let k = 0; k < base + (r < extra ? 1 : 0); k++, i++) row.push(i);
+        rows.push(row);
+      }
+      return rows;
+    };
+    const rowsH = (rows) => rows.reduce((a, row) =>
+      a + (W - sp * (row.length - 1)) / row.reduce((s, j) => s + asp[j], 0), 0) + sp * (rows.length - 1);
+    let R = 1;
+    if (n >= 3) {
+      let best = Infinity;
+      for (let r = 1; r <= Math.min(n, 6); r++) {
+        const dev = Math.abs((W / rowsH(splitRows(r))) - 4 / 3);
+        if (dev < best - 1e-6) { best = dev; R = r; }
+      }
+    }
+    const rows = splitRows(R);
+    const slots = new Array(n);
+    let y = 0;
+    for (const row of rows) {
+      const A = row.reduce((s, j) => s + asp[j], 0);
+      const h = (W - sp * (row.length - 1)) / A;
+      let cx = 0;
+      for (const j of row) { const w = h * asp[j]; slots[j] = { x: cx, y, w, h }; cx += w + sp; }
+      y += h + sp;
+    }
+    return { slots, W, H: Math.max(1, y - sp) };
+  }
+  /* v3.29.4: the auto grid sizes the PAGE to the photos (a custom ratio),
+     so 'same size, border to border, nothing cut' is geometrically exact.
+     Picking any page format / orientation by hand switches this off
+     (S.pageAuto = false) and the chosen page is kept. */
+  function setAutoPage(r) {
+    const r2 = clamp(r, 0.2, 5);
+    S.landscape = r2 >= 1;
+    if (r2 >= 1) { S.custW = Math.round(r2 * 1000); S.custH = 1000; }
+    else { S.custW = 1000; S.custH = Math.round(1000 / r2); }
+    el.fmt.value = 'custom';
+    el.custRow.hidden = false;
+    el.custW.value = S.custW; el.custH.value = S.custH;
+  }
   function slotMosaic(W, H) {
     const n = S.items.length;
     const sp = 8;
@@ -993,7 +1061,7 @@
   function applyLayout(save) {
     const n = S.items.length;
     if (!n) return;
-    const [W, H] = dims();
+    let [W, H] = dims();
     if (S.type === 'pile') {
       /* back to the automatic Picasa scatter */
       S.items.forEach((it, i) => {
@@ -1006,7 +1074,19 @@
       let slots;
       if (S.type === 'mosaic') slots = slotMosaic(W, H);
       else if (S.type === 'frame') slots = slotFrame(W, H);
-      else slots = slotCells(n, W, H, S.type === 'sheet');
+      else if (S.type === 'grid') {
+        /* v3.29.4: NO-CROP auto layout — aspect-true justified rows; in auto
+           mode the page resizes to hug them (nothing is ever cut), with a
+           hand-picked page format the rows are scaled to fit inside it */
+        const res = slotRows(S.items, W);
+        if (S.pageAuto) setAutoPage(res.W / res.H);
+        const [W2, H2] = dims();
+        const k = Math.min(W2 / res.W, H2 / res.H);
+        const ox = (W2 - res.W * k) / 2, oy = (H2 - res.H * k) / 2;
+        slots = res.slots.map((s) => ({ x: s.x * k + ox, y: s.y * k + oy, w: s.w * k, h: s.h * k }));
+        W = W2; H = H2;
+      }
+      else slots = slotCells(n, W, H, true);
       /* slots are stage-pixel rects (W × H with the page ratio) —
          convert to per-axis fractions of the live stage */
       S.items.forEach((it, i) => {
@@ -1016,12 +1096,14 @@
         it.wFrac = s.w / W;        /* fraction of stage width */
         it.hFrac = s.h / H;        /* fraction of stage height */
         it.rot = 0; it.scale = 1;
-        it.fit = S.type === 'sheet' ? 'contain' : 'cover';
+        it.fit = (S.type === 'sheet' || S.type === 'grid') ? 'contain' : 'cover';   /* v3.29.4: grid never crops */
       });
     }
     /* draw order follows list order after an auto-layout */
     S.items.forEach((it, i) => { it.z = i + 1; });
     zTop = n + 20;
+    updateStageGeometry();   /* v3.29.4: the page box must follow a changed page ratio at once */
+    updateUI();              /* v3.29.4: orientation buttons must follow an auto page change */
     renderAll();
     positionWheel();
     refreshBackground();
@@ -1065,8 +1147,9 @@
     if (S.final || !S.items.length) return;
     S.type = 'grid';
     S.touched = false;
+    S.pageAuto = true;   /* v3.29.4: the page hugs the layout again */
     applyLayout(true);
-    toast('Photos fitted — straight, same size, edge to edge', 'ok', 2400);
+    toast('Photos fitted — straight, full frame, edge to edge, nothing cut', 'ok', 2400);
   }
 
   /* ================= photo decoding ================= */
@@ -1166,10 +1249,15 @@
          two identical halves). Manually arranged collage → the new photo
          just takes the next free grid slot, nothing else moves. */
       if (S.touched) {
+        /* v3.29.4: the next free slot, but the photo keeps its FULL frame —
+           the box is aspect-true (never cropped), centred in the slot */
         const slots = slotCells(n + 1, W, H, false);
         const s = slots[n] || { x: W * 0.3, y: H * 0.3, w: W * 0.4, h: H * 0.4 };
+        const na = (canvas.width || 1) / (canvas.height || 1);
+        let w = s.w, h = w / na;
+        if (h > s.h) { h = s.h; w = h * na; }
         st.x = (s.x + s.w / 2) / W; st.y = (s.y + s.h / 2) / H;
-        st.wFrac = s.w / W; st.hFrac = s.h / H;
+        st.wFrac = w / W; st.hFrac = h / H;
       } else {
         st.wFrac = 0.3; st.hFrac = 0.3;
       }
@@ -1182,7 +1270,7 @@
       noteCount();
       refreshBackground();
       scheduleColSave();
-      toast(S.touched ? `${it.name} added — drag it anywhere` : `${it.name} added — photos fitted straight, edge to edge`, 'ok', 2600);
+      toast(S.touched ? `${it.name} added — drag it anywhere` : `${it.name} added — full photos fitted straight, edge to edge, nothing cut`, 'ok', 2600);
     } catch (e) { toast('That photo could not be added', 'err'); }
     el.busy.hidden = true;
   }
@@ -1198,10 +1286,15 @@
       const n = S.items.length;
       /* v3.29.3: same rule as addClipPhoto — straight entry + auto grid fit */
       if (S.touched) {
+        /* v3.29.4: the next free slot, but the photo keeps its FULL frame —
+           the box is aspect-true (never cropped), centred in the slot */
         const slots = slotCells(n + 1, W, H, false);
         const s = slots[n] || { x: W * 0.3, y: H * 0.3, w: W * 0.4, h: H * 0.4 };
+        const na = (canvas.width || 1) / (canvas.height || 1);
+        let w = s.w, h = w / na;
+        if (h > s.h) { h = s.h; w = h * na; }
         st.x = (s.x + s.w / 2) / W; st.y = (s.y + s.h / 2) / H;
-        st.wFrac = s.w / W; st.hFrac = s.h / H;
+        st.wFrac = w / W; st.hFrac = h / H;
       } else {
         st.wFrac = 0.3; st.hFrac = 0.3;
       }
@@ -1214,7 +1307,7 @@
       noteCount();
       refreshBackground();
       scheduleColSave();
-      toast(S.touched ? `${it.name} added — drag it anywhere` : `${it.name} added — photos fitted straight, edge to edge`, 'ok', 2600);
+      toast(S.touched ? `${it.name} added — drag it anywhere` : `${it.name} added — full photos fitted straight, edge to edge, nothing cut`, 'ok', 2600);
     } catch (e) { toast('That photo could not be added', 'err'); }
     el.busy.hidden = true;
   }
@@ -1252,6 +1345,7 @@
     return {
       type: S.type, bg: S.bg, bgImage: S.bgImage, border: S.border,
       auto: !S.touched,   /* v3.29.3: pure auto-grid projects re-fit when photos are added */
+      pageAuto: !!S.pageAuto,   /* v3.29.4: page hugs the photos */
       landscape: S.landscape, bgIdx: S.bgIdx, seed: S.seed, fmt: fmtVal(),
       custW: S.custW, custH: S.custH, shadows: S.shadows, borderColor: S.borderColor,
       exportFmt: el.exportFmt.value,
@@ -1360,7 +1454,7 @@
       x.shadowColor = 'transparent';
       const ix = -bw / 2 + pad, iy = -bh / 2 + pad;
       const iw = Math.max(4, bw - pad * 2), ih = Math.max(4, bh - pad - bot);
-      if (sheet) drawContain(x, it.img, ix, iy, iw, ih);
+      if (sheet || S.type === 'grid') drawContain(x, it.img, ix, iy, iw, ih);   /* v3.29.4: grid never crops */
       else if (S.type === 'pile') x.drawImage(it.img, ix, iy, iw, ih);
       else drawCover(x, it.img, ix, iy, iw, ih);
       /* captions: removed in v3.25.2 (user request) */
@@ -1399,6 +1493,7 @@
     S.restored = false;
     S.type = 'grid';    /* v3.29.3: new collages auto-fit — straight, equal cells */
     S.touched = false;  /* untouched → every add re-fits the grid */
+    S.pageAuto = true;  /* v3.29.4: the page follows the photos until the user picks a format */
     S.sel.clear(); S.hover = null;
     S.editId = null; S.editName = '';
     S.bgIdx = 0;
@@ -1481,6 +1576,7 @@
        re-fitting when photos are added; anything else is treated as a
        manual arrangement that must be preserved */
     S.touched = proj.auto != null ? !proj.auto : true;
+    S.pageAuto = proj.pageAuto === true;   /* v3.29.4: old projects keep their saved page box */
     S.shadows = proj.shadows !== false;
     S.bg = proj.bg || '#f5f2ec';
     /* old records used bgPhoto (blurred style); Use Image stays direct */
@@ -1664,6 +1760,7 @@
     el.paneClips.appendChild(fileAdd);
 
     el.fmt.addEventListener('change', () => {
+      S.pageAuto = false;   /* v3.29.4: a hand-picked page format is kept */
       /* v3.22.2: remember the last page format */
       try { localStorage.setItem('pixsa.collageFormat', el.fmt.value); } catch (e) {}
       el.custRow.hidden = fmtVal() !== 'custom';
@@ -1672,6 +1769,7 @@
       if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
     });
     el.custApply.addEventListener('click', () => {
+      S.pageAuto = false;   /* v3.29.4: a hand-picked page ratio is kept */
       const w = parseFloat(el.custW.value), h = parseFloat(el.custH.value);
       if (!(w > 0) || !(h > 0)) { toast('Ratio needs two numbers bigger than 0', 'err'); return; }
       S.custW = clamp(w, 0.2, 60); S.custH = clamp(h, 0.2, 60);
@@ -1679,6 +1777,7 @@
       if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
     });
     el.orientL.addEventListener('click', () => {
+      S.pageAuto = false;   /* v3.29.4: a hand-picked orientation is kept */
       if (!S.landscape) {
         S.landscape = true;
         /* v3.22.2: remember the last orientation */
@@ -1688,6 +1787,7 @@
       }
     });
     el.orientP.addEventListener('click', () => {
+      S.pageAuto = false;   /* v3.29.4: a hand-picked orientation is kept */
       if (S.landscape) {
         S.landscape = false;
         /* v3.22.2: remember the last orientation */
