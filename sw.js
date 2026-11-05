@@ -4,7 +4,7 @@
    Only then SKIP_WAITING activates it and the page reloads once. The new
    version never activates silently behind the user's back. */
 
-const VERSION = 'v3.29.2';
+const VERSION = 'v3.29.3';
 const CACHE = `shivam-pixa-${VERSION}`;
 /* photos arriving from the Android "Share → PIXA" share target land here
    first; the page picks them up (see receiveShared in index.html) */

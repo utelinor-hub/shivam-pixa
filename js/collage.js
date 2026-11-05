@@ -161,7 +161,7 @@
 
   const S = {
     open: false, list: [], items: [], sel: new Set(), hover: null,
-    type: 'pile', bg: '#f5f2ec', bgImage: false, bgIdx: 0,
+    type: 'grid', touched: false, bg: '#f5f2ec', bgImage: false, bgIdx: 0,
     bgSrc: null, bgImg: null,               /* v3.22.4 background snapshot */
     border: 'none', borderColor: '#ffffff', landscape: true, shadows: false,
     fmt: '4x3', custW: 16, custH: 9, seed: 7,
@@ -587,6 +587,7 @@
       const startX = e.clientX, startY = e.clientY;
       const orig = S.items.filter((i) => S.sel.has(i.id)).map((i) => ({ i, x: i.x, y: i.y }));
       const onMove = (ev) => {
+        S.touched = true;   /* v3.29.3: a manual move stops the auto re-fit */
         const dx = (ev.clientX - startX) / rect.width;
         const dy = (ev.clientY - startY) / rect.height;
         for (const o of orig) {
@@ -620,6 +621,7 @@
       const startDist = Math.hypot(e.clientX - cx, e.clientY - cy);
       const origRot = tgt.rot, origScale = tgt.scale;
       const onMove = (ev) => {
+        S.touched = true;   /* v3.29.3: knob rotate/zoom is a manual arrangement */
         const curAngle = Math.atan2(ev.clientY - cy, ev.clientX - cx) * (180 / Math.PI);
         const curDist = Math.hypot(ev.clientX - cx, ev.clientY - cy);
         let rot = origRot + (curAngle - startAngle);
@@ -663,6 +665,7 @@
       const startX = e.clientX, startY = e.clientY;
       const ox = tgt.x, oy = tgt.y;
       const onMove = (ev) => {
+        S.touched = true;   /* v3.29.3: ring drag is a manual arrangement */
         const p = clampItemPos(tgt, ox + (ev.clientX - startX) / rect.width, oy + (ev.clientY - startY) / rect.height);
         tgt.x = p.x; tgt.y = p.y;    /* v3.25.0: page clamp */
         renderItem(tgt);
@@ -703,6 +706,7 @@
     scheduleColSave();
   }
   function rotateOne(it, deg) {
+    S.touched = true;   /* v3.29.3: menu rotate is manual */
     it.rot += deg;
     keepInside(it);                /* v3.25.0: a rotated corner must not leave the page */
     renderItem(it);
@@ -1028,6 +1032,7 @@
   function scramble() {
     if (S.final || !S.items.length) return;
     S.type = 'pile';
+    S.touched = true;   /* v3.29.3: an explicit scatter is a manual arrangement */
     S.items.forEach((it) => {
       it.x = 0.2 + Math.random() * 0.6;
       it.y = 0.2 + Math.random() * 0.6;
@@ -1041,6 +1046,7 @@
   }
   function shufflePictures() {
     if (S.final || S.items.length < 2) return;
+    S.touched = true;   /* v3.29.3: shuffling is manual too */
     const states = S.items.map((i) => ({ x: i.x, y: i.y, rot: i.rot }));
     states.sort(() => Math.random() - 0.5);
     S.items.forEach((it, idx) => {
@@ -1050,6 +1056,17 @@
     });
     positionWheel();
     scheduleColSave();
+  }
+  /* v3.29.3: AUTO FIT — every photo straight, same-size grid cells fitted
+     edge to edge (the tidy Picasa look). This is also what the + buttons
+     produce while the collage is untouched; after manual moves/scatter it
+     brings the tidy layout back on demand. */
+  function autoFit() {
+    if (S.final || !S.items.length) return;
+    S.type = 'grid';
+    S.touched = false;
+    applyLayout(true);
+    toast('Photos fitted — straight, same size, edge to edge', 'ok', 2400);
   }
 
   /* ================= photo decoding ================= */
@@ -1144,18 +1161,28 @@
       const st = freshState();
       const [W, H] = dims();
       const n = S.items.length;
-      const g = pileFrac(n, n + 1);
-      st.wFrac = g.wFrac;
-      st.hFrac = g.wFrac * (canvas.height / canvas.width) * (W / H);
+      /* v3.29.3: photos enter STRAIGHT. Untouched collage → the whole grid
+         re-fits so every photo is the same size, edge to edge (2 photos =
+         two identical halves). Manually arranged collage → the new photo
+         just takes the next free grid slot, nothing else moves. */
+      if (S.touched) {
+        const slots = slotCells(n + 1, W, H, false);
+        const s = slots[n] || { x: W * 0.3, y: H * 0.3, w: W * 0.4, h: H * 0.4 };
+        st.x = (s.x + s.w / 2) / W; st.y = (s.y + s.h / 2) / H;
+        st.wFrac = s.w / W; st.hFrac = s.h / H;
+      } else {
+        st.wFrac = 0.3; st.hFrac = 0.3;
+      }
       S.list.push(p);
       if (/\.(png|webp|gif)$/i.test(p.name || '')) S.alphaAny = true;
       const it = await itemFrom(canvas, p.name || 'photo', st);
+      if (!S.touched) applyLayout(false);
       select(it);
       syncClips();
       noteCount();
       refreshBackground();
       scheduleColSave();
-      toast(`${it.name} added to the collage — drag it anywhere`, 'ok', 2600);
+      toast(S.touched ? `${it.name} added — drag it anywhere` : `${it.name} added — photos fitted straight, edge to edge`, 'ok', 2600);
     } catch (e) { toast('That photo could not be added', 'err'); }
     el.busy.hidden = true;
   }
@@ -1169,18 +1196,25 @@
       const st = freshState();
       const [W, H] = dims();
       const n = S.items.length;
-      const g = pileFrac(n, n + 1);
-      st.wFrac = g.wFrac;
-      st.hFrac = g.wFrac * (canvas.height / canvas.width) * (W / H);
+      /* v3.29.3: same rule as addClipPhoto — straight entry + auto grid fit */
+      if (S.touched) {
+        const slots = slotCells(n + 1, W, H, false);
+        const s = slots[n] || { x: W * 0.3, y: H * 0.3, w: W * 0.4, h: H * 0.4 };
+        st.x = (s.x + s.w / 2) / W; st.y = (s.y + s.h / 2) / H;
+        st.wFrac = s.w / W; st.hFrac = s.h / H;
+      } else {
+        st.wFrac = 0.3; st.hFrac = 0.3;
+      }
       S.list.push({ name: f.name || 'photo', size: f.size || 0, lastModified: f.lastModified || 0, handle: null, file: f });
       if (/\.(png|webp|gif)$/i.test(f.name || '') || f.type === 'image/png') S.alphaAny = true;
       const it = await itemFrom(canvas, f.name || 'photo', st);
+      if (!S.touched) applyLayout(false);
       select(it);
       syncClips();
       noteCount();
       refreshBackground();
       scheduleColSave();
-      toast(`${it.name} added to the collage — drag it anywhere`, 'ok', 2600);
+      toast(S.touched ? `${it.name} added — drag it anywhere` : `${it.name} added — photos fitted straight, edge to edge`, 'ok', 2600);
     } catch (e) { toast('That photo could not be added', 'err'); }
     el.busy.hidden = true;
   }
@@ -1217,6 +1251,7 @@
   function stateSnapshot() {
     return {
       type: S.type, bg: S.bg, bgImage: S.bgImage, border: S.border,
+      auto: !S.touched,   /* v3.29.3: pure auto-grid projects re-fit when photos are added */
       landscape: S.landscape, bgIdx: S.bgIdx, seed: S.seed, fmt: fmtVal(),
       custW: S.custW, custH: S.custH, shadows: S.shadows, borderColor: S.borderColor,
       exportFmt: el.exportFmt.value,
@@ -1362,7 +1397,8 @@
     S.open = true;
     S.blob = null;
     S.restored = false;
-    S.type = 'pile';
+    S.type = 'grid';    /* v3.29.3: new collages auto-fit — straight, equal cells */
+    S.touched = false;  /* untouched → every add re-fits the grid */
     S.sel.clear(); S.hover = null;
     S.editId = null; S.editName = '';
     S.bgIdx = 0;
@@ -1394,15 +1430,16 @@
     clearItems();
     updateUI();
     const canvases = await loadImgs(S.list);
-    const [W, H] = dims();
+    /* v3.29.3: photos enter STRAIGHT (no tilt) — applyLayout then snaps them
+       into the auto grid: same-size cells fitted edge to edge (2 photos =
+       two identical halves side by side), exactly what the user asked for */
     for (let i = 0; i < canvases.length; i++) {
-      const g = pileFrac(i, canvases.length);
       await itemFrom(canvases[i], S.list[i] ? S.list[i].name : 'photo', {
-        x: g.x, y: g.y, rot: g.rot,
-        wFrac: g.wFrac, hFrac: g.wFrac * (canvases[i].height / canvases[i].width) * (W / H),
+        x: 0.5, y: 0.5, rot: 0, wFrac: 0.3, hFrac: 0.3,
         fit: 'fill', z: i + 1
       });
     }
+    applyLayout(false);
     zTop = canvases.length + 20;
     updateStageGeometry();
     syncClips();
@@ -1439,7 +1476,11 @@
     S.open = true; S.blob = null; S.restored = true;
     S.editId = proj.editId || null;
     S.editName = S.editId ? (proj.name || '') : '';
-    S.type = 'pile';   /* v3.25.7: type chooser gone — old saved projects open as a pile */
+    S.type = proj.type === 'grid' ? 'grid' : 'pile';   /* v3.29.3: grid projects keep their type; legacy = pile */
+    /* v3.29.3: a pure auto-grid project (never manually arranged) keeps
+       re-fitting when photos are added; anything else is treated as a
+       manual arrangement that must be preserved */
+    S.touched = proj.auto != null ? !proj.auto : true;
     S.shadows = proj.shadows !== false;
     S.bg = proj.bg || '#f5f2ec';
     /* old records used bgPhoto (blurred style); Use Image stays direct */
@@ -1481,24 +1522,28 @@
     const [W, H] = dims();
     for (let i = 0; i < canvases.length; i++) {
       const st = { fit: 'fill', z: i + 1 };
-      if (S.type === 'pile') {
-        const man = proj.pos && proj.pos[i];
+      const man = proj.pos && proj.pos[i];
+      const geo = proj.geo && proj.geo[i];
+      if (man) {
+        /* v3.29.3: saved positions restore for BOTH types — a grid project
+           the user hand-arranged must reopen exactly as saved */
+        st.x = man.x; st.y = man.y;
+        st.rot = man.rot / DEG;
+        st.scale = clamp(man.scale || 1, SCALE_MIN, SCALE_MAX);
+      } else if (S.type === 'pile') {
         const g = pileFrac(i, canvases.length);
-        if (man) {
-          st.x = man.x; st.y = man.y;
-          st.rot = man.rot / DEG;
-          st.scale = clamp(man.scale || 1, SCALE_MIN, SCALE_MAX);
-        } else { st.x = g.x; st.y = g.y; st.rot = g.rot; st.scale = 1; }
-        const geo = proj.geo && proj.geo[i];
-        if (geo && geo.w > 0) { st.wFrac = geo.w; st.hFrac = geo.h; }
-        else st.wFrac = g.wFrac, st.hFrac = g.wFrac * (canvases[i].height / canvases[i].width) * (W / H);
+        st.x = g.x; st.y = g.y; st.rot = g.rot; st.scale = 1;
       } else {
         st.x = 0.5; st.y = 0.5; st.rot = 0; st.scale = 1;
-        st.wFrac = 0.3; st.hFrac = 0.3;
       }
+      if (geo && geo.w > 0) { st.wFrac = geo.w; st.hFrac = geo.h; }
+      else if (S.type === 'pile') {
+        const g = pileFrac(i, canvases.length);
+        st.wFrac = g.wFrac; st.hFrac = g.wFrac * (canvases[i].height / canvases[i].width) * (W / H);
+      } else { st.wFrac = 0.3; st.hFrac = 0.3; }
       await itemFrom(canvases[i], S.list[i] ? S.list[i].name : 'photo', st);
     }
-    if (S.type !== 'pile') applyLayout(false);
+    if (S.type !== 'pile' && !(proj.pos && proj.pos.length === canvases.length)) applyLayout(false);
     if (proj.zarr && proj.zarr.length === S.items.length) {
       S.items.forEach((it, i) => { it.z = proj.zarr[i]; });
       zTop = Math.max(...proj.zarr, 20);
@@ -1731,6 +1776,7 @@
       else if (S.sel.size) targets = [...S.sel].map(itemById).filter(Boolean);
       else if (hov) targets = [hov];
       if (!targets || !targets.length) return;
+      S.touched = true;   /* v3.29.3: wheel resize/rotate is manual */
       const f = e.deltaY < 0 ? 1.07 : 0.93;
       for (const it of targets) {
         if (e.shiftKey) it.rot += e.deltaY > 0 ? 5 : -5;
@@ -1791,6 +1837,7 @@
     /* bottom bar */
     q('#cScramble').addEventListener('click', scramble);
     q('#cShufflePics').addEventListener('click', shufflePictures);
+    q('#cAutoFit').addEventListener('click', autoFit);
     q('#cViewEdit').addEventListener('click', viewAndEdit);
 
     /* header tabs: Library | Collage */
