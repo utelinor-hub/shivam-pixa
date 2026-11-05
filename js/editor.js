@@ -2237,12 +2237,13 @@
     if (!blob) { toast('Save failed — please try again', 'err'); return; }
     const p = E.photo;
     const oldKey = P.photoKey(p);
-    let ok = false;
+    let ok = false, how = '';
     if (p.cloud && window.PixsaCloud && window.PixsaCloud.enabled) {
       /* v3.7.0: cloud photos have no local disk file — saving updates the
          cached copy and queues the same Drive file for overwrite */
-      try { ok = await window.PixsaCloud.onPhotoSaved(p, blob); } catch (e) { ok = false; }
-    } else if (p.handle) {
+      try { ok = await window.PixsaCloud.onPhotoSaved(p, blob); how = ok ? 'cloud' : ''; } catch (e) { ok = false; }
+    }
+    if (!ok && p.handle) {
       try {
         let perm = await p.handle.queryPermission({ mode: 'readwrite' });
         if (perm !== 'granted') perm = await p.handle.requestPermission({ mode: 'readwrite' });
@@ -2250,16 +2251,30 @@
           const w = await p.handle.createWritable();
           await w.write(blob);
           await w.close();
-          ok = true;
+          ok = true; how = 'disk';
         }
       } catch (e) { ok = false; }
     }
+    /* v3.26.1: PICASA SAVE — the download fallback is GONE ("download aana
+       hi nahi chahiye"). A photo whose disk file cannot be written (added
+       without folder handles, permission denied, preview window) is saved
+       INTO the PIXA library itself: the grid photo updates in place, the
+       edit survives app restarts, exactly like Picasa's silent save. */
+    if (!ok) {
+      await P.idbDel('cloudblobs', 'lib:' + oldKey).catch(() => {});
+      try { ok = await P.savePhotoBytes(p, blob); how = ok ? 'lib' : ''; } catch (e) { ok = false; }
+    }
     if (ok) {
-      /* now permanently saved in the file — clear the auto-save session and set the new base */
+      /* now permanently saved — clear the auto-save session and set the new base */
       await P.idbDel('edits', oldKey).catch(() => {});
       P.invalidateThumb(p);
-      p.size = blob.size;
-      p.lastModified = Date.now();
+      /* v3.26.1: the library save already stamped size/lastModified BEFORE
+         the bytes were stored — touching them again would change the
+         storage key and orphan the saved blob */
+      if (how !== 'lib') {
+        p.size = blob.size;
+        p.lastModified = Date.now();
+      }
       /* v3.7.0: cloud photos — the SAME Google Drive file is overwritten in
          the background (no duplicate photo is ever created) */
       if (p.cloud && window.PixsaCloud) window.PixsaCloud.onPhotoSaved(p, blob);
@@ -2275,11 +2290,9 @@
       resetAdjUI(); updFxTiles(); updUndoBtns(); setTool(null);
       await renderPreview();
       ed.dims.textContent = `${E.src.width} \u00D7 ${E.src.height} px \u2022 ${fmtBytes(blob.size)}`;
-      toast('Saved \u2713', 'ok', 2500);
+      toast(how === 'lib' ? 'Saved to PIXA library \u2713' : 'Saved \u2713', 'ok', 2500);
     } else {
-      const ext = blob.type === 'image/png' ? '.png' : '.jpg';
-      download(blob, baseName(p.name) + '-edited' + ext);
-      toast('Direct save not possible — edited copy downloaded', 'err', 6000);
+      toast('Save failed \u2014 please try again', 'err', 6000);
     }
   }
   async function doSaveCopy() {

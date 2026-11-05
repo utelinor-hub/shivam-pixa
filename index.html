@@ -212,6 +212,23 @@
       text-shadow: 0 1px 1px rgba(0,0,0,.18);
     }
     .btn-accent:hover { background: linear-gradient(#57a0e5, #2f7ad0); border-color: #1e5fa8; }
+    /* v3.26.1: Import dropdown — photos or folder */
+    .imp-wrap { position: relative; display: inline-flex; }
+    .imp-wrap .caret { width: 11px; height: 11px; margin-left: 2px; }
+    .imp-dd {
+      position: absolute; right: 0; top: calc(100% + 6px); z-index: 120;
+      min-width: 300px; padding: 6px;
+      background: #fff; border: 1px solid #c9c4bb; border-radius: 10px;
+      box-shadow: 0 12px 34px rgba(0,0,0,.22);
+    }
+    .imp-dd button {
+      display: block; width: 100%; text-align: left; cursor: pointer;
+      background: none; border: 0; border-radius: 8px; padding: 9px 11px;
+      font: inherit;
+    }
+    .imp-dd button:hover { background: #eef4fb; }
+    .imp-dd button b { display: block; font-size: 13.5px; color: #243b53; }
+    .imp-dd button span { display: block; font-size: 11.5px; color: #7d8794; margin-top: 2px; }
     .btn[disabled] { opacity: .5; cursor: not-allowed; }
     .iconbtn2 {
       width: 32px; height: 32px; border-radius: 4px;
@@ -1085,10 +1102,26 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="12.9" y="3.5" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3.5" y="12.9" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="12.9" y="12.9" width="7.6" height="7.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
         Collage
       </button>
-      <button id="btnImport" class="btn btn-accent" type="button">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-        Import Folder
-      </button>
+      <div class="imp-wrap" id="impWrap">
+        <button id="btnImport" class="btn btn-accent" type="button" title="Import photos or a whole folder (Picasa style)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          Import
+          <svg class="caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 9.5L12 15l5.5-5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <!-- v3.26.1: Import opens a choice — single/multiple PHOTOS (the
+             folder picker never shows files inside, so single photos were
+             impossible to pick) or the whole FOLDER. -->
+        <div id="impDD" class="imp-dd" hidden>
+          <button type="button" data-imp="photos">
+            <b>Add Photos to PIXA&hellip;</b>
+            <span>Pick single / multiple images from any folder</span>
+          </button>
+          <button type="button" data-imp="folder">
+            <b>Add Folder to PIXA&hellip;</b>
+            <span>Import the whole folder with sub-folders</span>
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -1234,6 +1267,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
             Choose Folder
           </button>
+          <button id="btnAddPhotos2" class="btn" type="button" title="Pick single / multiple images (v3.26.1)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10" r="1.6" fill="currentColor"/><path d="M4 17l5-5 3.5 3.5L16 12l4 4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.2 3.2v5M15.7 5.7h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Add Photos</button>
           <button id="btnDemo" class="btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3.5" width="7.4" height="7.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13.6" y="3.5" width="7.4" height="7.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="13.1" width="7.4" height="7.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13.6" y="13.1" width="7.4" height="7.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>View Demo Photos</button>
         </div>
       </div>
@@ -1279,7 +1313,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.26.0</span>
+      <span class="ver">v3.26.1</span>
     </span>
   </footer>
 
@@ -2218,6 +2252,14 @@
       if (p.cloud && window.PixsaCloud) {
         return window.PixsaCloud.getBlob(p.cloud.pid, thumbOk)
           .then((b) => new File([b], p.name, { type: b.type || 'image/jpeg' }));
+      }
+      /* v3.26.1: photos saved INTO the library by Ctrl+S (Picasa-style save,
+         no download) keep their bytes in IndexedDB — load them on demand */
+      if (p.idbLib) {
+        return idbGet('cloudblobs', 'lib:' + photoKey(p)).then((b) => {
+          if (!b) throw new Error('Photo data is missing in the library');
+          return new File([b], p.name, { type: b.type || 'image/jpeg' });
+        });
       }
       return Promise.resolve(p.file);
     };
@@ -3468,11 +3510,13 @@
     }
     async function renamePhoto(p) {
       if (!p) return;
-      if (!p.pdir) {
+      /* v3.26.1: in-app photos (saved into the library by Ctrl+S) rename
+         inside the library — only cloud / dropped files stay unrenamable */
+      if (!p.idbLib && !p.pdir) {
         toast('Renaming needs a photo from an imported PC folder (cloud / dropped files cannot be renamed from the browser)', 'err', 6000);
         return;
       }
-      if (!(await ensurePerm(p.pdir))) { toast('Folder write permission was not granted', 'err'); return; }
+      if (!p.idbLib && !(await ensurePerm(p.pdir))) { toast('Folder write permission was not granted', 'err'); return; }
       const ext = (p.name.match(/\.[^.]+$/) || [''])[0];
       const base = p.name.slice(0, p.name.length - ext.length);
       const nn0 = prompt('Rename photo to:', base);
@@ -3484,12 +3528,20 @@
       if (nn === p.name) return;
       const oldKey = photoKey(p);
       try {
-        const file = await getFile(p);
-        const nh = await p.pdir.getFileHandle(nn, { create: true });
-        const w = await nh.createWritable(); await w.write(file); await w.close();
-        try { await p.pdir.removeEntry(p.name); } catch (e) { /* old file may be open elsewhere */ }
-        const nf = await nh.getFile();
-        p.name = nf.name; p.size = nf.size; p.lastModified = nf.lastModified; p.handle = nh;
+        if (p.idbLib) {
+          /* v3.26.1: in-app photos (Ctrl+S saved) rename inside the library */
+          const blob = await getFile(p);
+          await idbDel('cloudblobs', 'lib:' + oldKey).catch(() => {});
+          const oldName = p.name;
+          if (!(await savePhotoBytes(p, blob, nn, oldName))) throw new Error('Could not rename the photo in the library');
+        } else {
+          const file = await getFile(p);
+          const nh = await p.pdir.getFileHandle(nn, { create: true });
+          const w = await nh.createWritable(); await w.write(file); await w.close();
+          try { await p.pdir.removeEntry(p.name); } catch (e) { /* old file may be open elsewhere */ }
+          const nf = await nh.getFile();
+          p.name = nf.name; p.size = nf.size; p.lastModified = nf.lastModified; p.handle = nh;
+        }
         const newKey = photoKey(p);
         /* carry the thumbnail, edits, star and album memberships across */
         const th = await idbGet('thumbs', oldKey).catch(() => null);
@@ -4262,6 +4314,56 @@
         return true;
       } catch (e) { return false; }
     }
+    /* ================= v3.26.1: PICASA SAVE — library bytes =================
+       Ctrl+S in the editor must NEVER download (user request: "download
+       aana hi nahi chahiye — Ctrl+S karke save hona chahiye jaise Picasa
+       me hota tha"). When the photo's disk file cannot be written (no
+       folder handle, denied permission, preview window), the edited image
+       is stored INSIDE the app: bytes go to IndexedDB ('cloudblobs' under
+       a 'lib:' key), the library entry updates in place and the photo
+       even survives an app restart (metadata list in kv.'libPhotos'). */
+    async function savePhotoBytes(p, blob, newName, oldName) {
+      try {
+        if (!blob || !p) return false;
+        if (newName) p.name = newName;
+        const f = new File([blob], p.name, { type: blob.type || 'image/jpeg' });
+        p.file = f; p.handle = null; p.idbLib = true;
+        p.size = f.size; p.lastModified = Date.now();
+        await idbSet('cloudblobs', 'lib:' + photoKey(p), blob);
+        /* replace this photo's record; an oldName (rename) is purged too */
+        const list = ((await idbGet('kv', 'libPhotos')) || []).filter((r) => r && r.name && r.name !== p.name && (!oldName || r.name !== oldName));
+        list.push({ name: p.name, size: p.size, lastModified: p.lastModified, folder: p.folder || 'Added photos', root: p.root || 'Added photos' });
+        await idbSet('kv', 'libPhotos', list);
+        return true;
+      } catch (e) { return false; }
+    }
+    async function restoreLibPhotos() {
+      try {
+        const list = await idbGet('kv', 'libPhotos');
+        if (!Array.isArray(list) || !list.length) return 0;
+        const alive = [];
+        const fresh = [];
+        for (const r of list) {
+          if (!r || !r.name) continue;
+          const b = await idbGet('cloudblobs', 'lib:' + [r.name, r.size, r.lastModified].join('|'));
+          if (!b) continue;            /* dead record (old rename) — prune */
+          alive.push(r);
+          const np = { name: r.name, size: r.size, lastModified: r.lastModified, handle: null, file: null, idbLib: true, folder: r.folder || 'Added photos', root: r.root || 'Added photos' };
+          if (!state.photos.some((p) => photoKey(p) === photoKey(np))) fresh.push(np);
+        }
+        if (alive.length !== list.length) await idbSet('kv', 'libPhotos', alive);
+        if (!fresh.length) return 0;
+        state.photos = state.photos.concat(fresh);
+        return fresh.length;
+      } catch (e) { return 0; }
+    }
+    async function deleteLibPhoto(p) {
+      try {
+        await idbDel('cloudblobs', 'lib:' + photoKey(p)).catch(() => {});
+        const list = ((await idbGet('kv', 'libPhotos')) || []).filter((r) => r && r.name !== p.name);
+        await idbSet('kv', 'libPhotos', list);
+      } catch (e) {}
+    }
     function invalidateThumb(p) {
       const k = `${p.name}|${p.size}|${p.lastModified}`;
       thumbMem.delete(k);
@@ -4272,12 +4374,31 @@
       getFile, idbGet, idbSet, idbDel, fmtBytes, photoKey, toggleSel, clearSel, renderTray,
       canPicker, inIframe, invalidateThumb, saveBlobToDir, clamp, debounce,
       IMG_EXT, UNSUPPORTED_EXT, idbGetAll,
+      savePhotoBytes, deleteLibPhoto, restoreLibPhotos,
       addCollageItem, restoreCollageItems
     };
 
     /* ================= toolbar events ================= */
-    els.importBtn.addEventListener('click', importFolder);
+    /* v3.26.1: Import shows a CHOICE — single/multiple photos or the whole
+       folder (the folder picker never lists files, so a single photo could
+       never be picked from inside it — user request fixed) */
+    const impWrap = document.getElementById('impWrap');
+    const impDD = document.getElementById('impDD');
+    els.importBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      impDD.hidden = !impDD.hidden;
+    });
+    impDD.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-imp]');
+      if (!b) return;
+      impDD.hidden = true;
+      if (b.dataset.imp === 'photos') importPhotos(); else importFolder();
+    });
+    document.addEventListener('click', (e) => {
+      if (impDD && !impDD.hidden && !e.target.closest('.imp-wrap')) impDD.hidden = true;
+    });
     els.importBtn2.addEventListener('click', importFolder);
+    document.getElementById('btnAddPhotos2').addEventListener('click', importPhotos);
     els.demoBtn.addEventListener('click', loadDemo);
     els.btnSide.addEventListener('click', () => document.body.classList.toggle('side-off'));
     els.btnSizer.addEventListener('click', openSizer);
@@ -4309,6 +4430,9 @@
       state.photos = state.photos.filter((p) => !gone.includes(p));
       clearSel();
       gone.forEach(invalidateThumb);
+      /* v3.26.1: photos that live inside the app (saved by Ctrl+S) are
+         wiped from the library storage too */
+      gone.forEach((p) => { if (p.idbLib) deleteLibPhoto(p); });
       /* v3.16.0: removing a collage from the library forgets its record too,
          so it never reappears after a restart */
       for (const p of gone) {
@@ -4521,6 +4645,14 @@
       if (!confirm('Clear the library? (Your photos stay safe on your PC — only the app list is removed)')) return;
       state.photos = []; state.filtered = []; state.groups = []; state.folder = ''; state.folderFilter = '';
       await idbDel('kv', 'lastFolder').catch(() => {});
+      /* v3.26.1: Clear Library also forgets the Ctrl+S-saved in-app photos */
+      try {
+        const lp = await idbGet('kv', 'libPhotos');
+        if (Array.isArray(lp)) for (const r of lp) {
+          if (r && r.name) await idbDel('cloudblobs', 'lib:' + [r.name, r.size, r.lastModified].join('|')).catch(() => {});
+        }
+      } catch (e) {}
+      await idbDel('kv', 'libPhotos').catch(() => {});
       /* v3.16.0: Clear also forgets the saved collages (files on the PC stay) */
       await idbDel('collage', 'current').catch(() => {});
       try {
@@ -4816,6 +4948,10 @@
     /* ================= boot ================= */
     loadCustomFonts();
     loadAlbums().then(() => buildTree());   /* v3.24.0: albums into the tree at boot */
+    /* v3.26.1: photos saved INTO the library by Ctrl+S reopen with the app */
+    restoreLibPhotos().then((n) => {
+      if (n) { hydrateDims(); buildTree(); applyFilter(); toast(`${n} saved photo${n > 1 ? 's' : ''} restored from the PIXA library`, 'ok', 3500); }
+    });
     initRestore();
     restoreCollageItems();   /* v3.16.0: saved collages rejoin the library */
     if (window.innerWidth < 760) document.body.classList.add('side-off');
