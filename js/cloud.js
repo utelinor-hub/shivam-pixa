@@ -36,6 +36,28 @@
      "Cloud sync — 2 new, 1 updated from your other PC".
    • Renames / folder changes made inside PIXA follow the manifest
      (photos that live on the other PC's disk keep their local name).
+   v3.29.0 — WHY THE OTHER PC STILL SHOWED THE OLD PHOTO, fixed:
+   • THE display bug: a photo imported from a folder on BOTH PCs kept
+     showing its own DISK bytes on the second PC even after the first PC
+     edited and uploaded it — the grid re-read the stale disk file every
+     time, so sync "worked" but nothing ever LOOKED synced. Such photos
+     now carry a remoteEdit flag and read from the cloud copy until this
+     PC saves its own edit (getFile honours it via PixsaCloud.prefersCloud).
+   • Sessions died overnight: the Google token lasts ~1 h and the renew
+     timer only ran while the window was visible. Now the poll itself
+     silently renews an expired session, the renew timer runs even
+     backgrounded, and a PC reopened the next morning reconnects without
+     any click (boot-time silent renew for PCs that signed in before).
+   • An open editor used to PAUSE all uploads indefinitely — with the
+     editor (the normal way to work) open on both PCs nothing was ever
+     backed up. Uploads now yield a moment and continue in background.
+   • Timestamps now come from GOOGLE's server clock (createdTime /
+     modifiedTime) instead of each PC's own clock — two PCs with slightly
+     different clock settings can no longer miss each other's edits.
+   • The Cloud dialog now shows a Two-PC sync block: this PC's version,
+     last sync time, photos in cloud, waiting-to-upload count and a
+     Check-for-Updates button — because the #1 real-world cause remains
+     one PC still running an older version.
 
    How it works (design goals):
    • Sign in with Google → each user gets their own private folder
@@ -120,6 +142,7 @@
     everSignedIn: false,  // true only after a successful sign-in on this PC
     pendingAdopt: 0,
     lastPullAt: 0,        // v3.27.0: throttle for focus pulls
+    lastSyncAt: 0,        // v3.29.0: shown in the Cloud dialog
     fixUrl: null          // console page that fixes the current error (button in the dialog)
   };
 
@@ -127,7 +150,8 @@
     chip: null, label: null,
     modal: null, clientId: null, email: null, line: null, diag: null, steps: null,
     btnSaveId: null, btnSign: null, btnNow: null, btnOut: null, btnFree: null,
-    btnEnable: null
+    btnEnable: null,
+    csStat: null, csVer: null, csLast: null, csCount: null, csWait: null, btnUpd: null
   };
 
   /* ================= IndexedDB 'cloudblobs' store (full-size cache) ================= */
@@ -198,8 +222,11 @@
     if (resp && resp.access_token) {
       C.token = resp.access_token;
       C.tokenExp = Date.now() + Math.max(60, (Number(resp.expires_in) || 3600) - 90) * 1000;
-      /* keep the session, so a reload never needs the Google window again */
-      sessSet({ token: C.token, exp: C.tokenExp, email: (C.cfg && C.cfg.email) || '' });
+      /* keep the session, so a reload never needs the Google window again.
+         v3.29.0: ever=true survives the token expiring — the next boot and
+         every poll tick may silently reconnect instead of demanding a
+         fresh sign-in. */
+      sessSet({ token: C.token, exp: C.tokenExp, email: (C.cfg && C.cfg.email) || '', ever: true });
     }
   }
 
@@ -376,17 +403,23 @@
     return new Blob([pre, blob, `\r\n--${boundary}--`], { type: `multipart/related; boundary=${boundary}` });
   }
 
+  /* v3.29.0: returns {id, ct} — ct is GOOGLE'S server timestamp for the
+     new file. Manifest entries are stamped with it instead of the local
+     clock, so two PCs whose clocks disagree by a few minutes still agree
+     on which edit is newer. */
   async function uploadNew(blob, name, appProps) {
     const body = multipartBody({ name, parents: [C.folderId], appProperties: appProps || {} }, blob);
-    const r = await authFetch(`${UPLOAD}/files?uploadType=multipart&fields=id`, { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=pixabnd' }, body });
+    const r = await authFetch(`${UPLOAD}/files?uploadType=multipart&fields=id,createdTime`, { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=pixabnd' }, body });
     if (!r.ok) throw new Error(await driveErrText(r));
-    return (await r.json()).id;
+    const j = await r.json();
+    return { id: j.id, ct: j.createdTime || nowIso() };
   }
 
+  /* v3.29.0: returns Google's server modifiedTime for the updated file. */
   async function updateMedia(fileId, blob) {
-    const r = await authFetch(`${UPLOAD}/files/${fileId}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': blob.type || 'application/octet-stream' }, body: blob });
+    const r = await authFetch(`${UPLOAD}/files/${fileId}?uploadType=media&fields=modifiedTime`, { method: 'PATCH', headers: { 'Content-Type': blob.type || 'application/octet-stream' }, body: blob });
     if (!r.ok) throw new Error(await driveErrText(r));
-    return true;
+    try { return (await r.json()).modifiedTime || nowIso(); } catch (e) { return nowIso(); }
   }
 
   async function trashFiles(ids) {
@@ -506,6 +539,13 @@
           lp.size = e.size; lp.lastModified = e.lastModified;
           lp.cloud.fileId = e.fileId; lp.cloud.thumbId = e.thumbId; lp.cloud.updated = e.updated;
           lp.cloud.dirty = false;
+          /* v3.29.0 THE DISPLAY FIX: a photo that also lives on THIS PC's
+             disk would keep showing the old disk bytes forever (the disk
+             file cannot be rewritten — the folder was imported read-only).
+             The remoteEdit flag makes getFile serve the cloud copy instead,
+             so the other PC's edit is finally VISIBLE here, until this PC
+             saves its own edit (which becomes the newest truth). */
+          lp.remoteEdit = true;
           invalidateThumb(lp);
           await blobDel(e.pid);
           n.edited++;
@@ -630,9 +670,14 @@
     C.pushTimer = setTimeout(() => { pushCycle().catch((e) => setStatus_('err', e.message)); }, ms || 3000);
   }
 
+  /* v3.29.0: the editor no longer freezes the whole upload queue. Before
+     this, keeping the editor open (the normal way to work in PIXA!) meant
+     NOTHING was ever backed up — the queue waited up to 5 minutes and then
+     rescheduled every 8 s for as long as the editor stayed open. Now it
+     yields a few seconds and then uploads in the background anyway. */
   async function waitForIdleEditor() {
     let guard = 0;
-    while (editorOpen() && guard < 200) { await sleep(1500); guard++; }
+    while (editorOpen() && guard < 3) { await sleep(1500); guard++; }
   }
 
   async function pushCycle() {
@@ -640,7 +685,6 @@
     C.pushing = true;
     try {
       await waitForIdleEditor();
-      if (editorOpen()) { C.pushing = false; schedulePush(8000); return; }
       setStatus_('syncing');
       C.folderId = C.folderId || await findFolder();
       C.manifestId = C.manifestId || await findManifest();
@@ -675,16 +719,18 @@
           const b = await blobGet(pid);
           if (e && b) {
             try {
-              await updateMedia(e.fileId, b);
+              const mt = await updateMedia(e.fileId, b);   /* v3.29.0: Google's server clock */
               const tb = await makeThumbBlob(b);
               if (tb) {
-                if (e.thumbId) { try { await updateMedia(e.thumbId, tb); } catch (er) { e.thumbId = await uploadNew(tb, `${e.name}.thumb.jpg`, { pixa: 'thumb' }); } }
-                else e.thumbId = await uploadNew(tb, `${e.name}.thumb.jpg`, { pixa: 'thumb' });
+                if (e.thumbId) { try { await updateMedia(e.thumbId, tb); } catch (er) { e.thumbId = (await uploadNew(tb, `${e.name}.thumb.jpg`, { pixa: 'thumb' })).id; } }
+                else e.thumbId = (await uploadNew(tb, `${e.name}.thumb.jpg`, { pixa: 'thumb' })).id;
               }
               const lp = state.photos.find((x) => x.cloud && x.cloud.pid === pid);
               if (lp) { e.size = lp.size; e.lastModified = lp.lastModified; } else { e.size = b.size; }
-              e.updated = nowIso();
-              if (lp && lp.cloud) { lp.cloud.updated = e.updated; lp.cloud.dirty = false; }
+              e.updated = mt || nowIso();
+              /* v3.29.0: this PC just saved its own newer edit — the cloud
+                 copy is no longer the newest truth for display */
+              if (lp) { if (lp.cloud) { lp.cloud.updated = e.updated; lp.cloud.dirty = false; } lp.remoteEdit = false; }
             } catch (er) { stillDirty.push(pid); }
           }
           await sleep(30);
@@ -702,7 +748,8 @@
       let upCount = 0, skipCount = 0;
       for (const p of state.photos.slice()) {
         if (p.cloud) continue;
-        if (editorOpen()) break;
+        /* v3.29.0: the editor-open break is GONE — uploads run while the
+           user edits; only a lost Google session stops the loop */
         if (!hasToken()) break;
         const key = linkKey(p);
         if (links[key]) continue;
@@ -712,14 +759,15 @@
         else {
           try {
             pid = uuid();
+            setStatus_('syncing', `Backing up “${p.name}”…`);   /* v3.29.0: live progress */
             const f = await getFile(p);
-            const fileId = await uploadNew(f, p.name, { pixa: 'photo' });
+            const up = await uploadNew(f, p.name, { pixa: 'photo' });
             const tb = await makeThumbBlob(f);
-            const thumbId = tb ? await uploadNew(tb, `${p.name}.thumb.jpg`, { pixa: 'thumb' }) : null;
+            const thumbId = tb ? (await uploadNew(tb, `${p.name}.thumb.jpg`, { pixa: 'thumb' })).id : null;
             entries.set(pid, {
               pid, name: p.name, folder: p.folder || '', type: f.type || 'image/jpeg',
               size: f.size, lastModified: p.lastModified || Date.now(),
-              fileId, thumbId, updated: nowIso(), deleted: false
+              fileId: up.id, thumbId, updated: up.ct || nowIso(), deleted: false
             });
           } catch (er) { skipCount++; continue; }   /* retried at the next cycle */
           upCount++;
@@ -780,6 +828,7 @@
       if (!m.settings) m.settings = {};
       if (state.sort) m.settings.sort = state.sort;
       await pushManifest(m);
+      C.lastSyncAt = Date.now();
       /* merged-in entries (pushed by the other PC during this cycle) show
          in the grid immediately instead of waiting for the next poll */
       await applyRemote(m, { silent: true });
@@ -812,6 +861,7 @@
         return;
       }
       const n = await applyRemote(m, { silent: true });
+      C.lastSyncAt = Date.now();
       /* v3.8.0: adopt photos that other apps uploaded straight into the
          Drive folder (e.g. an auto-upload app on the phone) */
       let adopted = 0;
@@ -839,22 +889,35 @@
     }
   }
 
+  /* v3.29.0: the poll tick is a named function so it can be unit-tested.
+     An expired session no longer kills sync until someone notices: the
+     tick silently renews the Google token first (safe — this PC signed in
+     successfully before, so its origin is authorized) and only falls back
+     to the honest "Sign in" chip when even that fails. */
+  async function pollTick() {
+    if (document.hidden || !C.enabled) return;
+    if (!hasToken()) {
+      const t = await silentRenew();
+      if (t) { setStatus_('syncing', 'Reconnected to Google Drive'); pullCycle().catch(() => {}); schedulePush(3000); }
+      else setStatus_('out', 'Sign in to start syncing');
+      return;
+    }
+    pullCycle().catch(() => {});
+  }
+
   function startPolling() {
     clearInterval(C.timer);
-    C.timer = setInterval(() => {
-      if (document.hidden || !C.enabled) return;
-      /* v3.25.9: never leave the chip lying on 'Syncing' when the token is
-         gone — show the honest 'Sign in' state instead of spinning forever */
-      if (!hasToken()) { setStatus_('out', 'Sign in to start syncing'); return; }
-      pullCycle().catch(() => {});
-    }, POLL_MS);
+    C.timer = setInterval(() => { pollTick().catch(() => {}); }, POLL_MS);
   }
 
   /* refresh the Google token before it expires so background sync never stops */
   function startRenewTimer() {
     clearInterval(C.renewTimer);
+    /* v3.29.0: no document.hidden gate any more — the old gate meant a PC
+       left in the background missed its renewal window and the whole
+       session died overnight with it */
     C.renewTimer = setInterval(async () => {
-      if (!C.enabled || document.hidden || !C.token) return;
+      if (!C.enabled || !C.token) return;
       if (Date.now() < C.tokenExp - 15 * 60000) return;
       const t = await silentRenew();
       if (t) setStatus_('ok');
@@ -866,6 +929,11 @@
     get enabled() { return C.enabled; },
     get status() { return C.status; },
     has: (p) => !!(p && p.cloud && p.cloud.pid),
+
+    /* v3.29.0: true when the OTHER PC saved a newer edit of this photo —
+       getFile uses it to serve the cloud copy instead of the stale disk
+       bytes (the disk file cannot be rewritten: folders are read-only). */
+    prefersCloud: (p) => !!(p && p.cloud && p.remoteEdit && C.enabled),
 
     async getBlob(pid, thumbOk) { return getBlob(pid, thumbOk); },
 
@@ -951,7 +1019,7 @@
       if (info && info.user && info.user.emailAddress) { C.cfg.email = info.user.emailAddress; await cfgSet(C.cfg); }
       C.everSignedIn = true;
       C.enabled = true;
-      sessSet({ token: C.token, exp: C.tokenExp, email: (C.cfg && C.cfg.email) || '' });
+      sessSet({ token: C.token, exp: C.tokenExp, email: (C.cfg && C.cfg.email) || '', ever: true });
       await resetCloudLinkState();
       setStatus_('syncing');
       startPolling(); startRenewTimer();
@@ -1038,6 +1106,24 @@
         `Client ID: ${cid ? cid.slice(0, 14) + '…' + cid.slice(-8) : 'missing'}\n` +
         (C.statusNote ? `Note: ${C.statusNote}` : 'No errors recorded');
     }
+    /* v3.29.0: the Two-PC sync block — the version THIS PC runs, when it
+       last synced and how much is still waiting. Sync silently breaks when
+       one PC runs an older version, so the block tells the user exactly
+       what to check on BOTH PCs. */
+    if (el.csStat) {
+      el.csStat.hidden = !C.enabled;
+      el.csVer.textContent = ((document.querySelector('.ver') || {}).textContent || '').trim() || '?';
+      el.csLast.textContent = C.lastSyncAt ? new Date(C.lastSyncAt).toLocaleTimeString() : 'never';
+      el.csCount.textContent = String(C.remote ? C.remote.photos.filter((e) => !e.deleted).length : 0);
+      (async () => {
+        try {
+          const dirty = await dirtyGet();
+          const links = await linksGet();
+          const wait = dirty.length + state.photos.filter((p) => !p.cloud && !links[linkKey(p)]).length;
+          el.csWait.textContent = String(wait);
+        } catch (e) { /* dialog numbers are best-effort */ }
+      })();
+    }
   }
 
   function wireUI() {
@@ -1076,6 +1162,17 @@
     /* v3.14.1: one-click jump to the exact Google Cloud Console page */
     el.btnEnable = document.getElementById('cloudEnable');
     if (el.btnEnable) el.btnEnable.addEventListener('click', () => { if (C.fixUrl) window.open(C.fixUrl, '_blank', 'noopener'); });
+    /* v3.29.0: Two-PC sync block + update check straight from the dialog */
+    el.csStat = document.getElementById('cloudStat');
+    el.csVer = document.getElementById('csVer');
+    el.csLast = document.getElementById('csLast');
+    el.csCount = document.getElementById('csCount');
+    el.csWait = document.getElementById('csWait');
+    el.btnUpd = document.getElementById('cloudCheckUpd');
+    if (el.btnUpd) el.btnUpd.addEventListener('click', () => {
+      if (window.PixsaUpd && window.PixsaUpd.checkNow) window.PixsaUpd.checkNow();
+      else toast('Updates are checked automatically — close and reopen the app to fetch the latest version', 'ok', 6000);
+    });
   }
 
   /* ================= boot ================= */
@@ -1100,6 +1197,23 @@
       return;
     }
     if (!navigator.onLine) { setStatus_('err', 'No internet — will retry'); return; }
+    /* v3.29.0: the session normally dies overnight (the token lasts ~1 h).
+       A PC that signed in successfully before silently reconnects at boot —
+       the user opens PIXA in the morning and sync just works, no clicking.
+       If the silent renew is refused, fall back to the Sign in chip. */
+    if (s && (s.ever || s.email)) {
+      C.everSignedIn = true;
+      if (s.email && !C.cfg.email) C.cfg.email = s.email;
+      setStatus_('connecting', 'Reconnecting to Google Drive…');
+      const t = await silentRenew();
+      if (t) {
+        setStatus_('syncing', 'Restoring your library…');
+        startPolling(); startRenewTimer();
+        pullCycle({ manual: false }).catch(() => {});
+        schedulePush(4000);
+        return;
+      }
+    }
     /* never fire Google auth without a user gesture: on an unauthorized
        origin that would bounce the whole app to a Google error page.
        The chip shows “Sign in” instead — one click and it connects. */

@@ -1363,7 +1363,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.28.0</span>
+      <span class="ver">v3.29.0</span>
     </span>
   </footer>
 
@@ -1626,6 +1626,19 @@
           <h5>Sync status</h5>
           <div id="cloudLine" style="font-size:13px;color:#333">Cloud sync is off</div>
           <div id="cloudEmail" style="font-size:12px;color:#667;margin-top:3px">Not signed in</div>
+        </div>
+        <div class="cl-sec" id="cloudStat" hidden>
+          <h5>Two-PC sync</h5>
+          <div style="font-size:12px;color:#333;line-height:1.7">
+            This PC version: <b id="csVer">&mdash;</b><br/>
+            Last sync: <span id="csLast">never</span> &nbsp;&bull;&nbsp; Photos in cloud: <span id="csCount">0</span> &nbsp;&bull;&nbsp; Waiting upload: <span id="csWait">0</span>
+          </div>
+          <div style="font-size:11.5px;color:#8a5a00;background:#fff7e0;border:1px solid #f0dfa8;border-radius:6px;padding:6px 8px;margin-top:6px;line-height:1.5">
+            Sync shows the <b>same photos on every PC</b> only when both PCs run the <b>same version</b>. Open <b>Help &rarr; Check for Updates</b> on <b>each PC</b> and press <b>Install Update</b>.
+          </div>
+          <div class="cl-row" style="justify-content:flex-end;margin-top:6px">
+            <button id="cloudCheckUpd" class="btn" type="button">Check for Updates</button>
+          </div>
         </div>
         <div class="cl-sec">
           <h5>Sign-in diagnostics</h5>
@@ -2288,6 +2301,15 @@
        cloud photos: the File is fetched from Google Drive on demand
        (thumb first for grid previews, full size only when really needed) */
     const getFile = (p, thumbOk) => {
+      /* v3.29.0: when the OTHER PC saved a newer edit to this photo, this
+         PC's disk file is out of date (folders are imported read-only, so
+         it cannot be rewritten) — serve the cloud copy instead. Before
+         this fix such a photo kept showing the old image forever, which
+         looked exactly like "sync kaam hi nahi kar raha". */
+      if (p.cloud && p.remoteEdit && window.PixsaCloud && window.PixsaCloud.enabled) {
+        return window.PixsaCloud.getBlob(p.cloud.pid, thumbOk)
+          .then((b) => new File([b], p.name, { type: b.type || 'image/jpeg' }));
+      }
       if (p.handle) return p.handle.getFile();
       if (p.cloud && window.PixsaCloud) {
         return window.PixsaCloud.getBlob(p.cloud.pid, thumbOk)
