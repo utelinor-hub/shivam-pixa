@@ -1180,6 +1180,10 @@
             <b>Add Photos to PIXA&hellip;</b>
             <span>Pick single / multiple images from any folder</span>
           </button>
+          <button type="button" data-imp="camera">
+            <b>Take Photo with Camera&hellip;</b>
+            <span>Shoot straight into PIXA — it reaches your PC by itself</span>
+          </button>
           <button type="button" data-imp="folder">
             <b>Add Folder to PIXA&hellip;</b>
             <span>Import the whole folder with sub-folders</span>
@@ -1197,6 +1201,7 @@
         <button type="button" data-act="newalbum">New Album&hellip; (Ctrl+N)</button>
         <button type="button" data-act="addalbum">Add Selected to Album&hellip;</button>
         <button type="button" data-act="addphotos">Add Photos to PIXA&hellip;</button>
+        <button type="button" data-act="camera">Take Photo with Camera&hellip;</button>
         <button type="button" data-act="import">Add Folder to PIXA&hellip;</button>
         <div class="sep"></div>
         <button type="button" data-act="edit">Open File(s) in an Editor</button>
@@ -1272,6 +1277,7 @@
         <button type="button" data-act="upd-install" id="ddInstall" disabled>Install Update</button>
         <div class="sep"></div>
         <button type="button" data-act="desktop">Get Desktop App (Windows)&hellip;</button>
+        <button type="button" data-act="phonepc">Send Photos from Phone&hellip;</button>
         <div class="sep"></div>
         <button type="button" data-act="about">About SHIVAM PIXA</button>
       </div>
@@ -1377,7 +1383,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.29.4</span>
+      <span class="ver">v3.30.0</span>
     </span>
   </footer>
 
@@ -1621,6 +1627,29 @@
           <li>The app opens in its own window &mdash; Desktop + Start Menu icons ready</li>
         </ol>
         <p class="dk-note">Needs internet once for the first open; after that everything works offline. If Windows SmartScreen asks, choose &ldquo;More info&rdquo; &rarr; &ldquo;Run anyway&rdquo;. Already installed? Re-running the setup is safe &mdash; it refreshes the Desktop / Start Menu icon (v3.29.1: no more white box behind the logo).</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== v3.30.0: Phone &rarr; PC photo bridge (Xender-style, via your own Drive) ===== -->
+  <div id="phonepc" class="modal" hidden role="dialog" aria-label="Send photos from your phone to the PC">
+    <div class="m-box dk-box">
+      <header class="m-head">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;flex:none"><rect x="7" y="2.5" width="10" height="19" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10.5 5h3M12 18.2v.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Send Photos from Your Phone
+        <button id="ppClose" class="icobtn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="dk-body">
+        <p class="dk-note" style="margin:0 0 8px">Photos clicked on your phone reach this PC in the <b>original quality</b> &mdash; same size, same resolution, same ratio, nothing re-encoded. It works over <b>home WiFi and mobile data</b> both, because the photos travel through your own Google Drive &mdash; like a private Xender between your devices.</p>
+        <ol class="dk-steps">
+          <li>On the phone, open the same app: <b>utelinor-hub.github.io/shivam-pixa</b> &mdash; install it once from the browser menu (&ldquo;Add to Home screen&rdquo;) for one-tap use</li>
+          <li>Open the Cloud chip (top right) on the phone &rarr; <b>Sign in with Google</b> &mdash; the <b>same account</b> as on this PC (one-time)</li>
+          <li>Send photos any way you like: gallery &rarr; <b>Share &rarr; SHIVAM PIXA</b> &nbsp;&bull;&nbsp; <b>Import &rarr; Add Photos</b> &nbsp;&bull;&nbsp; <b>Import &rarr; Take Photo</b></li>
+          <li>They back up to your Drive automatically &mdash; this PC pulls them in about 12 seconds into the <b>Shared from phone</b> / <b>Camera</b> group</li>
+        </ol>
+        <p class="dk-note">One-time setup only &mdash; after that every phone photo lands here by itself, full original quality. Both WiFi and mobile data work; no cable, no app store.</p>
       </div>
     </div>
   </div>
@@ -2199,6 +2228,10 @@
   <input id="fileFallback" type="file" multiple accept="image/*,.heic,.heif,.tif,.tiff" webkitdirectory directory hidden />
   <!-- v3.25.4: single/multi PHOTO picker fallback for browsers without showOpenFilePicker -->
   <input id="filesFallback" type="file" multiple accept="image/*,.avif" hidden />
+  <!-- v3.30.0: camera capture — shots taken on the phone land straight in
+       PIXA (original camera file, nothing re-encoded) and cloud sync
+       carries them to the PC automatically -->
+  <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
   <input id="fontFile" type="file" multiple accept=".ttf,.otf,.woff,.woff2" hidden />
   <input id="stickerFile" type="file" accept="image/png,image/webp,image/gif,image/svg+xml" hidden />
 
@@ -2223,7 +2256,7 @@
     const els = {
       grid: $('#grid'), empty: $('#emptyState'), sentinel: $('#sentinel'),
       sort: $('#sort'),
-      importBtn: $('#btnImport'), importBtn2: $('#btnImport2'), demoBtn: $('#btnDemo'),
+      importBtn: $('#btnImport'), importBtn2: $('#btnImport2'), demoBtn: $('#btnDemo'), cameraInput: $('#cameraInput'),
       btnSide: $('#btnSide'), btnRefresh: $('#btnRefresh'), tree: $('#tree'),
       zoom: $('#zoom'),
       stName: $('#stName'), stCount: $('#stCount'), clearBtn: $('#btnClear'), btnAllF: $('#btnAllF'),
@@ -2397,6 +2430,36 @@
         els.filesInput.click();
       }
     }
+
+    /* v3.30.0: Take Photo — the phone's camera app shoots straight into
+       PIXA. The ORIGINAL camera file is kept byte-for-byte (same size,
+       resolution and ratio — nothing re-encoded) and cloud sync backs it
+       up to Drive, so the same photo lands on the PC in seconds — over
+       WiFi or mobile data, like a personal Xender. */
+    function importCamera() { els.cameraInput.click(); }
+    els.cameraInput.addEventListener('change', () => {
+      const list = [...els.cameraInput.files];
+      els.cameraInput.value = '';
+      if (!list.length) return;
+      const out = [];
+      for (const f of list) {
+        if (UNSUPPORTED_EXT.test(f.name)) continue;
+        if (!IMG_EXT.test(f.name) && !/^image\//.test(f.type || '')) continue;
+        const nm = (f.name && IMG_EXT.test(f.name)) ? f.name
+          : `Camera-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.jpg`;
+        out.push({ name: nm, size: f.size, lastModified: f.lastModified || Date.now(), handle: null, file: f, folder: 'Camera', root: 'Camera' });
+      }
+      if (!out.length) { toast('No photo came from the camera', 'err', 5000); return; }
+      mergePhotos(out, 'Camera');
+      state.folder = 'Camera';
+      state.folderFilter = '';
+      state.dirHandle = null;
+      clearSel();
+      buildTree();
+      applyFilter();
+      toast(`Camera photo${out.length > 1 ? 's' : ''} added — backing up to Google Drive… your PC gets it automatically`, 'ok', 5000);
+      if (window.PixsaCloud) window.PixsaCloud.onLibraryChanged();
+    });
 
     /* v3.25.4: shared tail of both ADD-PHOTOS paths — appends into the
        "Added photos" group, never duplicates, never drops older picks */
@@ -4182,6 +4245,16 @@
     }
     document.getElementById('dkClose').addEventListener('click', () => { const m = document.getElementById('desktop'); if (m) m.hidden = true; });
 
+    /* v3.30.0: Phone → PC guide — how phone photos reach this PC in the
+       original quality over WiFi or mobile data (Share → PIXA, Import,
+       or the camera, all through the user's own Google Drive). */
+    function openPhonePc() {
+      const m = document.getElementById('phonepc');
+      if (m) m.hidden = false;
+    }
+    document.getElementById('ppClose').addEventListener('click', () => { const m = document.getElementById('phonepc'); if (m) m.hidden = true; });
+    document.getElementById('phonepc').addEventListener('click', (e) => { if (e.target.id === 'phonepc') e.target.hidden = true; });
+
     function openSizer() {
       const list = state.selArr.length ? state.selArr : state.filtered;
       if (!list.length) { toast('Import photos first', 'err'); return; }
@@ -4556,7 +4629,9 @@
       const b = e.target.closest('button[data-imp]');
       if (!b) return;
       impDD.hidden = true;
-      if (b.dataset.imp === 'photos') importPhotos(); else importFolder();
+      if (b.dataset.imp === 'photos') importPhotos();
+      else if (b.dataset.imp === 'camera') importCamera();   /* v3.30.0 */
+      else importFolder();
     });
     document.addEventListener('click', (e) => {
       if (impDD && !impDD.hidden && !e.target.closest('.imp-wrap')) impDD.hidden = true;
@@ -4613,6 +4688,8 @@
       switch (act) {
         case 'import': importFolder(); break;
         case 'addphotos': importPhotos(); break;      /* v3.25.4: single photos */
+        case 'camera': importCamera(); break;         /* v3.30.0: shoot into PIXA */
+        case 'phonepc': openPhonePc(); break;         /* v3.30.0: phone → PC bridge guide */
         case 'export': openExport(); break;             /* v3.24.0: real Export dialog */
         case 'print': openPrint(); break;               /* v3.24.0 */
         case 'poster': openPoster(); break;             /* v3.24.0 */
