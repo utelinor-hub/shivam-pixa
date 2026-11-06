@@ -73,7 +73,7 @@ Adoption rules (so nothing ever duplicates):
 
 A standalone, InShare-style sender app that lives in its **own repository**
 (utelinor-hub/Pixa-share) at
-**https://utelinor-hub.github.io/pixa-share/** (install once via the
+**https://utelinor-hub.github.io/Pixa-share/** (install once via the
 browser menu → "Add to Home screen"). It shares no code with PIXA — the
 two apps only agree on the Drive protocol below.
 

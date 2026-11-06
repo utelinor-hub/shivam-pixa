@@ -4,7 +4,7 @@
    Only then SKIP_WAITING activates it and the page reloads once. The new
    version never activates silently behind the user's back. */
 
-const VERSION = 'v3.30.2';
+const VERSION = 'v3.30.3';
 const CACHE = `shivam-pixa-${VERSION}`;
 /* photos arriving from the Android "Share → PIXA" share target land here
    first; the page picks them up (see receiveShared in index.html) */
@@ -26,7 +26,7 @@ const ASSETS = [
   './icons/logo-core.png',
   './icons/favicon.png',
   /* v3.30.2: PIXA SHARE moved to its OWN repo (utelinor-hub/Pixa-share →
-     https://utelinor-hub.github.io/pixa-share/) with its own service
+     https://utelinor-hub.github.io/Pixa-share/) with its own service
      worker. Nothing is precached here any more; ./share/index.html is
      just a tiny redirect stub for phones that installed the old path. */
   './share/'

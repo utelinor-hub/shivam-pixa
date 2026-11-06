@@ -68,7 +68,7 @@
      file (pixa-share-mobile.json) lets the Cloud dialog warn the minute
      the phone is signed in with a DIFFERENT Google account than this PC.
    v3.30.2 — PIXA SHARE moved OUT of this repo into its own project
-     (utelinor-hub/Pixa-share → https://utelinor-hub.github.io/pixa-share/).
+     (utelinor-hub/Pixa-share → https://utelinor-hub.github.io/Pixa-share/).
      Zero code is shared with this app — the two only agree on the Drive
      protocol above. The Open button and the guide now point to the new
      address; ./share/ here is just a redirect stub for old phones.
@@ -1259,7 +1259,7 @@
     el.csSharePhone = document.getElementById('csSharePhone');
     el.btnShare = document.getElementById('cloudOpenShare');
     if (el.btnShare) el.btnShare.addEventListener('click', () => {
-      window.open('https://utelinor-hub.github.io/pixa-share/', '_blank', 'noopener');
+      window.open('https://utelinor-hub.github.io/Pixa-share/', '_blank', 'noopener');
     });
   }
 
