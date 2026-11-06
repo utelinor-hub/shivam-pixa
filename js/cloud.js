@@ -106,8 +106,13 @@
   const FOLDER_NAME = 'SHIVAM PIXA';
   const MANIFEST_NAME = 'pixa-manifest.json';
   /* v3.27.0: 25 s → 12 s — the other PC's new photos / edits / collages
-     land within seconds of the next focus, not half a minute later */
+     land within seconds of the next focus, not half a minute later.
+     v3.30.4: plus a LIGHT arrival probe every 3 s — a tiny id-only Drive
+     query that notices phone uploads (PIXA SHARE) the moment they land
+     and triggers a full pull right away, so photos appear on screen as
+     soon as they arrive instead of at the next 12 s tick. */
   const POLL_MS = 12000;
+  const PROBE_MS = 3000;
   const GIS_SRC = 'https://accounts.google.com/gsi/client';
 
   /* Built-in OAuth Client ID (created by Shivam in Google Cloud Console for
@@ -151,6 +156,8 @@
     pushTimer: null,
     pushing: false,
     pulling: false,
+    probeTimer: null,     // v3.30.4: fast arrival probe
+    knownIds: new Set(),  // v3.30.4: file ids already seen in the Drive folder
     gisLoaded: false,
     enabled: false,
     everSignedIn: false,  // true only after a successful sign-in on this PC
@@ -652,6 +659,8 @@
     const r = await authFetch(`${DRIVE}/files?q=${q}&fields=files(id,name,mimeType,size,createdTime,appProperties)&pageSize=1000`);
     if (!r.ok) return { count: 0, share: 0 };
     const j = await r.json();
+    /* v3.30.4: feed the arrival probe — these ids are now known */
+    (j.files || []).forEach((f) => { if (f.id) C.knownIds.add(f.id); });
     if (!j.files || !j.files.length) return { count: 0, share: 0 };
     const known = new Set();
     m.photos.forEach((e) => { known.add(e.fileId); if (e.thumbId) known.add(e.thumbId); });
@@ -970,9 +979,35 @@
     pullCycle().catch(() => {});
   }
 
+  /* v3.30.4: the arrival probe — every 3 s a tiny id-only listing of the
+     Drive folder. A new id means the phone (PIXA SHARE) or another device
+     just uploaded something: trigger a full pull immediately so the new
+     photos appear on screen right away, not at the next 12 s poll. The
+     full pullCycle re-lists the folder with all fields and does the real
+     adoption; the probe only says "go now". */
+  async function arrivalProbe() {
+    if (document.hidden || !C.enabled || !hasToken() || C.pulling) return;
+    if (!C.folderId) return;                    /* the first full pull finds the folder */
+    const q = encodeURIComponent(`'${C.folderId}' in parents and trashed = false and mimeType contains 'image/'`);
+    const r = await authFetch(`${DRIVE}/files?q=${q}&fields=files(id)&pageSize=1000`);
+    if (!r.ok) return;
+    const j = await r.json();
+    const ids = (j.files || []).map((f) => f.id).filter(Boolean);
+    if (!ids.length) return;
+    const fresh = ids.filter((id) => !C.knownIds.has(id));
+    ids.forEach((id) => C.knownIds.add(id));
+    if (fresh.length) {
+      setStatus_('syncing', `${fresh.length} new photo${fresh.length > 1 ? 's' : ''} arriving…`);
+      pullCycle().catch(() => {});
+    }
+  }
+
   function startPolling() {
     clearInterval(C.timer);
     C.timer = setInterval(() => { pollTick().catch(() => {}); }, POLL_MS);
+    /* v3.30.4: the fast probe rides along with the normal poll */
+    clearInterval(C.probeTimer);
+    C.probeTimer = setInterval(() => { arrivalProbe().catch(() => {}); }, PROBE_MS);
   }
 
   /* refresh the Google token before it expires so background sync never stops */
