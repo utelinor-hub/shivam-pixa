@@ -411,12 +411,38 @@
   }
 
   /* ================= Drive primitives ================= */
+  /* v3.34.0: duplicate-folder guard. The phone app and the PC can race on
+     first run and each create their own "SHIVAM PIXA" folder — the two
+     then never see each other's files (photos "never arrive", settings
+     look reset). When more than one folder exists, pick the one that
+     actually holds data: prefer the folder with the manifest inside,
+     otherwise the one with the most files. Never create a new folder
+     while any candidate still exists. */
   async function findFolder() {
     const q = encodeURIComponent(`name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false and 'root' in parents`);
-    const r = await authFetch(`${DRIVE}/files?q=${q}&fields=files(id,name)&pageSize=5`);
+    const r = await authFetch(`${DRIVE}/files?q=${q}&fields=files(id,name)&pageSize=10`);
     if (!r.ok) throw new Error(await driveErrText(r));
     const j = await r.json();
-    if (j.files && j.files.length) return j.files[0].id;
+    if (j.files && j.files.length) {
+      if (j.files.length === 1) return j.files[0].id;
+      for (const f of j.files) {
+        try {
+          const q2 = encodeURIComponent(`'${f.id}' in parents and trashed = false and name = '${MANIFEST_NAME}'`);
+          const r2 = await authFetch(`${DRIVE}/files?q=${q2}&fields=files(id)&pageSize=1`);
+          if (r2.ok && ((await r2.json()).files || []).length) return f.id;
+        } catch (e) { /* try the next candidate */ }
+      }
+      let bestId = j.files[0].id, bestN = -1;
+      for (const f of j.files) {
+        try {
+          const q3 = encodeURIComponent(`'${f.id}' in parents and trashed = false`);
+          const r3 = await authFetch(`${DRIVE}/files?q=${q3}&fields=files(id)&pageSize=100`);
+          const n = r3.ok ? (((await r3.json()).files) || []).length : 0;
+          if (n > bestN) { bestN = n; bestId = f.id; }
+        } catch (e) { /* keep the current best */ }
+      }
+      return bestId;
+    }
     const cr = await authFetch(`${DRIVE}/files`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -478,7 +504,14 @@
   async function pullManifest() {
     if (!C.manifestId) return null;
     const r = await authFetch(`${DRIVE}/files/${C.manifestId}?alt=media`);
-    if (r.status === 404) return null;
+    if (r.status === 404) {
+      /* v3.34.0: the manifest file was deleted on Drive (cleanup, reset,
+         new folder). Forget the dead id so the next push CREATES a fresh
+         manifest instead of PATCHing a 404 forever — that silent dead-end
+         made every later backup fail with nothing on screen. */
+      C.manifestId = null;
+      return null;
+    }
     if (!r.ok) throw new Error(await driveErrText(r));
     const txt = await r.text();
     try { return JSON.parse(txt); } catch (e) { return null; }
@@ -489,12 +522,17 @@
     const body = multipartBody({ name: MANIFEST_NAME, parents: [C.folderId] }, new Blob([JSON.stringify(m)], { type: 'application/json' }));
     if (C.manifestId) {
       const r = await authFetch(`${UPLOAD}/files/${C.manifestId}?uploadType=multipart&fields=id`, { method: 'PATCH', body });
-      if (!r.ok) throw new Error(await driveErrText(r));
-    } else {
-      const r = await authFetch(`${UPLOAD}/files?uploadType=multipart&fields=id`, { method: 'POST', body });
-      if (!r.ok) throw new Error(await driveErrText(r));
-      C.manifestId = (await r.json()).id;
+      if (r.status === 404) C.manifestId = null;   /* v3.34.0: file vanished — create a fresh one below */
+      else if (!r.ok) throw new Error(await driveErrText(r));
+      else {
+        C.remote = m;
+        await remoteSet(m);
+        return;
+      }
     }
+    const r = await authFetch(`${UPLOAD}/files?uploadType=multipart&fields=id`, { method: 'POST', body });
+    if (!r.ok) throw new Error(await driveErrText(r));
+    C.manifestId = (await r.json()).id;
     C.remote = m;
     await remoteSet(m);
   }
@@ -701,9 +739,15 @@
      names the sender. Untagged files keep landing in
      "Phone & other uploads" like before. */
   const ADOPT_IMG = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
-  async function adoptExternal(m) {
-    if (!C.folderId || C.pushing || !m || !m.photos) return { count: 0, share: 0 };
-    const q = encodeURIComponent(`'${C.folderId}' in parents and trashed = false and mimeType contains 'image/'`);
+  async function adoptExternal(manifest) {
+    if (!C.folderId || C.pushing || !manifest || !manifest.photos) return { count: 0, share: 0 };
+    /* v3.34.0: list ALL children, not only mimeType image/* — phone
+       browsers and camera apps sometimes upload with an empty or
+       application/octet-stream type; those files used to be INVISIBLE to
+       adoption forever even though they sat in the folder (the user's
+       "PIXA SHARE photos never arrive on the PC" bug). The image check
+       now happens on the file NAME below. */
+    const q = encodeURIComponent(`'${C.folderId}' in parents and trashed = false`);
     const r = await authFetch(`${DRIVE}/files?q=${q}&fields=files(id,name,mimeType,size,createdTime,appProperties)&pageSize=1000`);
     if (!r.ok) return { count: 0, share: 0 };
     const j = await r.json();
@@ -711,7 +755,7 @@
     (j.files || []).forEach((f) => { if (f.id) C.knownIds.add(f.id); });
     if (!j.files || !j.files.length) return { count: 0, share: 0 };
     const known = new Set();
-    m.photos.forEach((e) => { known.add(e.fileId); if (e.thumbId) known.add(e.thumbId); });
+    manifest.photos.forEach((e) => { known.add(e.fileId); if (e.thumbId) known.add(e.thumbId); });
     /* v3.30.1: previews uploaded by PIXA SHARE are matched to their
        full-size photo instead of being adopted as photos themselves */
     const thumbs = new Map();
@@ -724,29 +768,71 @@
       !/\.thumb\.jpe?g$/i.test(f.name || '') &&
       !(f.appProperties && (f.appProperties.pixa === 'photo' || f.appProperties.pixa === 'thumb'))
     );
-    if (!fresh.length) return { count: 0, share: 0 };
-    let shareCount = 0;
+    /* v3.34.0: an image-looking file whose Drive mimeType is missing or
+       generic is still a photo — remember its real type from the name */
     for (const f of fresh) {
+      if (!f.mimeType || !/^image\//i.test(f.mimeType)) {
+        const ext = (f.name || '').match(/\.(jpe?g|png|gif|webp|bmp|avif)$/i);
+        if (ext) f.mimeType = 'image/' + ext[1].toLowerCase().replace('jpg', 'jpeg');
+      }
+    }
+    if (!fresh.length) return { count: 0, share: 0 };
+    /* v3.34.0: build the candidate entries first, then RE-PULL the manifest —
+       the other PC may have adopted the very same phone files a second
+       earlier. Without this, both PCs adopted the same uploads and the
+       grid showed every PIXA SHARE photo twice (two entries, same name). */
+    const cands = fresh.map((f) => {
       const isShare = !!(f.appProperties && f.appProperties.pixa === 'share');
-      if (isShare) shareCount++;
-      m.photos.push({
-        pid: uuid(),
-        name: f.name,
-        folder: isShare ? 'PIXA SHARE' : 'Phone & other uploads',
-        type: f.mimeType || 'image/jpeg',
-        size: Number(f.size) || 0,
-        lastModified: Date.parse(f.createdTime) || Date.now(),
-        fileId: f.id,
-        thumbId: thumbs.get(f.name) || null,
-        updated: f.createdTime || nowIso(),
-        deleted: false,
-        adopted: true
-      });
+      return {
+        isShare,
+        entry: {
+          pid: uuid(),
+          name: f.name,
+          folder: isShare ? 'PIXA SHARE' : 'Phone & other uploads',
+          type: f.mimeType || 'image/jpeg',
+          size: Number(f.size) || 0,
+          lastModified: Date.parse(f.createdTime) || Date.now(),
+          fileId: f.id,
+          thumbId: thumbs.get(f.name) || null,
+          updated: f.createdTime || nowIso(),
+          deleted: false,
+          adopted: true
+        }
+      };
+    });
+    let m = manifest;
+    try {
+      /* v3.34.0: make sure a recreated manifest is discovered first — a PC
+         whose manifest id just went 404 would otherwise re-pull nothing and
+         adopt files the other PC already filed (duplicate grid entries). */
+      if (!C.manifestId) C.manifestId = await findManifest();
+      const m2 = await pullManifest();
+      if (m2 && Array.isArray(m2.photos)) {
+        const haveFile = new Set();
+        const haveName = new Set();
+        m2.photos.forEach((e) => {
+          if (e && !e.deleted) { haveFile.add(e.fileId); haveName.add(`${e.folder || ''}//${e.name}`); }
+        });
+        const kept = cands.filter((c) => !haveFile.has(c.entry.fileId) && !haveName.has(`${c.entry.folder || ''}//${c.entry.name}`));
+        if (!kept.length) {
+          /* already adopted elsewhere — just show the other PC's entries */
+          await applyRemote(m2, { silent: true });
+          return { count: 0, share: 0 };
+        }
+        cands.length = 0;
+        cands.push(...kept);
+        m = m2;
+      }
+    } catch (e) { /* merge with what we pulled at cycle start */ }
+    let shareCount = 0;
+    for (const c of cands) {
+      m.photos.push(c.entry);
+      if (c.isShare) shareCount++;
     }
     m.rev = Date.now();
     await pushManifest(m);
     await applyRemote(m, { silent: true });
-    return { count: fresh.length, share: shareCount };
+    return { count: cands.length, share: shareCount };
   }
 
   /* ================= upload queue (background, zero-lag) ================= */
@@ -803,6 +889,31 @@
         for (const pid of dirty) {
           const e = entries.get(pid);
           const b = await blobGet(pid);
+          if (!e && b) {
+            /* v3.34.0 SELF-HEAL: the manifest lost this photo (Drive folder
+               cleaned up / recreated, manifest reset…) but THIS PC still
+               holds its latest bytes. Re-upload as a fresh Drive file under
+               the SAME pid — before this fix the edit was silently dropped
+               forever and the photo never reached the other PC again. */
+            const lp = state.photos.find((x) => x.cloud && x.cloud.pid === pid);
+            if (lp) {
+              try {
+                setStatus_('syncing', `Restoring “${lp.name}”…`);
+                const up = await uploadNew(b, lp.name, { pixa: 'photo' });
+                const tb = await makeThumbBlob(b);
+                const thumbId = tb ? (await uploadNew(tb, `${lp.name}.thumb.jpg`, { pixa: 'thumb' })).id : null;
+                entries.set(pid, {
+                  pid, name: lp.name, folder: lp.folder || '', type: b.type || 'image/jpeg',
+                  size: b.size, lastModified: lp.lastModified || Date.now(),
+                  fileId: up.id, thumbId, updated: up.ct || nowIso(), deleted: false
+                });
+                lp.cloud = { pid, fileId: up.id, thumbId, updated: up.ct || nowIso() };
+                lp.remoteEdit = false;
+                links[linkKey(lp)] = pid;
+                await linksSet(links);
+              } catch (er) { stillDirty.push(pid); }
+            }
+          }
           if (e && b) {
             try {
               const mt = await updateMedia(e.fileId, b);   /* v3.29.0: Google's server clock */
@@ -838,7 +949,13 @@
            user edits; only a lost Google session stops the loop */
         if (!hasToken()) break;
         const key = linkKey(p);
-        if (links[key]) continue;
+        /* v3.34.0: only skip when the link STILL points at a live manifest
+           entry. A stale link (manifest wiped / folder recreated on Drive)
+           used to make this PC believe the photo was already backed up —
+           it then NEVER re-uploaded and the other PC never saw it (the
+           user's "photos don't reach the other PC despite Drive" bug). */
+        const lpid = links[key];
+        if (lpid && entries.has(lpid)) continue;
         const twin = [...entries.values()].find((e) => !e.deleted && (e.folder || '') === (p.folder || '') && e.name === p.name);
         let pid;
         if (twin) { pid = twin.pid; }
@@ -909,6 +1026,25 @@
           result = [...out.values()];
         }
       } catch (er) { /* merge is best-effort — push what we have */ }
+      /* v3.34.0: collapse accidental duplicates (two PCs adopting the same
+         phone upload in the same second, or a photo re-linked on both).
+         Keep the NEWEST entry per folder+name; the losers become tombstones
+         so every PC (including the one that still shows the twin) removes
+         its copy at the next pull. */
+      const byName = new Map();
+      for (const e of result) {
+        if (!e || e.deleted) continue;
+        const k = `${e.folder || ''}//${e.name}`;
+        const cur = byName.get(k);
+        if (!cur || (e.updated || '') > (cur.updated || '')) byName.set(k, e);
+      }
+      if (byName.size) {
+        result = result.map((e) => {
+          if (!e || e.deleted) return e;
+          const k = `${e.folder || ''}//${e.name}`;
+          return byName.get(k) === e ? e : Object.assign({}, e, { deleted: true, updated: nowIso() });
+        });
+      }
       m.rev = Date.now();
       m.photos = result;
       if (!m.settings) m.settings = {};
@@ -924,6 +1060,10 @@
       await applyRemote(m, { silent: true });
       setStatus_('ok', skipCount ? `${skipCount} photo${skipCount > 1 ? 's' : ''} waiting to upload — will retry` : '');
       if (upCount) toast(`${upCount} photo${upCount > 1 ? 's' : ''} backed up to Google Drive`, 'ok', 4000);
+      /* v3.34.0: uploads that keep failing were invisible (the green chip
+         hides itself after 4 s) — the user only saw "photos don't sync".
+         Say it out loud instead. */
+      if (skipCount) toast(`${skipCount} photo${skipCount > 1 ? 's' : ''} could not be uploaded — press Refresh (F5) once, keep PIXA open and stay online`, 'err', 8000);
     } catch (e) {
       setStatus_('err', e.message);
       schedulePush(60000); /* try again quietly */
@@ -976,6 +1116,15 @@
       C.folderId = C.folderId || await findFolder();
       C.manifestId = C.manifestId || await findManifest();
       let m = await pullManifest();
+      if (!m && !C.manifestId) {
+        /* v3.34.0: the manifest was DELETED or REPLACED on Drive (cleanup,
+           folder recreated, another PC started a fresh manifest). This PC
+           just forgot the dead id — look for the new one before assuming
+           there is none. Without this, the PC kept working on an empty
+           manifest and re-adopted photos the other PC had already filed. */
+        C.manifestId = await findManifest();
+        if (C.manifestId) m = await pullManifest();
+      }
       if (!m) {
         /* no manifest yet — still pick up photos other apps dropped in the folder */
         let adopted0 = { count: 0, share: 0 };
@@ -1040,7 +1189,9 @@
   async function arrivalProbe() {
     if (document.hidden || !C.enabled || !hasToken() || C.pulling) return;
     if (!C.folderId) return;                    /* the first full pull finds the folder */
-    const q = encodeURIComponent(`'${C.folderId}' in parents and trashed = false and mimeType contains 'image/'`);
+    /* v3.34.0: probe ALL children (not just mimeType image/*) so uploads
+       with a missing/octet-stream mimeType still trigger an instant pull */
+    const q = encodeURIComponent(`'${C.folderId}' in parents and trashed = false`);
     const r = await authFetch(`${DRIVE}/files?q=${q}&fields=files(id)&pageSize=1000`);
     if (!r.ok) return;
     const j = await r.json();
@@ -1323,8 +1474,10 @@
   window.addEventListener('offline', () => setStatus_('err', 'No internet'));
 
   /* v3.31.0: tiny hook for automated UI checks — drive the cloud states
-     from a test script without touching the internals */
-  window.PixaCloud = { setStatus: setStatus_, openModal, closeModal };
+     from a test script without touching the internals.
+     v3.34.0: pullCycle/pushCycle exposed too, so automated tests (and power
+     users via the console) can force a full sync round-trip on demand. */
+  window.PixaCloud = { setStatus: setStatus_, openModal, closeModal, pullCycle, pushCycle };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

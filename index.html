@@ -1371,7 +1371,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.33.0</span>
+      <span class="ver">v3.34.0</span>
     </span>
   </footer>
 
@@ -2960,6 +2960,9 @@
     };
     function buildTree() {
       peek.hideNow();
+      /* v3.34.0: keep the sidebar's scroll position across rebuilds — a
+         background sync used to yank the folder list back to the top */
+      const treeScroll = els.tree.scrollTop;
       els.tree.innerHTML = '';
       /* v3.25.5: folder -> its photos (newest first) — feeds the tree stacks
          and the hover peek. Replaces the old counts-only Map. */
@@ -3074,6 +3077,7 @@
         const parts = p.split('/');
         mk(parts[parts.length - 1], p, counts.get(p), parts.length, { photos: byFolder.get(p) || [] });
       }
+      if (treeScroll) els.tree.scrollTop = treeScroll;
     }
 
     /* ================= selection + photo tray ================= */
@@ -3772,25 +3776,41 @@
       const has = state.filtered.length > 0;
       els.empty.hidden = has || total > 0;
       els.grid.hidden = !has;
+      /* v3.34.0 NO-BLINK RENDER: every background sync arrival used to blank
+         the grid (innerHTML = '') and rebuild every cell, so the whole app
+         "blinked" and, if the user had scrolled down, the page jumped back
+         to the top (the short DOM clamped the scroll). Now:
+         • the scroll position of #main is saved and restored,
+         • cells whose photo did not change are MOVED into the new rows
+           (their loaded <img> survives — no spinner, no flash). */
+      const scroller = document.getElementById('main');
+      const st = scroller ? scroller.scrollTop : 0;
+      const reuse = new Map();
+      if (has) {
+        for (const c of els.grid.querySelectorAll('.cell')) {
+          if (c.dataset.key && !reuse.has(c.dataset.key)) reuse.set(c.dataset.key, c);
+        }
+      }
       els.grid.innerHTML = '';
       renderCursor = 0;
       if (!has) return;
-      renderMore();
+      renderMore(reuse);
       /* v3.12.1: the lazy-render sentinel only fires IntersectionObserver on a
          VISIBLE→NOT-VISIBLE flip. When the whole library is short (small
          folders, tall screen) the sentinel never leaves the 800px lookahead
          zone, so groups after the first were silently never drawn — folders
          appeared to "disappear". Render groups eagerly while it is near. */
-      const mainEl = document.querySelector('main');
+      const mainEl = scroller || document.querySelector('main');
       while (renderCursor < state.groups.length) {
         const sr = els.sentinel.getBoundingClientRect();
         const mr = mainEl.getBoundingClientRect();
-        if (sr.top <= mr.bottom + 800 && sr.bottom >= mr.top - 800) renderMore();
+        if (sr.top <= mr.bottom + 800 && sr.bottom >= mr.top - 800) renderMore(reuse);
         else break;
       }
+      if (scroller) scroller.scrollTop = Math.min(st, scroller.scrollHeight);
     }
 
-    function renderMore() {
+    function renderMore(reuse) {
       if (renderCursor >= state.groups.length) return;
       const g = state.groups[renderCursor++];
       const label = g.path === '' ? state.folder : g.path;
@@ -3834,7 +3854,7 @@
       row.className = 'row';
       const frag = document.createDocumentFragment();
       frag.appendChild(head); frag.appendChild(row);
-      for (const it of g.items) row.appendChild(makeCell(it));
+      for (const it of g.items) row.appendChild(makeCell(it, reuse));
       els.grid.appendChild(frag);
 
       /* fold wiring stays AFTER `row` exists (applyFold touches row.style) */
@@ -3958,10 +3978,26 @@
       window.addEventListener('blur', kill);
     })();
 
-    function makeCell(entry) {
+    /* v3.34.0: a cell's VISUAL state — if nothing here changed, the existing
+       DOM node is reused on re-render (its decoded <img> survives: no flash) */
+    const cellSig = (p) => `${p.rot || 0}|${p.w || 0}x${p.h || 0}|${p.star ? 1 : 0}|${p.collageId || ''}`;
+
+    function makeCell(entry, reuse) {
+      /* v3.34.0 NO-BLINK: move the existing cell into the new row instead of
+         rebuilding it — the loaded thumbnail does not flash and the browser
+         does not re-decode anything. Only the lazy-thumb index is refreshed. */
+      if (reuse) {
+        const old = reuse.get(photoKey(entry.p));
+        if (old && old._cellSig === cellSig(entry.p)) {
+          const ph = old.querySelector('.ph');
+          if (ph) ph.dataset.pi = entry.idx;
+          return old;
+        }
+      }
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'cell'; btn.title = entry.p.name;
       btn.dataset.key = photoKey(entry.p);
+      btn._cellSig = cellSig(entry.p);
       /* v3.12.0: if the photo's true ratio is already known (decoded before),
          size the photo box to it right away — no square flash on re-render */
       if (selSet().has(btn.dataset.key)) btn.classList.add('sel');
@@ -4139,6 +4175,7 @@
       const i = +ph.dataset.pi;
       const p = state.filtered[i];
       if (!p) return;
+      if (ph.querySelector('img')) return;   /* v3.34.0: reused cell — thumb already alive */
       try {
         const url = await getThumbURL(p);
         if (!ph.isConnected) return;
