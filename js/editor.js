@@ -202,6 +202,24 @@
     bold: false, italic: false, underline: false, stroke: '#000000', strokeW: 0, shadow: true, align: 'center'
   };
 
+  /* v3.33.0: the text tool remembers the last font — locally (pixsa.defaults)
+     AND in the Google-account settings, so every new text and every PC that
+     signs in gets the same font instead of falling back to Segoe UI */
+  function textDefaults() {
+    try {
+      const d = JSON.parse(localStorage.getItem('pixsa.defaults') || '{}');
+      return (d && d.text) || {};
+    } catch (e) { return {}; }
+  }
+  function rememberTextFont(font) {
+    try {
+      const d = JSON.parse(localStorage.getItem('pixsa.defaults') || '{}') || {};
+      d.text = Object.assign({}, d.text, { font });
+      localStorage.setItem('pixsa.defaults', JSON.stringify(d));
+    } catch (e) {}
+    if (window.PixsaCloud && window.PixsaCloud.settingsChanged) window.PixsaCloud.settingsChanged();
+  }
+
   /* v3.14.0 tool families (Paint + Select) */
   const PAINT_STROKES = ['pencil', 'brush', 'eraser'];
   const PAINT_SHAPES = new Set(['line', 'rect', 'ellipse', 'triangle', 'star', 'arrow']);
@@ -616,6 +634,7 @@
       ['"Palatino Linotype", serif', 'Palatino'],
       ['Garamond, serif', 'Garamond'],
       ['"Segoe Script", cursive', 'Segoe Script'],
+      ['"Sakkal Majalla", serif', 'Sakkal Majalla'],   /* v3.33.0: user request */
       ['Aboreto, sans-serif', 'Aboreto (logo font)']
     ];
     const custom = (window.PixaFonts && window.PixaFonts.list) || [];
@@ -648,7 +667,7 @@
       clearSel();
     }
     if (E.liveShape && !PAINT_SHAPES.has(t)) E.liveShape = null;
-    if (t === 'text' && !E.txtDraft) E.txtDraft = { ...TEXT0 };
+    if (t === 'text' && !E.txtDraft) E.txtDraft = { ...TEXT0, ...textDefaults() };
     E.tool = t;
     ed.crop.hidden = !(t === 'crop' && E.cropR);
     qa('.fixbtn[data-fix]').forEach((b) => b.classList.toggle('on', b.dataset.fix === t));
@@ -818,7 +837,7 @@
         <p style="font-size:11px;color:#71747a;margin:8px 0 0;line-height:1.5">Click photo = new text • drag the pin to move • drag the ring handle to rotate &amp; resize • Enter = new line • Esc = done • Delete key removes the selected text</p>`;
       setTxUI(op);
       const grab = (id) => q(id);
-      grab('#txFont').addEventListener('change', (e) => { const o = textTarget(); o.font = e.target.value; afterTextChange(); });
+      grab('#txFont').addEventListener('change', (e) => { const o = textTarget(); o.font = e.target.value; rememberTextFont(e.target.value); afterTextChange(); });
       grab('#txAddFont').addEventListener('click', () => q('#fontFile').click());
       const tg = (id, key) => grab(id).addEventListener('click', (e) => { const o = textTarget(); o[key] = !o[key]; e.currentTarget.style.borderColor = o[key] ? 'var(--accent)' : ''; e.currentTarget.style.background = o[key] ? '#dcebfb' : ''; afterTextChange(); });
       tg('#txBold', 'bold'); tg('#txItalic', 'italic'); tg('#txUnder', 'underline');
@@ -999,9 +1018,10 @@
   }
   function newDraftText(nx, ny) {
     const d = E.txtDraft;
+    const dv = textDefaults();   /* v3.33.0: every new text starts with the remembered font */
     return {
       type: 'text', x: clampN(nx, 0.03, 0.97), y: clampN(ny, 0.05, 0.95),
-      text: '', size: d.size, color: d.color, font: d.font, rot: 0,
+      text: '', size: d.size, color: d.color, font: dv.font || d.font, rot: 0,
       alpha: d.alpha == null ? 1 : d.alpha, bold: !!d.bold, italic: !!d.italic,
       underline: !!d.underline, stroke: d.stroke, strokeW: d.strokeW,
       shadow: !!d.shadow, align: d.align || 'center'
@@ -2289,7 +2309,7 @@
       E.src = await createImageBitmap(blob).catch(() => E.src);
       E.ops = []; E.adj = { ...ADJ0 }; E.prevAdj = { ...E.adj };
       E.undo = []; E.redo = []; E.stickers = []; E.stkSel = null;
-      E.txtSel = null; E.txtEditing = null; E.txtDraft = { ...TEXT0, alpha: 1 };
+      E.txtSel = null; E.txtEditing = null; E.txtDraft = { ...TEXT0, ...textDefaults(), alpha: 1 };
       E.sel = null; E.floatSel = null; E.lift = null; E.liveShape = null;
       hideTxtEdit();
       resetAdjUI(); updFxTiles(); updUndoBtns(); setTool(null);
@@ -2347,7 +2367,7 @@
     E.undo = []; E.redo = [];
     E.tool = null; E.cropR = null; E.aspect = 0; E.pendPts = []; E.draft = null;
     E.stickers = []; E.stkSeq = 0; E.stkSel = null;
-    E.txtSel = null; E.txtEditing = null; E.txtDraft = { ...TEXT0, alpha: 1 };
+    E.txtSel = null; E.txtEditing = null; E.txtDraft = { ...TEXT0, ...textDefaults(), alpha: 1 };
     E.paint = { size: 6, c1: '#1a1a1a', c2: '#ffffff', noFill: false };
     E.sel = null; E.floatSel = null; E.lift = null; E.clipboard = null; E.liveShape = null;
     hideTxtEdit();

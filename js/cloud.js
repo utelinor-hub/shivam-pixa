@@ -635,6 +635,13 @@
     return n;
   }
 
+  /* v3.33.0: the full user style (collage defaults + text font) lives in
+     localStorage 'pixsa.defaults' and travels with the Google account */
+  function collectUserDefaults() {
+    try { return JSON.parse(localStorage.getItem('pixsa.defaults') || '{}') || {}; }
+    catch (e) { return {}; }
+  }
+
   function applyRemoteSettings(s) {
     try {
       if (s.sort && s.sort !== state.sort) {
@@ -648,14 +655,34 @@
         const z = document.getElementById('zoom');
         if (z && String(s.zoom) !== z.value) { z.value = s.zoom; z.dispatchEvent(new Event('input', { bubbles: true })); }
       }
+      /* v3.33.0: collage + text defaults follow the account — sign in on any
+         PC and the same collage style and font appear. Signing out changes
+         nothing: the local settings stay until the user changes them. */
+      if (s.collage || s.text) {
+        const d = collectUserDefaults();
+        if (s.collage) {
+          d.collage = Object.assign({}, d.collage, s.collage);
+          if (s.collage.fmt) localStorage.setItem('pixsa.collageFormat', s.collage.fmt);
+          localStorage.setItem('pixsa.collageOrientation', s.collage.landscape === false ? 'portrait' : 'landscape');
+        }
+        if (s.text) d.text = Object.assign({}, d.text, s.text);
+        localStorage.setItem('pixsa.defaults', JSON.stringify(d));
+        if (window.PixsaCollage && window.PixsaCollage.isOpen && window.PixsaCollage.isOpen() && window.PixsaCollage.applyUserDefaults) {
+          window.PixsaCollage.applyUserDefaults();   /* refresh an open collage live */
+        }
+      }
     } catch (e) {}
   }
 
   function settingsChanged() {
     if (!C.enabled || !C.remote) return;
+    const d = collectUserDefaults();
     C.remote.settings = {
       sort: state.sort,
       zoom: Number((document.getElementById('zoom') || {}).value) || undefined,
+      /* v3.33.0: the whole user style travels with the account */
+      collage: d.collage || undefined,
+      text: d.text || undefined,
       updated: nowIso()
     };
     schedulePush(2500);
@@ -886,6 +913,10 @@
       m.photos = result;
       if (!m.settings) m.settings = {};
       if (state.sort) m.settings.sort = state.sort;
+      /* v3.33.0: push the full user style with every backup */
+      const udefs = collectUserDefaults();
+      if (udefs.collage) m.settings.collage = udefs.collage;
+      if (udefs.text) m.settings.text = udefs.text;
       await pushManifest(m);
       C.lastSyncAt = Date.now();
       /* merged-in entries (pushed by the other PC during this cycle) show

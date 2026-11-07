@@ -1188,6 +1188,44 @@
     return { x: 0.5, y: 0.5, rot: 0, scale: 1, z: ++zTop, fit: 'fill' };
   }
 
+  /* v3.33.0: user defaults — every collage style setting is remembered
+     (locally AND in the Google-account settings), so a NEW collage opens
+     exactly the way the user left the last one — on this PC or on any
+     other PC after signing in. Reopened saved collages keep their own
+     settings (openRestored does not touch these). */
+  function loadUserDefaults() {
+    try { return JSON.parse(localStorage.getItem('pixsa.defaults') || '{}') || {}; }
+    catch (e) { return {}; }
+  }
+  function saveColDefaults() {
+    try {
+      const d = loadUserDefaults();
+      d.collage = {
+        fmt: el.fmt.value,
+        landscape: !!S.landscape,
+        border: S.border || 'none',
+        borderColor: S.borderColor || '#ffffff',
+        bg: S.bg || '#f5f2ec',
+        shadows: !!S.shadows,
+        custW: S.custW, custH: S.custH
+      };
+      localStorage.setItem('pixsa.defaults', JSON.stringify(d));
+    } catch (e) {}
+    if (window.PixsaCloud && window.PixsaCloud.settingsChanged) window.PixsaCloud.settingsChanged();
+  }
+  function applyColDefaults() {
+    const d = loadUserDefaults().collage || {};
+    if (d.border) S.border = d.border;
+    if (d.borderColor) S.borderColor = d.borderColor;
+    if (d.bg) S.bg = d.bg;
+    if (d.shadows != null) S.shadows = !!d.shadows;
+    if (d.custW > 0) S.custW = d.custW;
+    if (d.custH > 0) S.custH = d.custH;
+    S.bgImage = false;   /* a new collage starts with the solid colour */
+    if (el.custW) el.custW.value = S.custW;
+    if (el.custH) el.custH.value = S.custH;
+  }
+
   /* ================= Clips tab (Photo Tray + PC files) ================= */
   const clipThumbs = new Map();
   function syncClips() {
@@ -1521,6 +1559,7 @@
       if (lastOrient === 'portrait') S.landscape = false;
       else if (lastOrient === 'landscape') S.landscape = true;
     } catch (e) {}
+    applyColDefaults();   /* v3.33.0: border / background / shadows / ratio follow the saved defaults */
     el.custRow.hidden = fmtVal() !== 'custom';
     clearItems();
     updateUI();
@@ -1763,6 +1802,7 @@
       S.pageAuto = false;   /* v3.29.4: a hand-picked page format is kept */
       /* v3.22.2: remember the last page format */
       try { localStorage.setItem('pixsa.collageFormat', el.fmt.value); } catch (e) {}
+      saveColDefaults();   /* v3.33.0 */
       el.custRow.hidden = fmtVal() !== 'custom';
       /* v3.25.1: only the page box resizes — photos keep their original size */
       preservePixelsAcrossStageResize(updateStageGeometry);
@@ -1773,6 +1813,7 @@
       const w = parseFloat(el.custW.value), h = parseFloat(el.custH.value);
       if (!(w > 0) || !(h > 0)) { toast('Ratio needs two numbers bigger than 0', 'err'); return; }
       S.custW = clamp(w, 0.2, 60); S.custH = clamp(h, 0.2, 60);
+      saveColDefaults();   /* v3.33.0 */
       preservePixelsAcrossStageResize(updateStageGeometry);   /* v3.25.1 */
       if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
     });
@@ -1782,6 +1823,7 @@
         S.landscape = true;
         /* v3.22.2: remember the last orientation */
         try { localStorage.setItem('pixsa.collageOrientation', 'landscape'); } catch (e) {}
+        saveColDefaults();   /* v3.33.0 */
         updateUI(); preservePixelsAcrossStageResize(updateStageGeometry);   /* v3.25.1 */
         if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
       }
@@ -1792,6 +1834,7 @@
         S.landscape = false;
         /* v3.22.2: remember the last orientation */
         try { localStorage.setItem('pixsa.collageOrientation', 'portrait'); } catch (e) {}
+        saveColDefaults();   /* v3.33.0 */
         updateUI(); preservePixelsAcrossStageResize(updateStageGeometry);   /* v3.25.1 */
         if (S.type !== 'pile') applyLayout(true); else scheduleColSave();
       }
@@ -1800,6 +1843,7 @@
       const b = e.target.closest('button[data-b]');
       if (!b) return;
       S.border = b.dataset.b;
+      saveColDefaults();   /* v3.33.0 */
       updateUI();
       renderAll();
       positionWheel();
@@ -1808,11 +1852,12 @@
     el.bg.addEventListener('input', () => {
       S.bg = el.bg.value;
       S.bgImage = false; el.bgSolid.checked = true; el.bgPhoto.checked = false;
+      saveColDefaults();   /* v3.33.0 */
       refreshBackground();
       scheduleColSave();
     });
     el.bgSolid.addEventListener('change', () => {
-      if (el.bgSolid.checked) { S.bgImage = false; el.bgPhoto.checked = false; refreshBackground(); scheduleColSave(); }
+      if (el.bgSolid.checked) { S.bgImage = false; el.bgPhoto.checked = false; saveColDefaults(); refreshBackground(); scheduleColSave(); }
     });
     el.bgPhoto.addEventListener('change', () => {
       S.bgImage = el.bgPhoto.checked;
@@ -1857,9 +1902,9 @@
       refreshBackground();
       scheduleColSave();
     });
-    el.shadows.addEventListener('change', () => { S.shadows = el.shadows.checked; renderAll(); scheduleColSave(); });
+    el.shadows.addEventListener('change', () => { S.shadows = el.shadows.checked; saveColDefaults(); renderAll(); scheduleColSave(); });
     /* v3.25.2: custom border color — repaint every bordered photo live */
-    el.borderColor.addEventListener('input', () => { S.borderColor = el.borderColor.value; renderAll(); scheduleColSave(); });
+    el.borderColor.addEventListener('input', () => { S.borderColor = el.borderColor.value; saveColDefaults(); renderAll(); scheduleColSave(); });
     el.exportFmt.addEventListener('change', () => scheduleColSave());
 
     /* v3.25.2: PICASA POINTER RULES on the page (the old toolbar is gone):
@@ -2050,7 +2095,9 @@
 
   wire();
 
-  window.PixsaCollage = { open, close, openRestored, editCollage, isOpen: () => S.open, syncClips };
+  window.PixsaCollage = { open, close, openRestored, editCollage, isOpen: () => S.open, syncClips,
+    /* v3.33.0: cloud settings landed — refresh a possibly-open collage live */
+    applyUserDefaults: () => { applyColDefaults(); updateUI(); if (S.open) { refreshBackground(); renderAll(); } } };
   /* the reference prototype's global name also answers */
   window.PicasaCollage = window.PixsaCollage;
 })();
