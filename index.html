@@ -93,6 +93,8 @@
     .cloud-chip:hover { border-color: #9fb6d8; }
     .cdot { width: 10px; height: 10px; border-radius: 50%; background: #c94a44; flex: none; display: inline-block; }
     .cloud-chip.st-ok .cdot { background: #2e9e4f; box-shadow: 0 0 0 3px rgba(46,158,79,.15); }
+    .cloud-chip.st-ok { border-color: #7cc794; background: linear-gradient(#f2fbf4, #e2f5e7); color: #1c6b33; }
+    .cloud-chip.st-hide { display: none !important; }
     .cloud-chip.st-err .cdot { background: #c94a44; box-shadow: 0 0 0 3px rgba(201,74,68,.12); }
     .cloud-chip.st-run .cdot {
       background: transparent; border: 2.5px solid #d0d7e2; border-top-color: #3b76c4;
@@ -1383,7 +1385,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.30.4</span>
+      <span class="ver">v3.31.0</span>
     </span>
   </footer>
 
@@ -1649,7 +1651,7 @@
           <li>Send photos any way you like: inside PIXA SHARE press <b>Pick photos to send</b>, or in the Gallery select photos &rarr; <b>Share &rarr; PIXA SHARE</b></li>
           <li>They arrive here in about 5 seconds, grouped as <b>PIXA SHARE</b> &mdash; full original bytes, nothing compressed</li>
         </ol>
-        <p class="dk-note">One-time setup only. The Cloud Sync dialog also shows a <b>PIXA SHARE</b> block: how many photos arrived and whether the phone is signed in with the right account. The old paths (opening this whole app on the phone, or a folder-sync app into the Drive folder) keep working too.</p>
+        <p class="dk-note">One-time setup only. The old paths (opening this whole app on the phone, or a folder-sync app into the Drive folder) keep working too.</p>
       </div>
     </div>
   </div>
@@ -1664,56 +1666,18 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </button>
       </header>
-      <div style="padding:12px 14px">
-        <div class="cl-sec">
-          <h5>Sync status</h5>
-          <div id="cloudLine" style="font-size:13px;color:#333">Cloud sync is off</div>
-          <div id="cloudEmail" style="font-size:12px;color:#667;margin-top:3px">Not signed in</div>
-        </div>
-        <div class="cl-sec" id="cloudStat" hidden>
-          <h5>Two-PC sync</h5>
-          <div style="font-size:12px;color:#333;line-height:1.7">
-            This PC version: <b id="csVer">&mdash;</b><br/>
-            Last sync: <span id="csLast">never</span> &nbsp;&bull;&nbsp; Photos in cloud: <span id="csCount">0</span> &nbsp;&bull;&nbsp; Waiting upload: <span id="csWait">0</span>
-          </div>
-          <div style="font-size:11.5px;color:#8a5a00;background:#fff7e0;border:1px solid #f0dfa8;border-radius:6px;padding:6px 8px;margin-top:6px;line-height:1.5">
-            Sync shows the <b>same photos on every PC</b> only when both PCs run the <b>same version</b>. Open <b>Help &rarr; Check for Updates</b> on <b>each PC</b> and press <b>Install Update</b>.
-          </div>
-          <div class="cl-row" style="justify-content:flex-end;margin-top:6px">
-            <button id="cloudCheckUpd" class="btn" type="button">Check for Updates</button>
+      <div style="padding:14px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="width:26px;height:26px;flex:none;color:#2b7cd3"><circle cx="12" cy="8.2" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 19.5c1.6-3.6 4.3-5.3 7.5-5.3s5.9 1.7 7.5 5.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <div style="min-width:0">
+            <div id="cloudEmail" style="font-size:14px;font-weight:600;color:#1f2328;word-break:break-all">Not signed in</div>
+            <div id="cloudLine" style="font-size:12px;color:#6b7280;margin-top:2px">Sign in to start syncing</div>
           </div>
         </div>
-        <div class="cl-sec" id="cloudShare" hidden>
-          <h5>PIXA SHARE &mdash; mobile &rarr; PC</h5>
-          <div style="font-size:12px;color:#333;line-height:1.7">
-            Photos received from your phone: <b id="csShareCount">0</b><br/>
-            <span id="csSharePhone" style="color:#667">No phone seen yet &mdash; open PIXA SHARE on the phone</span>
-          </div>
-          <div style="font-size:11.5px;color:#0b5c2a;background:#e9f8ef;border:1px solid #bfe8cd;border-radius:6px;padding:6px 8px;margin-top:6px;line-height:1.5">
-            On the phone open <b>utelinor-hub.github.io/Pixa-share</b> &mdash; sign in with the <b>same Google account</b> as this PC, turn <b>Auto send to PC</b> on and pick photos (or Gallery &rarr; Share &rarr; <b>PIXA SHARE</b>). They arrive here in about 5 seconds, <b>original quality</b> &mdash; WiFi and mobile data both work.
-          </div>
-          <div class="cl-row" style="justify-content:flex-end;margin-top:6px">
-            <button id="cloudOpenShare" class="btn" type="button">Open PIXA SHARE</button>
-          </div>
-        </div>
-        <div class="cl-sec">
-          <h5>Sign-in diagnostics</h5>
-          <div id="cloudDiag" style="font-size:11.5px;color:#556;line-height:1.55;white-space:pre-line"></div>
-        </div>
-        <div class="cl-sec">
-          <h5>Client ID</h5>
-          <div class="cl-row">
-            <input id="cloudClientId" type="text" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false" />
-            <button id="cloudSaveId" class="btn" type="button">Save</button>
-          </div>
-        </div>
-        <div class="cl-row" style="justify-content:flex-end">
-          <button id="cloudEnable" class="btn" type="button" hidden>Enable Drive API</button>
-          <button id="cloudSyncNow" class="btn" type="button">Sync Now</button>
-          <button id="cloudSignOut" class="btn" type="button">Sign Out</button>
+        <div class="cl-row" style="justify-content:flex-end;margin-top:12px">
           <button id="cloudSignIn" class="btn btn-accent" type="button">Sign in with Google</button>
+          <button id="cloudSignOut" class="btn" type="button" hidden>Sign Out</button>
         </div>
-        <ol id="cloudSteps" class="cl-steps" hidden></ol>
       </div>
     </div>
   </div>

@@ -1,5 +1,9 @@
 /* SHIVAM PIXA — Cloud Sync (Google Drive)
    ------------------------------------------------------------------
+   v3.31.0 — the Cloud Sync dialog is minimal now: the signed-in account,
+   one status line and a single button (Sign in when signed out, Sign Out
+   when signed in). The toolbar chip turns green when everything is synced
+   and then hides itself — it comes back only for "Sign in" or an error.
    v3.7.0 — optional, 100% background Google Drive sync.
    v3.8.0 — adopts photos that other apps upload straight into the
    "SHIVAM PIXA" Drive folder (e.g. an auto-upload app on the phone),
@@ -182,12 +186,16 @@
   async function blobDel(pid) { try { await idbDel('cloudblobs', pid); } catch (e) {} }
 
   /* ================= status chip ================= */
+  /* v3.31.0: the chip is now a self-hiding banner. A full green sync shows
+     "Synced" for ~4 s, then the chip disappears — background pulls and
+     pushes never bring it back while the account stays healthy. It returns
+     only when the user must act: not signed in ("Sign in") or an error. */
+  let chipHideTimer = null;
   function setStatus_(st, note) {
     C.status = st;
     C.statusNote = note || '';
     if (st === 'ok') C.fixUrl = null;   // error solved — hide the console-fix button
     if (!el.chip) return;
-    const dot = el.chip.querySelector('.cdot');
     el.chip.classList.remove('st-err', 'st-ok', 'st-run');
     let label = 'Cloud';
     if (st === 'setup') { label = 'Cloud setup'; el.chip.classList.add('st-err'); }
@@ -198,10 +206,23 @@
     else if (st === 'err') { label = 'Sync off'; el.chip.classList.add('st-err'); }
     el.label.textContent = label;
     el.chip.title = 'Cloud sync (Google Drive) — ' + label + (C.statusNote ? ` — ${C.statusNote}` : '');
-    /* v3.9.1: if the Cloud dialog is open, refresh its status line and the
-       Sign-in diagnostics block at the same moment the status changes —
-       previously the exact error only appeared after closing and reopening
-       the dialog (and on phones there is no hover tooltip to fall back on) */
+    /* v3.31.0 banner visibility rules: green "Synced" hides itself after
+       ~4 s; errors and the Sign-in state always show it; background syncing
+       never resurrects a hidden chip (no flashing on every poll) */
+    if (chipHideTimer) { clearTimeout(chipHideTimer); chipHideTimer = null; }
+    const chipHidden = el.chip.classList.contains('st-hide');
+    if (st === 'ok') {
+      if (!chipHidden) {
+        chipHideTimer = setTimeout(() => {
+          chipHideTimer = null;
+          if (el.chip) el.chip.classList.add('st-hide');
+        }, 4000);
+      }
+    } else if (st === 'out' || st === 'err' || st === 'setup' || st === 'connecting') {
+      el.chip.classList.remove('st-hide');
+    }
+    /* v3.9.1: if the Cloud dialog is open, refresh its status line at the
+       same moment the status changes */
     if (el.modal && !el.modal.hidden && el.line) updModal();
   }
 
@@ -1095,7 +1116,7 @@
 
   async function signIn(mode) {
     try {
-      if (!C.cfg || !C.cfg.clientId) { openModal(); toast('Client ID missing — paste it in Cloud Sync', 'err', 6000); return; }
+      if (!C.cfg || !C.cfg.clientId) { openModal(); toast('Client ID missing — reload the app page and try again', 'err', 6000); return; }
       if (!originAllowed()) {
         /* guard: starting Google auth from a non-authorized origin can navigate
            this page away to a Google error screen (popup-blocked fallback) */
@@ -1127,6 +1148,9 @@
       schedulePush(2000);
       toast(`Signed in as ${C.cfg.email || 'Google account'}`, 'ok', 3500);
       updModal();
+      /* v3.31.0: the dialog closes itself after a successful sign-in — the
+         green "Synced" chip takes over, then the chip hides itself too */
+      setTimeout(() => { if (el.modal && !el.modal.hidden) closeModal(); }, 2200);
     } catch (e) {
       setStatus_('out', e.message);
       /* v3.9.1: surface the failure right where the user pressed the button —
@@ -1165,95 +1189,28 @@
 
   function updModal() {
     if (!el.modal) return;
-    el.clientId.value = (C.cfg && C.cfg.clientId) || '';
-    el.email.textContent = (C.cfg && C.cfg.email) ? `Signed in as ${C.cfg.email}` : 'Not signed in';
-    el.btnSign.disabled = !(C.cfg && C.cfg.clientId);
-    el.btnNow.disabled = !C.enabled;
-    el.btnOut.disabled = !C.enabled;
-    const stTxt = { off: 'Cloud sync is off', setup: 'Paste your Client ID', out: 'Signed out',
+    /* v3.31.0: the simple dialog — account name, one status line and the
+       single relevant button. "Sign in with Google" shows when signed out;
+       "Sign Out" shows together with the signed-in account. Nothing else. */
+    const signed = !!hasToken();
+    el.email.textContent = signed ? `Signed in as ${(C.cfg && C.cfg.email) || 'Google account'}` : 'Not signed in';
+    const stTxt = { off: 'Cloud sync is off', out: 'Signed out',
       connecting: 'Connecting…', syncing: 'Syncing…', ok: 'Everything is synced', err: 'Will retry automatically' };
-    /* v3.9.0: keep the exact error visible inside the dialog — the old code
-       dropped C.statusNote here, so failures showed only a 7-second toast */
+    /* keep the exact error visible inside the dialog, in plain language */
     el.line.textContent = (stTxt[C.status] || '') + (C.statusNote ? ` — ${C.statusNote}` : '');
-    /* v3.14.1: console-fixable error → show the one-click fix button.
-       v3.15.1: label the button after the page it actually opens, and show
-       numbered steps so the console fix is impossible to miss. */
-    if (el.btnEnable) {
-      el.btnEnable.hidden = !C.fixUrl;
-      if (C.fixUrl) {
-        const driveApi = C.fixUrl.includes('drive.googleapis.com');
-        el.btnEnable.textContent = driveApi ? 'Enable Drive API' : 'Open Publishing settings';
-      }
-    }
-    if (el.steps) {
-      const u = C.fixUrl || '';
-      if (u.includes('drive.googleapis.com')) {
-        el.steps.innerHTML = '<li>Press <b>Enable Drive API</b> below — Google Cloud Console opens</li><li>Press the <b>Enable</b> button there and wait about 1 minute</li><li>Come back here and press <b>Sign in with Google</b> again</li>';
-        el.steps.hidden = false;
-      } else if (u.includes('/auth/audience')) {
-        el.steps.innerHTML = '<li>Press <b>Open Publishing settings</b> below — Google Cloud Console opens</li><li>Under <b>Publishing status</b> choose <b>In production</b> and press <b>Save</b> &nbsp;<i>(or add your Google account under “Test users”)</i></li><li>Come back here and press <b>Sign in with Google</b> again</li>';
-        el.steps.hidden = false;
-      } else {
-        el.steps.hidden = true;
-      }
-    }
-    if (el.diag) {
-      const allowed = originAllowed();
-      const cid = (C.cfg && C.cfg.clientId) || '';
-      el.diag.textContent =
-        `Site: ${location.origin}\n` +
-        `Origin check: ${allowed ? 'allowed ✓' : 'NOT allowed ✗ — sign-in only works on the official site'}\n` +
-        `Client ID: ${cid ? cid.slice(0, 14) + '…' + cid.slice(-8) : 'missing'}\n` +
-        (C.statusNote ? `Note: ${C.statusNote}` : 'No errors recorded');
-    }
-    /* v3.29.0: the Two-PC sync block — the version THIS PC runs, when it
-       last synced and how much is still waiting. Sync silently breaks when
-       one PC runs an older version, so the block tells the user exactly
-       what to check on BOTH PCs. */
-    if (el.csStat) {
-      el.csStat.hidden = !C.enabled;
-      el.csVer.textContent = ((document.querySelector('.ver') || {}).textContent || '').trim() || '?';
-      el.csLast.textContent = C.lastSyncAt ? new Date(C.lastSyncAt).toLocaleTimeString() : 'never';
-      el.csCount.textContent = String(C.remote ? C.remote.photos.filter((e) => !e.deleted).length : 0);
-      (async () => {
-        try {
-          const dirty = await dirtyGet();
-          const links = await linksGet();
-          const wait = dirty.length + state.photos.filter((p) => !p.cloud && !links[linkKey(p)]).length;
-          el.csWait.textContent = String(wait);
-        } catch (e) { /* dialog numbers are best-effort */ }
-      })();
-    }
-    /* v3.30.1: PIXA SHARE block — how many photos the phone sent, and
-       whether the phone app is signed in with the SAME account as this PC */
-    if (el.csShare) {
-      el.csShare.hidden = !C.enabled;
-      const shareN = C.remote ? C.remote.photos.filter((e) => !e.deleted && e.folder === 'PIXA SHARE').length : 0;
-      el.csShareCount.textContent = String(shareN);
-      const pcEmail = (C.cfg && C.cfg.email) || '';
-      if (C.phone && C.phone.email) {
-        el.csSharePhone.textContent = C.phone.email === pcEmail
-          ? `Phone online: ${C.phone.email} ✓ (same account)`
-          : `Phone online as ${C.phone.email} — DIFFERENT from this PC (${pcEmail}) — photos will NOT arrive`;
-      } else {
-        el.csSharePhone.textContent = 'No phone seen yet — open PIXA SHARE on the phone';
-      }
-    }
+    el.btnSign.hidden = signed;
+    el.btnOut.hidden = !signed;
   }
 
   function wireUI() {
     el.chip = document.getElementById('cloudChip');
     el.label = document.getElementById('cloudLabel');
-    el.steps = document.getElementById('cloudSteps'); /* v3.15.1: numbered fix steps */
     el.modal = document.getElementById('cloud');
     if (!el.chip || !el.modal) return;
-    el.clientId = document.getElementById('cloudClientId');
+    /* v3.31.0: simplified dialog — only the account line + Sign in / Sign out */
     el.email = document.getElementById('cloudEmail');
     el.line = document.getElementById('cloudLine');
-    el.diag = document.getElementById('cloudDiag');
-    el.btnSaveId = document.getElementById('cloudSaveId');
     el.btnSign = document.getElementById('cloudSignIn');
-    el.btnNow = document.getElementById('cloudSyncNow');
     el.btnOut = document.getElementById('cloudSignOut');
 
     el.chip.addEventListener('click', openModal);
@@ -1261,41 +1218,8 @@
     el.modal.addEventListener('click', (e) => { if (e.target === el.modal) closeModal(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !el.modal.hidden) closeModal(); });
 
-    el.btnSaveId.addEventListener('click', async () => {
-      const v = el.clientId.value.trim();
-      if (!v || !v.endsWith('.apps.googleusercontent.com')) { toast('Not a valid Client ID (it ends with .apps.googleusercontent.com)', 'err', 6000); return; }
-      C.cfg = C.cfg || {};
-      C.cfg.clientId = v;
-      await cfgSet(C.cfg);
-      C.tc = null;
-      toast('Client ID saved', 'ok', 2500);
-      updModal();
-    });
     el.btnSign.addEventListener('click', () => signIn('consent select_account'));
-    el.btnNow.addEventListener('click', () => { if (hasToken()) { pullCycle({ manual: true }); } else signIn(''); });
     el.btnOut.addEventListener('click', signOut);
-    /* v3.14.1: one-click jump to the exact Google Cloud Console page */
-    el.btnEnable = document.getElementById('cloudEnable');
-    if (el.btnEnable) el.btnEnable.addEventListener('click', () => { if (C.fixUrl) window.open(C.fixUrl, '_blank', 'noopener'); });
-    /* v3.29.0: Two-PC sync block + update check straight from the dialog */
-    el.csStat = document.getElementById('cloudStat');
-    el.csVer = document.getElementById('csVer');
-    el.csLast = document.getElementById('csLast');
-    el.csCount = document.getElementById('csCount');
-    el.csWait = document.getElementById('csWait');
-    el.btnUpd = document.getElementById('cloudCheckUpd');
-    if (el.btnUpd) el.btnUpd.addEventListener('click', () => {
-      if (window.PixsaUpd && window.PixsaUpd.checkNow) window.PixsaUpd.checkNow();
-      else toast('Updates are checked automatically — close and reopen the app to fetch the latest version', 'ok', 6000);
-    });
-    /* v3.30.1: PIXA SHARE block wiring */
-    el.csShare = document.getElementById('cloudShare');
-    el.csShareCount = document.getElementById('csShareCount');
-    el.csSharePhone = document.getElementById('csSharePhone');
-    el.btnShare = document.getElementById('cloudOpenShare');
-    if (el.btnShare) el.btnShare.addEventListener('click', () => {
-      window.open('https://utelinor-hub.github.io/Pixa-share/', '_blank', 'noopener');
-    });
   }
 
   /* ================= boot ================= */
@@ -1366,6 +1290,10 @@
     schedulePush(2000);
   });
   window.addEventListener('offline', () => setStatus_('err', 'No internet'));
+
+  /* v3.31.0: tiny hook for automated UI checks — drive the cloud states
+     from a test script without touching the internals */
+  window.PixaCloud = { setStatus: setStatus_, openModal, closeModal };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
