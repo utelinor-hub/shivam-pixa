@@ -1146,20 +1146,6 @@
       <button id="cloudChip" class="cloud-chip" type="button" title="Cloud sync (Google Drive)">
         <span class="cdot" aria-hidden="true"></span><span id="cloudLabel">Cloud</span>
       </button>
-      <button id="btnDesktop" class="btn" type="button" title="Get the Desktop Edition — its own Windows app window, works offline, Android-style auto-updates">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16V16H4zM9 20h6M12 16v4M12 7.5v5.5M9.5 10.5L12 13l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Desktop App
-      </button>
-      <button id="btnInstall" class="btn" type="button" hidden title="Install SHIVAM PIXA on this PC — it becomes a real Windows app: its own window, Start menu + taskbar + desktop icon">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v10m0 0l3.5-3.5M12 13.5L8.5 10M4.5 15.5v2A2.5 2.5 0 0 0 7 20h10a2.5 2.5 0 0 0 2.5-2.5v-2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Install App
-      </button>
-      <select id="sort" aria-label="Sort order">
-        <option value="name-asc">Name (A&#8594;Z)</option>
-        <option value="name-desc">Name (Z&#8594;A)</option>
-        <option value="date-desc">Newest photos first</option>
-        <option value="date-asc">Oldest photos first</option>
-      </select>
       <button id="btnSizer" class="btn" type="button" title="Sizer — make photos smaller (Fotosizer style)">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="6" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M20 4L8.6 15.4M14.6 14.4L20 20M8.4 8.6l3.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
         Sizer
@@ -1385,7 +1371,7 @@
       </span>
       <button id="btnClear" class="linkbtn dim" type="button" hidden>Clear library</button>
       <span class="badge">100% OFFLINE</span>
-      <span class="ver">v3.31.0</span>
+      <span class="ver">v3.32.0</span>
     </span>
   </footer>
 
@@ -2232,7 +2218,7 @@
     /* ================= elements ================= */
     const els = {
       grid: $('#grid'), empty: $('#emptyState'), sentinel: $('#sentinel'),
-      sort: $('#sort'),
+      sort: null,                     /* v3.32.0: sort dropdown removed — state.sort keeps the order */
       importBtn: $('#btnImport'), importBtn2: $('#btnImport2'), demoBtn: $('#btnDemo'), cameraInput: $('#cameraInput'),
       btnSide: $('#btnSide'), btnRefresh: $('#btnRefresh'), tree: $('#tree'),
       zoom: $('#zoom'),
@@ -2241,7 +2227,7 @@
       restore: $('#restoreBar'), restoreName: $('#restoreName'), restoreDel: $('#btnRestoreDel'),
       notice: $('#noticeBar'), noticeText: $('#noticeText'), btnPop: $('#btnPop'),
       btnSizer: $('#btnSizer'), btnCollage: $('#btnCollage'),
-      btnDesktop: $('#btnDesktop'),
+      /* v3.32.0: btnDesktop removed from the toolbar */
       tray: $('#tray'), trayStrip: $('#trayStrip'), trayCount: $('#trayCount'),
       btnTrayClear: $('#btnTrayClear'), btnTrayCollage: $('#btnTrayCollage'),
       btnTrayPin: $('#btnTrayPin'),
@@ -4618,7 +4604,7 @@
     els.demoBtn.addEventListener('click', loadDemo);
     els.btnSide.addEventListener('click', () => document.body.classList.toggle('side-off'));
     els.btnSizer.addEventListener('click', openSizer);
-    els.btnDesktop.addEventListener('click', openDesktop);
+    /* v3.32.0: the Desktop App toolbar button was removed */
     els.btnCollage.addEventListener('click', () => {
       const list = state.selArr.length ? state.selArr : state.filtered;
       if (!list.length) { toast('Import photos first', 'err'); return; }
@@ -4840,13 +4826,9 @@
       buildTree(); applyFilter();
     });
 
-    els.sort.value = state.sort;
-    els.sort.addEventListener('change', () => {
-      state.sort = els.sort.value;
-      localStorage.setItem('pixsa.sort', state.sort);
-      applyFilter();
-      if (window.PixsaCloud) window.PixsaCloud.settingsChanged();
-    });
+    /* v3.32.0: the sort dropdown was removed from the toolbar — the library
+       simply stays in its saved order (default: Name A→Z). state.sort is
+       still read by applyFilter and still syncs across PCs. */
 
     function applyZoom() {
       document.documentElement.style.setProperty('--thumb', els.zoom.value + 'px');
